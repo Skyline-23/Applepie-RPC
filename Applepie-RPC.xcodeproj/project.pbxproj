@@ -1,0 +1,554 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		623815642DB2B12300AD874E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6238154A2DB2B12100AD874E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 623815512DB2B12100AD874E;
+			remoteInfo = "Applepie-RPC";
+		};
+		6238156E2DB2B12300AD874E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6238154A2DB2B12100AD874E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 623815512DB2B12100AD874E;
+			remoteInfo = "Applepie-RPC";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		623815522DB2B12100AD874E /* Applepie-RPC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Applepie-RPC.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		623815632DB2B12300AD874E /* Applepie-RPCTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Applepie-RPCTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		6238156D2DB2B12300AD874E /* Applepie-RPCUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Applepie-RPCUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		623815542DB2B12100AD874E /* Applepie-RPC */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Applepie-RPC";
+			sourceTree = "<group>";
+		};
+		623815662DB2B12300AD874E /* Applepie-RPCTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Applepie-RPCTests";
+			sourceTree = "<group>";
+		};
+		623815702DB2B12300AD874E /* Applepie-RPCUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Applepie-RPCUITests";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		6238154F2DB2B12100AD874E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		623815602DB2B12300AD874E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6238156A2DB2B12300AD874E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		623815492DB2B12100AD874E = {
+			isa = PBXGroup;
+			children = (
+				623815542DB2B12100AD874E /* Applepie-RPC */,
+				623815662DB2B12300AD874E /* Applepie-RPCTests */,
+				623815702DB2B12300AD874E /* Applepie-RPCUITests */,
+				623815532DB2B12100AD874E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		623815532DB2B12100AD874E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				623815522DB2B12100AD874E /* Applepie-RPC.app */,
+				623815632DB2B12300AD874E /* Applepie-RPCTests.xctest */,
+				6238156D2DB2B12300AD874E /* Applepie-RPCUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		623815512DB2B12100AD874E /* Applepie-RPC */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 623815772DB2B12300AD874E /* Build configuration list for PBXNativeTarget "Applepie-RPC" */;
+			buildPhases = (
+				6238154E2DB2B12100AD874E /* Sources */,
+				6238154F2DB2B12100AD874E /* Frameworks */,
+				623815502DB2B12100AD874E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				623815542DB2B12100AD874E /* Applepie-RPC */,
+			);
+			name = "Applepie-RPC";
+			packageProductDependencies = (
+			);
+			productName = "Applepie-RPC";
+			productReference = 623815522DB2B12100AD874E /* Applepie-RPC.app */;
+			productType = "com.apple.product-type.application";
+		};
+		623815622DB2B12300AD874E /* Applepie-RPCTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6238157A2DB2B12300AD874E /* Build configuration list for PBXNativeTarget "Applepie-RPCTests" */;
+			buildPhases = (
+				6238155F2DB2B12300AD874E /* Sources */,
+				623815602DB2B12300AD874E /* Frameworks */,
+				623815612DB2B12300AD874E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				623815652DB2B12300AD874E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				623815662DB2B12300AD874E /* Applepie-RPCTests */,
+			);
+			name = "Applepie-RPCTests";
+			packageProductDependencies = (
+			);
+			productName = "Applepie-RPCTests";
+			productReference = 623815632DB2B12300AD874E /* Applepie-RPCTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		6238156C2DB2B12300AD874E /* Applepie-RPCUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6238157D2DB2B12300AD874E /* Build configuration list for PBXNativeTarget "Applepie-RPCUITests" */;
+			buildPhases = (
+				623815692DB2B12300AD874E /* Sources */,
+				6238156A2DB2B12300AD874E /* Frameworks */,
+				6238156B2DB2B12300AD874E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6238156F2DB2B12300AD874E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				623815702DB2B12300AD874E /* Applepie-RPCUITests */,
+			);
+			name = "Applepie-RPCUITests";
+			packageProductDependencies = (
+			);
+			productName = "Applepie-RPCUITests";
+			productReference = 6238156D2DB2B12300AD874E /* Applepie-RPCUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		6238154A2DB2B12100AD874E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1620;
+				LastUpgradeCheck = 1620;
+				TargetAttributes = {
+					623815512DB2B12100AD874E = {
+						CreatedOnToolsVersion = 16.2;
+					};
+					623815622DB2B12300AD874E = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 623815512DB2B12100AD874E;
+					};
+					6238156C2DB2B12300AD874E = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 623815512DB2B12100AD874E;
+					};
+				};
+			};
+			buildConfigurationList = 6238154D2DB2B12100AD874E /* Build configuration list for PBXProject "Applepie-RPC" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 623815492DB2B12100AD874E;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 623815532DB2B12100AD874E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				623815512DB2B12100AD874E /* Applepie-RPC */,
+				623815622DB2B12300AD874E /* Applepie-RPCTests */,
+				6238156C2DB2B12300AD874E /* Applepie-RPCUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		623815502DB2B12100AD874E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		623815612DB2B12300AD874E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6238156B2DB2B12300AD874E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		6238154E2DB2B12100AD874E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6238155F2DB2B12300AD874E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		623815692DB2B12300AD874E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		623815652DB2B12300AD874E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 623815512DB2B12100AD874E /* Applepie-RPC */;
+			targetProxy = 623815642DB2B12300AD874E /* PBXContainerItemProxy */;
+		};
+		6238156F2DB2B12300AD874E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 623815512DB2B12100AD874E /* Applepie-RPC */;
+			targetProxy = 6238156E2DB2B12300AD874E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		623815752DB2B12300AD874E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		623815762DB2B12300AD874E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		623815782DB2B12300AD874E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Applepie-RPC/Applepie_RPC.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Applepie-RPC/Preview Content\"";
+				DEVELOPMENT_TEAM = Q23JLSJCCV;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPC";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		623815792DB2B12300AD874E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Applepie-RPC/Applepie_RPC.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Applepie-RPC/Preview Content\"";
+				DEVELOPMENT_TEAM = Q23JLSJCCV;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPC";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		6238157B2DB2B12300AD874E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Q23JLSJCCV;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPCTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Applepie-RPC.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Applepie-RPC";
+			};
+			name = Debug;
+		};
+		6238157C2DB2B12300AD874E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Q23JLSJCCV;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPCTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Applepie-RPC.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Applepie-RPC";
+			};
+			name = Release;
+		};
+		6238157E2DB2B12300AD874E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Q23JLSJCCV;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPCUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "Applepie-RPC";
+			};
+			name = Debug;
+		};
+		6238157F2DB2B12300AD874E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Q23JLSJCCV;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPCUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "Applepie-RPC";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		6238154D2DB2B12100AD874E /* Build configuration list for PBXProject "Applepie-RPC" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				623815752DB2B12300AD874E /* Debug */,
+				623815762DB2B12300AD874E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		623815772DB2B12300AD874E /* Build configuration list for PBXNativeTarget "Applepie-RPC" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				623815782DB2B12300AD874E /* Debug */,
+				623815792DB2B12300AD874E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6238157A2DB2B12300AD874E /* Build configuration list for PBXNativeTarget "Applepie-RPCTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6238157B2DB2B12300AD874E /* Debug */,
+				6238157C2DB2B12300AD874E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6238157D2DB2B12300AD874E /* Build configuration list for PBXNativeTarget "Applepie-RPCUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6238157E2DB2B12300AD874E /* Debug */,
+				6238157F2DB2B12300AD874E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 6238154A2DB2B12100AD874E /* Project object */;
+}
