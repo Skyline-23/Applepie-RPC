@@ -9,9 +9,6 @@ import SwiftUI
 
 @main
 struct Applepie_RPCApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
-    }
+  @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
+  var body: some Scene { WindowGroup { EmptyView() } }
 }
