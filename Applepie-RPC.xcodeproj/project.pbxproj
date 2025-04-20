@@ -6,6 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		620F1E492DB397F400898A8D /* ModernSlider in Frameworks */ = {isa = PBXBuildFile; productRef = 620F1E482DB397F400898A8D /* ModernSlider */; };
+		623815882DB2B82700AD874E /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 623815842DB2B82700AD874E /* .gitignore */; };
+		623815892DB2B82700AD874E /* applepie-rpc in Resources */ = {isa = PBXBuildFile; fileRef = 623815822DB2B82700AD874E /* applepie-rpc */; };
+		6238158A2DB2B82700AD874E /* applepie-rpc.py in Resources */ = {isa = PBXBuildFile; fileRef = 623815852DB2B82700AD874E /* applepie-rpc.py */; };
+		6238158B2DB2B82700AD874E /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 623815862DB2B82700AD874E /* README.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		623815642DB2B12300AD874E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +35,10 @@
 		623815522DB2B12100AD874E /* Applepie-RPC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Applepie-RPC.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		623815632DB2B12300AD874E /* Applepie-RPCTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Applepie-RPCTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6238156D2DB2B12300AD874E /* Applepie-RPCUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Applepie-RPCUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		623815822DB2B82700AD874E /* applepie-rpc */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = "applepie-rpc"; sourceTree = "<group>"; };
+		623815842DB2B82700AD874E /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		623815852DB2B82700AD874E /* applepie-rpc.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = "applepie-rpc.py"; sourceTree = "<group>"; };
+		623815862DB2B82700AD874E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +64,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				620F1E492DB397F400898A8D /* ModernSlider in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,6 +88,7 @@
 		623815492DB2B12100AD874E = {
 			isa = PBXGroup;
 			children = (
+				623815872DB2B82700AD874E /* Applepie-RPC-core */,
 				623815542DB2B12100AD874E /* Applepie-RPC */,
 				623815662DB2B12300AD874E /* Applepie-RPCTests */,
 				623815702DB2B12300AD874E /* Applepie-RPCUITests */,
@@ -90,6 +104,25 @@
 				6238156D2DB2B12300AD874E /* Applepie-RPCUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		623815832DB2B82700AD874E /* dist */ = {
+			isa = PBXGroup;
+			children = (
+				623815822DB2B82700AD874E /* applepie-rpc */,
+			);
+			path = dist;
+			sourceTree = "<group>";
+		};
+		623815872DB2B82700AD874E /* Applepie-RPC-core */ = {
+			isa = PBXGroup;
+			children = (
+				623815832DB2B82700AD874E /* dist */,
+				623815842DB2B82700AD874E /* .gitignore */,
+				623815852DB2B82700AD874E /* applepie-rpc.py */,
+				623815862DB2B82700AD874E /* README.md */,
+			);
+			path = "Applepie-RPC-core";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -112,6 +145,7 @@
 			);
 			name = "Applepie-RPC";
 			packageProductDependencies = (
+				620F1E482DB397F400898A8D /* ModernSlider */,
 			);
 			productName = "Applepie-RPC";
 			productReference = 623815522DB2B12100AD874E /* Applepie-RPC.app */;
@@ -195,6 +229,9 @@
 			);
 			mainGroup = 623815492DB2B12100AD874E;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				620F1E472DB397F400898A8D /* XCRemoteSwiftPackageReference "ModernSlider" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 623815532DB2B12100AD874E /* Products */;
 			projectDirPath = "";
@@ -212,6 +249,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				623815882DB2B82700AD874E /* .gitignore in Resources */,
+				623815892DB2B82700AD874E /* applepie-rpc in Resources */,
+				6238158A2DB2B82700AD874E /* applepie-rpc.py in Resources */,
+				6238158B2DB2B82700AD874E /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -401,6 +442,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -428,6 +470,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -549,6 +592,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		620F1E472DB397F400898A8D /* XCRemoteSwiftPackageReference "ModernSlider" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/arjun-dureja/ModernSlider";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		620F1E482DB397F400898A8D /* ModernSlider */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 620F1E472DB397F400898A8D /* XCRemoteSwiftPackageReference "ModernSlider" */;
+			productName = ModernSlider;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 6238154A2DB2B12100AD874E /* Project object */;
 }

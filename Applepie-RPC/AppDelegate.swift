@@ -6,61 +6,65 @@
 //
 
 import Cocoa
+import Darwin
+import SwiftUI
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    var statusItem: NSStatusItem!
     var pythonTask: Process?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // 1) 메뉴 바 아이콘 생성
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "music.note.house", accessibilityDescription: "Applepie")
-            button.action = #selector(toggleMenu(_:))
+        // 3) Python 데몬 실행 (프리뷰 제외)
+        if getenv("XCODE_RUNNING_FOR_PREVIEWS") == nil {
+            launchPythonDaemon()
         }
-
-        // 2) 메뉴 항목 구성
-        let menu = NSMenu()
-        menu.addItem(.init(title: "Pause Updates", action: #selector(pauseUpdates), keyEquivalent: "p"))
-        menu.addItem(.init(title: "Resume Updates", action: #selector(resumeUpdates), keyEquivalent: "r"))
-        menu.addItem(.separator())
-        menu.addItem(.init(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
-        statusItem.menu = menu
-
-        // 3) Python 데몬 실행
-        launchPythonDaemon()
     }
-
-    @objc func toggleMenu(_ sender: Any?) {
-        // 메뉴를 현재 마우스 위치에 팝업
-        statusItem.menu?.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+    
+    func applicationWillTerminate(_ notification: Notification) {
+        // Clean up if needed
+        pythonTask?.terminate()
     }
+}
 
+// MARK: - Python Daemon and Utilities
+private extension AppDelegate {
     func launchPythonDaemon() {
         guard let binURL = Bundle.main.url(forResource: "applepie-rpc", withExtension: nil) else {
-            print("❌ Python binary not found")
             return
         }
+        print("Launching Python daemon at: \(binURL.path)")
         let task = Process()
         task.executableURL = binURL
-        task.arguments = []  // 데몬 모드 기본 실행
-        task.standardOutput = Pipe()
-        task.standardError  = Pipe()
+
+        let outPipe = Pipe(), errPipe = Pipe()
+        task.standardOutput = outPipe
+        task.standardError  = errPipe
+
+        outPipe.fileHandleForReading.readabilityHandler = { handle in
+            if let str = String(data: handle.availableData, encoding: .utf8),
+               !str.isEmpty {
+                print("🐍 stdout:", str.trimmingCharacters(in: .newlines))
+            }
+        }
+        errPipe.fileHandleForReading.readabilityHandler = { handle in
+            if let str = String(data: handle.availableData, encoding: .utf8),
+               !str.isEmpty {
+                print("🐍 stderr:", str.trimmingCharacters(in: .newlines))
+            }
+        }
+
         do {
             try task.run()
             pythonTask = task
+            task.terminationHandler = { p in
+                DispatchQueue.main.async {
+                    print("❌ Python daemon terminated with exit code \(p.terminationStatus)")
+                }
+            }
         } catch {
             print("❌ Failed to run Python:", error)
         }
     }
 
-    @objc func pauseUpdates() {
-        writeCommand("PAUSE")
-    }
-
-    @objc func resumeUpdates() {
-        writeCommand("RESUME")
-    }
 
     func writeCommand(_ cmd: String) {
         let cmdURL = URL(fileURLWithPath: "/tmp/applepie_rpc_cmd")
@@ -74,11 +78,5 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             try? data.write(to: cmdURL)
         }
-    }
-
-    @objc func quit() {
-        // SIGINT 보내서 Python 쪽 cleanup_and_exit 호출
-        pythonTask?.interrupt()
-        NSApp.terminate(nil)
     }
 }

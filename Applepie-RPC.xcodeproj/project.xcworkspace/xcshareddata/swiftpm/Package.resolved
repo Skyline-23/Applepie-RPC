@@ -1,0 +1,15 @@
+{
+  "originHash" : "c9e7b79d026540195c4d95b486730b162e5ee96de24fd555cec52bbda8138d93",
+  "pins" : [
+    {
+      "identity" : "modernslider",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/arjun-dureja/ModernSlider",
+      "state" : {
+        "branch" : "main",
+        "revision" : "614f8f76c680a0f9a049c1b62163dca38e0c3091"
+      }
+    }
+  ],
+  "version" : 3
+}
