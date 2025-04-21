@@ -9,6 +9,9 @@ import SwiftUI
 import AppKit
 import ModernSlider
 import SwiftData
+import Darwin
+import Foundation
+import Network
 
 @main
 struct ApplepieRPCApp: App {
@@ -71,6 +74,10 @@ struct MainMenuView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var isHoveringPause = false
     @State private var isHoveringQuit = false
+    @State private var selectedHost: String = "Local"
+    @StateObject private var browser = AirPlayBrowser()
+    @State private var showNowPlaying = false
+    @State private var localNowPlaying: String = ""
 
     var body: some View {
         let setting = settings.first ?? {
@@ -100,6 +107,66 @@ struct MainMenuView: View {
                     Text("\(Int(setting.updateInterval))s")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                }
+            }
+            // Device Selection
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Device")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Picker("Device", selection: $selectedHost) {
+                    ForEach(browser.hosts, id: \.self) { host in
+                        Text(host == "Local" ? "내 Mac" : host)
+                            .tag(host)
+                    }
+                }
+                .frame(width: 140)
+                .onChange(of: selectedHost) { newHost in
+                    if newHost == "Local" {
+                        fetchLocalNowPlaying()
+                    } else if let port = browser.servicePorts[newHost] {
+                        browser.fetchNowPlaying(host: newHost, port: port)
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+
+            // Now Playing Info
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Now Playing")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                if selectedHost == "Local" {
+                    if localNowPlaying.isEmpty {
+                        Text("정보 없음").italic()
+                    } else {
+                        Text(localNowPlaying)
+                    }
+                } else {
+                    if browser.nowPlaying.isEmpty {
+                        Text("정보 없음").italic()
+                    } else {
+                        ScrollView {
+                            Text(browser.nowPlaying)
+                                .font(.system(size: 11, weight: .regular, design: .monospaced))
+                        }
+                        .frame(height: 60)
+                    }
+                }
+                Button("Refresh") {
+                    // Trigger a fresh query for selected AirPlay device
+                    if selectedHost == "Local" {
+                        fetchLocalNowPlaying()
+                    } else if let port = browser.servicePorts[selectedHost] {
+                        browser.fetchNowPlaying(host: selectedHost, port: port)
+                    }
+                }
+                .buttonStyle(BorderlessButtonStyle())
+            }
+            .padding(.vertical, 4)
+            .onAppear {
+                if selectedHost == "Local" {
+                    fetchLocalNowPlaying()
                 }
             }
 
@@ -183,6 +250,36 @@ struct MainMenuView: View {
             }
         } else {
             try? data.write(to: cmdURL)
+        }
+    }
+    
+    /// Fetch now-playing info from Music app via AppleScript
+    func fetchLocalNowPlaying() {
+        let script = """
+        tell application "Music"
+            if player state is playing then
+                set t to name of current track
+                set a to artist of current track
+                return t & " - " & a
+            else
+                return ""
+            end if
+        end tell
+        """
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = ["-e", script]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        do {
+            try process.run()
+            process.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let result = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
+                localNowPlaying = result
+            }
+        } catch {
+            print("Local now playing error:", error)
         }
     }
 }

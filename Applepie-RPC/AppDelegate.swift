@@ -15,7 +15,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 3) Python 데몬 실행 (프리뷰 제외)
         if getenv("XCODE_RUNNING_FOR_PREVIEWS") == nil {
-            launchPythonDaemon()
+//            launchPythonDaemon()
         }
     }
     
