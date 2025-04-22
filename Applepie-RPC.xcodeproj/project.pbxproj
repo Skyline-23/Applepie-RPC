@@ -12,6 +12,15 @@
 		623815892DB2B82700AD874E /* applepie-rpc in Resources */ = {isa = PBXBuildFile; fileRef = 623815822DB2B82700AD874E /* applepie-rpc */; };
 		6238158A2DB2B82700AD874E /* applepie-rpc.py in Resources */ = {isa = PBXBuildFile; fileRef = 623815852DB2B82700AD874E /* applepie-rpc.py */; };
 		6238158B2DB2B82700AD874E /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 623815862DB2B82700AD874E /* README.md */; };
+		628618872DB60C290076E49F /* PythonKit in Frameworks */ = {isa = PBXBuildFile; productRef = 628618862DB60C290076E49F /* PythonKit */; };
+		62B562B32DB79DF70094DC22 /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B12DB79DF70094DC22 /* Python.xcframework */; };
+		62B562B72DB79E270094DC22 /* libcrypto.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B42DB79E270094DC22 /* libcrypto.3.dylib */; };
+		62B562B82DB79E270094DC22 /* libssl.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B52DB79E270094DC22 /* libssl.3.dylib */; };
+		62B562BA2DB79EDA0094DC22 /* Python.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B12DB79DF70094DC22 /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		62B562BB2DB7A12A0094DC22 /* libcrypto.3.dylib in Copy OpenSSL */ = {isa = PBXBuildFile; fileRef = 62B562B42DB79E270094DC22 /* libcrypto.3.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		62B562BC2DB7A12A0094DC22 /* libssl.3.dylib in Copy OpenSSL */ = {isa = PBXBuildFile; fileRef = 62B562B52DB79E270094DC22 /* libssl.3.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		62B562BD2DB7A4570094DC22 /* libcrypto.3.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B42DB79E270094DC22 /* libcrypto.3.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		62B562BE2DB7A4570094DC22 /* libssl.3.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B52DB79E270094DC22 /* libssl.3.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,6 +40,34 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		625006F32DB6220100FA81F9 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				62B562BD2DB7A4570094DC22 /* libcrypto.3.dylib in Embed Frameworks */,
+				62B562BE2DB7A4570094DC22 /* libssl.3.dylib in Embed Frameworks */,
+				62B562BA2DB79EDA0094DC22 /* Python.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		62B562B92DB79E800094DC22 /* Copy OpenSSL */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = OpenSSL;
+			dstSubfolderSpec = 10;
+			files = (
+				62B562BB2DB7A12A0094DC22 /* libcrypto.3.dylib in Copy OpenSSL */,
+				62B562BC2DB7A12A0094DC22 /* libssl.3.dylib in Copy OpenSSL */,
+			);
+			name = "Copy OpenSSL";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		623815522DB2B12100AD874E /* Applepie-RPC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Applepie-RPC.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		623815632DB2B12300AD874E /* Applepie-RPCTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Applepie-RPCTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -39,6 +76,9 @@
 		623815842DB2B82700AD874E /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		623815852DB2B82700AD874E /* applepie-rpc.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = "applepie-rpc.py"; sourceTree = "<group>"; };
 		623815862DB2B82700AD874E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		62B562B12DB79DF70094DC22 /* Python.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Python.xcframework; sourceTree = "<group>"; };
+		62B562B42DB79E270094DC22 /* libcrypto.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libcrypto.3.dylib; sourceTree = "<group>"; };
+		62B562B52DB79E270094DC22 /* libssl.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libssl.3.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -78,6 +118,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				620F1E492DB397F400898A8D /* ModernSlider in Frameworks */,
+				62B562B32DB79DF70094DC22 /* Python.xcframework in Frameworks */,
+				62B562B72DB79E270094DC22 /* libcrypto.3.dylib in Frameworks */,
+				62B562B82DB79E270094DC22 /* libssl.3.dylib in Frameworks */,
+				628618872DB60C290076E49F /* PythonKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -101,6 +145,7 @@
 		623815492DB2B12100AD874E = {
 			isa = PBXGroup;
 			children = (
+				62B562B22DB79DF70094DC22 /* Frameworks */,
 				623815872DB2B82700AD874E /* Applepie-RPC-core */,
 				623815542DB2B12100AD874E /* Applepie-RPC */,
 				623815662DB2B12300AD874E /* Applepie-RPCTests */,
@@ -138,6 +183,24 @@
 			path = "Applepie-RPC-core";
 			sourceTree = "<group>";
 		};
+		62B562B22DB79DF70094DC22 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				62B562B12DB79DF70094DC22 /* Python.xcframework */,
+				62B562B62DB79E270094DC22 /* OpenSSL */,
+			);
+			path = Frameworks;
+			sourceTree = "<group>";
+		};
+		62B562B62DB79E270094DC22 /* OpenSSL */ = {
+			isa = PBXGroup;
+			children = (
+				62B562B42DB79E270094DC22 /* libcrypto.3.dylib */,
+				62B562B52DB79E270094DC22 /* libssl.3.dylib */,
+			);
+			path = OpenSSL;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -145,9 +208,17 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 623815772DB2B12300AD874E /* Build configuration list for PBXNativeTarget "Applepie-RPC" */;
 			buildPhases = (
+				623815502DB2B12100AD874E /* Resources */,
 				6238154E2DB2B12100AD874E /* Sources */,
 				6238154F2DB2B12100AD874E /* Frameworks */,
-				623815502DB2B12100AD874E /* Resources */,
+				62B562AB2DB796CF0094DC22 /* ensurepip install */,
+				62B562AC2DB797B00094DC22 /* pip bootstrap */,
+				62B562B92DB79E800094DC22 /* Copy OpenSSL */,
+				627B19CB2DB7A990003A2898 /* install_name_tool on libssl.3.dylib */,
+				625006F32DB6220100FA81F9 /* Embed Frameworks */,
+				627B19C92DB7A857003A2898 /* Patch _hashlib.so install names */,
+				62B562BF2DB7A5E00094DC22 /* Patch app executable RPATHs */,
+				62B562AD2DB799D90094DC22 /* Codesign .so / dylib */,
 			);
 			buildRules = (
 			);
@@ -159,6 +230,7 @@
 			name = "Applepie-RPC";
 			packageProductDependencies = (
 				620F1E482DB397F400898A8D /* ModernSlider */,
+				628618862DB60C290076E49F /* PythonKit */,
 			);
 			productName = "Applepie-RPC";
 			productReference = 623815522DB2B12100AD874E /* Applepie-RPC.app */;
@@ -218,7 +290,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1620;
-				LastUpgradeCheck = 1620;
+				LastUpgradeCheck = 1630;
 				TargetAttributes = {
 					623815512DB2B12100AD874E = {
 						CreatedOnToolsVersion = 16.2;
@@ -244,6 +316,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				620F1E472DB397F400898A8D /* XCRemoteSwiftPackageReference "ModernSlider" */,
+				628618852DB60C290076E49F /* XCRemoteSwiftPackageReference "PythonKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 623815532DB2B12100AD874E /* Products */;
@@ -284,6 +357,121 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		627B19C92DB7A857003A2898 /* Patch _hashlib.so install names */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Patch _hashlib.so install names";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "#!/bin/bash\nset -e\n\nDLIBS=(\n  \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/MacOS/Applepie-RPC.debug.dylib\"\n  # 필요하다면 다른 internal .dylib들도 추가\n)\n\nfor D in \"${DLIBS[@]}\"; do\n  install_name_tool -change \\\n    \"/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib\" \\\n    \"@rpath/OpenSSL/libcrypto.3.dylib\" \\\n    \"$D\"\n  install_name_tool -change \\\n    \"/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib\" \\\n    \"@rpath/OpenSSL/libssl.3.dylib\" \\\n    \"$D\"\ndone\n";
+		};
+		627B19CB2DB7A990003A2898 /* install_name_tool on libssl.3.dylib */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "install_name_tool on libssl.3.dylib";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# OpenSSL 번들 디렉토리\nOPENSSL_DST=\"${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Frameworks/OpenSSL\"\nSSL_DYLIB=\"$OPENSSL_DST/libssl.3.dylib\"\n\necho \"🔧 libssl.3.dylib 패치 중: $SSL_DYLIB\"\ninstall_name_tool \\\n  -change \"/opt/homebrew/Cellar/openssl@3/3.4.1/lib/libcrypto.3.dylib\" \\\n          \"@rpath/OpenSSL/libcrypto.3.dylib\" \\\n  \"$SSL_DYLIB\"\necho \"✅ libssl.3.dylib 패치 완료\"\n";
+		};
+		62B562AB2DB796CF0094DC22 /* ensurepip install */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "ensurepip install";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "#!/bin/bash\nset -e\n\n# 1. PythonSupport 내 Python lib 경로\nPY_VER=\"3.12\"\nDEST_BASE=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PythonSupport/python/lib/python${PY_VER}\"\n\necho \"➡️ GitHub에서 ensurepip 모듈 가져오기: $DEST_BASE\"\n\n# 2. 대상 디렉터리 생성\nmkdir -p \"$DEST_BASE\"\nmkdir -p \"$DEST_BASE/site-packages\"\n\n# 3. svn 이 있으면 svn export, 없으면 git sparse‑checkout\nif command -v svn >/dev/null 2>&1; then\n  echo \"📦 svn export 사용\"\n  svn export --non-interactive --force \\\n    https://github.com/python/cpython/trunk/Lib/ensurepip \\\n    \"$DEST_BASE/ensurepip\"\nelif command -v git >/dev/null 2>&1; then\n  echo \"📦 git sparse‑checkout 사용\"\n  TMPDIR=$(mktemp -d)\n  git clone --depth 1 --filter=blob:none --sparse https://github.com/python/cpython.git \"$TMPDIR\"\n  cd \"$TMPDIR\"\n  git sparse-checkout init --cone\n  git sparse-checkout set Lib/ensurepip\n  cp -R Lib/ensurepip \"$DEST_BASE/ensurepip\"\n  cd -\n  rm -rf \"$TMPDIR\"\nelse\n  echo \"❌ svn, git 모두 없어서 ensurepip 모듈을 가져올 수 없습니다.\" >&2\n  exit 1\nfi\n\necho \"✅ ensurepip 모듈 복사 완료\"\n";
+		};
+		62B562AC2DB797B00094DC22 /* pip bootstrap */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "pip bootstrap";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "#!/bin/bash\nset -e\n\n# 1) 시스템 Python CLI 찾기\nif command -v python3.12 >/dev/null 2>&1; then\n  PYBIN=python3.12\nelif command -v python3 >/dev/null 2>&1; then\n  PYBIN=python3\nelse\n  echo \"❌ python3.12/ python3 CLI가 필요합니다.\" >&2\n  exit 1\nfi\necho \"➡️ 부트스트랩에 사용할 Python: $($PYBIN --version)\"\n\n# 2) site-packages 경로\nPY_VER=\"3.12\"\nSITE_PKGS=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PythonSupport/python/lib/python${PY_VER}/site-packages\"\nmkdir -p \"$SITE_PKGS\"\n\n# 3) ensurepip → pip 부트스트랩\n\"$PYBIN\" -m ensurepip --upgrade\n\"$PYBIN\" -m pip install --upgrade pip setuptools wheel \\\n     --no-deps --target \"$SITE_PKGS\"\n\n# 4) 프로젝트 패키지 설치\n\"$PYBIN\" -m pip install pyatv aiohttp \\\n     https://github.com/qwertyquerty/pypresence/archive/master.zip \\\n     --no-deps --upgrade --target \"$SITE_PKGS\"\n\n# 5) 설치된 C-extension(.so) 서명\nfind \"$SITE_PKGS\" -name '*.so' \\\n     -exec codesign --force --options runtime \\\n         --sign \"${CODE_SIGN_IDENTITY}\" {} \\;\n\n# Site-packages inside the embedded Python.framework\nFRAMEWORK_SITE_PKGS=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/${PY_VER}/lib/python${PY_VER}/site-packages\"\nif [ -d \"$FRAMEWORK_SITE_PKGS\" ]; then\n  find \"$FRAMEWORK_SITE_PKGS\" -name '*.so' \\\n       -exec codesign --force --options runtime \\\n           --sign \"${CODE_SIGN_IDENTITY}\" {} \\;\n  echo \"✅ Framework site-packages .so 코드사인 완료\"\nfi\n\necho \"✅ pip 부트스트랩 & 패키지 설치 완료\"\n";
+		};
+		62B562AD2DB799D90094DC22 /* Codesign .so / dylib */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Codesign .so / dylib";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "#!/bin/bash\nset -e\n\n# 1. lib-dynload 경로\nDYNL=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PythonSupport/lib-dynload\"\n\necho \"🔐 code‑signing lib-dynload/.so files in $DYNL …\"\n\n# 2. .so 들 강제로 코드사인\nfind \"$DYNL\" -type f -name '*.so' | while read so; do\n  echo \"  • codesign $so\"\n  codesign --force --options runtime \\\n           --sign \"${CODE_SIGN_IDENTITY}\" \\\n           \"$so\"\ndone\n\n# 3. (선택) 만약 Python.framework 내부 lib-dynload 도 필요하면\nFW_DYNL=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/lib/python3.12/lib-dynload\"\nif [ -d \"$FW_DYNL\" ]; then\n  echo \"🔐 code‑signing Python.framework lib-dynload/.so files in $FW_DYNL …\"\n  find \"$FW_DYNL\" -type f -name '*.so' | while read so; do\n    echo \"  • codesign $so\"\n    codesign --force --options runtime \\\n             --sign \"${CODE_SIGN_IDENTITY}\" \\\n             \"$so\"\n  done\nfi\n\necho \"✅ lib‑dynload 코드사인 완료\"\n";
+		};
+		62B562BF2DB7A5E00094DC22 /* Patch app executable RPATHs */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Patch app executable RPATHs";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "#!/bin/bash\nset -e\n\nPY_VER=\"3.12\"; SHORT_VER=${PY_VER//./}\n\n# 검사할 후보 경로 배열\nCANDIDATES=(\n  \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PythonSupport/lib-dynload/_hashlib.cpython-${SHORT_VER}-darwin.so\"\n  \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/${PY_VER}/lib/python${PY_VER}/lib-dynload/_hashlib.cpython-${SHORT_VER}-darwin.so\"\n)\n\nfor HASHLIB_SO in \"${CANDIDATES[@]}\"; do\n  if [ -f \"$HASHLIB_SO\" ]; then\n    echo \"🔧 패치할 _hashlib.so 찾음: $HASHLIB_SO\"\n    install_name_tool -change \\\n      \"/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib\" \\\n      \"@rpath/OpenSSL/libcrypto.3.dylib\" \\\n      \"$HASHLIB_SO\"\n    install_name_tool -change \\\n      \"/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib\" \\\n      \"@rpath/OpenSSL/libssl.3.dylib\" \\\n      \"$HASHLIB_SO\"\n    codesign --force --options runtime --sign \"${CODE_SIGN_IDENTITY}\" \"$HASHLIB_SO\"\n    echo \"✅ _hashlib.so 패치 & 코드사인 완료\"\n    break\n  fi\ndone\n\nif [ $HASHLIB_SO == \"\" ] || [ ! -f \"$HASHLIB_SO\" ]; then\n  echo \"⚠️ _hashlib.so 파일을 찾지 못했습니다. 복사 위치를 다시 확인해주세요.\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		6238154E2DB2B12100AD874E /* Sources */ = {
@@ -357,7 +545,9 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = Q23JLSJCCV;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -420,7 +610,9 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = Q23JLSJCCV;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -451,10 +643,16 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"Applepie-RPC/Preview Content\"";
 				DEVELOPMENT_TEAM = Q23JLSJCCV;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Applepie-RPC/Info.plist";
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -463,8 +661,19 @@
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+					"@executable_path/../Frameworks/OpenSSL",
+					"@executable_path/../Frameworks/Python.framework/Versions/3.12/lib/python3.12/lib-dynload",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Frameworks/OpenSSL",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-Wl,-rpath,@executable_path/../Frameworks/OpenSSL",
+					"-Wl,-rpath,@executable_path/../Frameworks/Python.framework/Versions/3.12/lib/python3.12",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -482,10 +691,16 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"Applepie-RPC/Preview Content\"";
 				DEVELOPMENT_TEAM = Q23JLSJCCV;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Applepie-RPC/Info.plist";
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -494,8 +709,19 @@
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+					"@executable_path/../Frameworks/OpenSSL",
+					"@executable_path/../Frameworks/Python.framework/Versions/3.12/lib/python3.12/lib-dynload",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Frameworks/OpenSSL",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-Wl,-rpath,@executable_path/../Frameworks/OpenSSL",
+					"-Wl,-rpath,@executable_path/../Frameworks/Python.framework/Versions/3.12/lib/python3.12",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -509,7 +735,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = Q23JLSJCCV;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MARKETING_VERSION = 1.0;
@@ -527,7 +753,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = Q23JLSJCCV;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MARKETING_VERSION = 1.0;
@@ -544,7 +770,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = Q23JLSJCCV;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPCUITests";
@@ -560,7 +786,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = Q23JLSJCCV;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPCUITests";
@@ -621,6 +847,14 @@
 				kind = branch;
 			};
 		};
+		628618852DB60C290076E49F /* XCRemoteSwiftPackageReference "PythonKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pvieito/PythonKit.git";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -628,6 +862,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 620F1E472DB397F400898A8D /* XCRemoteSwiftPackageReference "ModernSlider" */;
 			productName = ModernSlider;
+		};
+		628618862DB60C290076E49F /* PythonKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 628618852DB60C290076E49F /* XCRemoteSwiftPackageReference "PythonKit" */;
+			productName = PythonKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
