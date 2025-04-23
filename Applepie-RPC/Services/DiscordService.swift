@@ -5,103 +5,133 @@
 //  Created by 김부성 on 4/21/25.
 //
 
-import PythonKit
 import Foundation
-import Dispatch
+import PythonKit
 
-class DiscordService {
-    private var initRPC: PythonObject = Python.None
-    private var setActivityFunc: PythonObject = Python.None
-    private var clearActivityFunc: PythonObject = Python.None
+class DiscordService: PythonService {
+    private var initRPC: PythonObject? = nil
+    private var setActivityFunc: PythonObject? = nil
+    private var clearActivityFunc: PythonObject? = nil
     private var rpc: PythonObject? = nil
     private var timer: Timer?
     private let clientID: String
     private let musicService = AppleMusicService()
     
-    init(clientID: String) {
-        self.clientID = clientID
-        print("[DiscordService] init with clientID: \(clientID)")
-        // Initialize PythonKit and RPC on main thread
-        let module = Python.import("discord_service")
-        print("[DiscordService] Imported discord_service module")
-        initRPC = module.init_rpc_sync
-        setActivityFunc = module.set_activity
-        clearActivityFunc = module.clear_activity
-        rpc = initRPC(clientID)
-        print("[DiscordService] RPC object initialized: \(rpc != nil)")
+    /// Factory to create and initialize a DiscordService on the Python thread.
+    static public func create(
+        clientID: String,
+        executor: PythonExecutor
+    ) async -> DiscordService {
+        // Perform all PythonKit work on the Python thread
+        let service = await executor.createOnPythonThread {
+            DiscordService(clientID: clientID, executor: executor)
+        }
+        // Initialize RPC using executor’s async API
+        await executor.importModule(named: "discord_service")
+        if let mod = await executor.module(named: "discord_service") {
+            // Perform all Python-related assignments on the dedicated Python thread
+            await executor.performAsync { [service] in
+                service.initRPC = mod.init_rpc_sync
+                service.setActivityFunc = mod.set_activity
+                service.clearActivityFunc = mod.clear_activity
+                if let initRPC = service.initRPC {
+                    service.rpc = initRPC(service.clientID)
+                }
+            }
+            print("[DiscordService] RPC object initialized: \(service.rpc != nil)")
+        }
+        return service
     }
     
-    /// Calls the Python set_activity wrapper with full playback metadata.
-    @MainActor
-    func setActivity(details: String,
-                     state: String,
+    init(clientID: String, executor: PythonExecutor) {
+        self.clientID = clientID
+        super.init(executor: executor)
+    }
+    
+    /// Calls the Python set_activity wrapper on the dedicated Python thread.
+    func setActivity(title: String,
+                     artist: String,
                      album: String?,
                      position: Double,
                      duration: Double,
                      artworkUrl: String?,
                      itunesUrl: String?,
-                     source: String) {
-        guard let rpc = self.rpc else { return }
-        // Build Python metadata dict exactly as `make_activity` expects
-        let pyMeta: PythonObject = [
-            "title": PythonObject(details),
-            "artist": PythonObject(state),
-            "album": PythonObject(album ?? ""),
-            "position": PythonObject(position),
-            "duration": PythonObject(duration),
-            "artworkUrl": PythonObject(artworkUrl ?? ""),
-            "itunes_id": PythonObject(itunesUrl ?? "")
-        ]
-        let pySource = PythonObject(source)
-        // Determine the user's region code for the iTunes Lookup
-        let countryCode = Locale.current.region?.identifier.lowercased() ?? "us"
-        let pyCountry = PythonObject(countryCode)
-        print(self.setActivityFunc(rpc, pyMeta, pySource, pyCountry))
+                     source: String) async {
+        guard let rpc = self.rpc else {
+            print("[DiscordService] RPC is not initialized")
+            return
+        }
+        guard let setFunc = self.setActivityFunc else {
+            print("[DiscordService] setActivityFunc is not initialized")
+            return
+        }
+        await callPython {
+            let pyMeta: PythonObject = [
+                "title": PythonObject(title),
+                "artist": PythonObject(artist),
+                "album": PythonObject(album ?? ""),
+                "position": PythonObject(position),
+                "duration": PythonObject(duration),
+                "artworkUrl": PythonObject(artworkUrl ?? ""),
+                "itunes_id": PythonObject(itunesUrl ?? "")
+            ]
+            let pySource = PythonObject(source)
+            let countryCode = Locale.current.region?.identifier.lowercased() ?? "us"
+            let pyCountry = PythonObject(countryCode)
+            _ = setFunc(rpc, pyMeta, pySource, pyCountry)
+        }
     }
     
-    @MainActor
-    func clearActivity() {
-        print("[DiscordService] clearActivity called")
-        if let rpc = self.rpc {
-            _ = self.clearActivityFunc(rpc)
+    /// Clears the activity on the dedicated Python thread.
+    func clearActivity() async {
+        guard let rpc = self.rpc else {
+            print("[DiscordService] RPC is not initialized")
+            return
+        }
+        guard let clearFunc = self.clearActivityFunc else {
+            print("[DiscordService] clearActivityFunc is not initialized")
+            return
+        }
+        await callPython {
+            _ = clearFunc(rpc)
         }
     }
     
     /// Begin sending activity at a regular interval using full playback data.
     /// - Parameters:
     ///   - interval: seconds between each update
-    ///   - detailsProvider: returns (trackID, details, album?, position, duration)
-    @MainActor
+    ///   - detailsProvider: returns (trackID, details, artist?, album?, position, duration)
     func startPeriodicUpdates(interval: TimeInterval,
-                              detailsProvider: @escaping () -> (itunesID: String?, details: String, album: String?, position: Double, duration: Double)) {
+                              detailsProvider: @escaping () -> (itunesID: String?, details: String, artist: String?, album: String?, position: Double, duration: Double)) {
         print("[DiscordService] startPeriodicUpdates interval: \(interval)")
         self.timer?.invalidate()
         self.timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             Task {
                 // 1) Core playback data
-                let (itunesID, details, album, position, duration) = detailsProvider()
+                let (itunesID, title, artist, album, position, duration) = detailsProvider()
                 // If there's no current track, clear any existing activity and skip update
-                if details.isEmpty {
+                if title.isEmpty {
                     await self.clearActivity()
                     return
                 }
-                let lookupKey = itunesID ?? details // Use iTunes ID if available, otherwise use track name
+                let lookupKey = itunesID ?? title // Use iTunes ID if available, otherwise use track name
                 var extras = await self.musicService.fetchTrackExtras(trackID: lookupKey)
                 if extras["artworkUrl"]?.isEmpty ?? true {
-                    extras = await self.musicService.searchTrackExtras(name: details, artist: album ?? "", album: album)
+                    extras = await self.musicService.searchTrackExtras(name: title, artist: album ?? "", album: album)
                 }
                 let artwork = extras["artworkUrl"]
                 let iTunes  = extras["iTunesUrl"]
                 // 3) Update Discord
-                await self.setActivity(details: details,
-                                 state: album ?? "",
-                                 album: album,
-                                 position: position,
-                                 duration: duration,
-                                 artworkUrl: artwork,
-                                 itunesUrl: iTunes,
-                                 source: "Music.app"
+                await self.setActivity(
+                    title: title,
+                    artist: artist ?? "",
+                    album: album,
+                    position: position,
+                    duration: duration,
+                    artworkUrl: artwork,
+                    itunesUrl: iTunes,
+                    source: "Music.app"
                 )
             }
         }
@@ -118,15 +148,26 @@ class DiscordService {
     /// Manually start/restart the Discord RPC connection.
     func start() {
         print("[DiscordService] start() called")
-        rpc = initRPC(clientID)
+        guard let initRPCFunc = initRPC else {
+            print("[DiscordService] initRPC function is not initialized")
+            return
+        }
+        rpc = initRPCFunc(clientID)
         print("[DiscordService] RPC start result: \(rpc != nil)")
     }
     
     /// Manually stop the Discord RPC connection and clear activity.
     func stop() {
         print("[DiscordService] stop() called")
-        Task { @MainActor in
-            self.clearActivity()
+        Task {
+            // Safely clear if function exists
+            guard let clearFunc = clearActivityFunc, let rpcObj = rpc else {
+                print("[DiscordService] clearActivity function or rpc is nil")
+                return
+            }
+            await callPython {
+                _ = clearFunc(rpcObj)
+            }
             self.rpc = nil
             print("[DiscordService] RPC stopped and cleared")
         }
