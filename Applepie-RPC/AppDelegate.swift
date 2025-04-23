@@ -6,29 +6,57 @@
 //
 
 import Cocoa
-import Darwin
-import SwiftUI
 import PythonKit
+import SwiftData
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    var pythonTask: Process?
+    var discordService: DiscordService?
+    let nowPlayingService = NowPlayingService()
+    private let pythonExecutor = PythonExecutor()
+    private let pythonModuleActor: PythonModuleActor
 
+    override init() {
+        self.pythonModuleActor = PythonModuleActor(executor: pythonExecutor)
+        super.init()
+    }
+    
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // 3) Python 데몬 실행 (프리뷰 제외)
+        // 1) Set up Python environment
+        pythonExecutor.setupEnvironment()
+        // 2) Import the discord_service module
+        pythonExecutor.importModule(named: "discord_service")
+        // 3) Initialize embedded Python and Discord service
         if getenv("XCODE_RUNNING_FOR_PREVIEWS") == nil {
-            launchPythonDaemon()
+            // Load saved update interval from AppSettings
+            var interval: Double = 1.0
+            do {
+                let container = try ModelContainer(for: AppSettings.self)
+                let list = try container.mainContext.fetch(FetchDescriptor<AppSettings>())
+                if let setting = list.first {
+                    interval = setting.updateInterval
+                }
+            } catch {
+                print("Failed to fetch updateInterval:", error)
+            }
+            // Create the Discord service
+            let service = DiscordService(clientID: "1362417259154374696")
+            self.discordService = service
+            // Start periodic updates
+            service.startPeriodicUpdates(interval: interval) {
+                return self.nowPlayingService.fetchSync()
+            }
         }
     }
     
     func applicationWillTerminate(_ notification: Notification) {
-        // Clean up if needed
-        pythonTask?.terminate()
+        // 4) Python 종료
+        discordService?.clearActivity()
     }
 }
 
 // MARK: - Python Daemon and Utilities
 private extension AppDelegate {
-    func launchPythonDaemon() {
+    func initializeEmbeddedPython() {
         // Initialize embedded Python via PythonKit
         guard let frameworksURL = Bundle.main.privateFrameworksURL else {
             print("Frameworks URL not found")
@@ -47,20 +75,11 @@ private extension AppDelegate {
             .appendingPathComponent("Versions/3.12")
         setenv("PYTHONHOME", pythonHome.path, 1)
         
-        print("🔍 libPath: \(libPath.path)")
-        print("🔍 libPath exists: \(FileManager.default.fileExists(atPath: libPath.path))")
-
-        print("🔍 pythonHomePath: \(pythonHome.path)")
-        print("🔍 pythonHome exists: \(FileManager.default.fileExists(atPath: pythonHome.path))")
-        
         // Add embedded C‑extension modules to Python path
         let dynloadPath = Bundle.main.resourceURL!
             .appendingPathComponent("PythonSupport/lib-dynload").path
         let sys = Python.import("sys")
         sys.path.insert(0, dynloadPath)
-        
-        print("🔍 dynloadPath: \(dynloadPath)")
-        print("🔍 dynloadPath exists: \(FileManager.default.fileExists(atPath: dynloadPath))")
         
         let stdlibPath = Bundle.main.resourceURL!
           .appendingPathComponent("PythonSupport/python/lib/python3.12").path
@@ -70,12 +89,7 @@ private extension AppDelegate {
         let sitePackages = Bundle.main.resourceURL!
           .appendingPathComponent("PythonSupport/python/lib/python3.12/site-packages").path
         sys.path.insert(2, sitePackages)
-        print("🔍 sitePackages: \(sitePackages)")
-        print("🔍 sitePackages exists: \(FileManager.default.fileExists(atPath: sitePackages))")
 
-        print("🔍 stdlibPath: \(stdlibPath)")
-        print("🔍 stdlibPath exists: \(FileManager.default.fileExists(atPath: stdlibPath))")
-        
         // Locate the bundled Python script file
         guard let scriptURL = Bundle.main.url(forResource: "applepie-rpc", withExtension: "py") else {
             print("applepie-rpc.py not found in bundle")
@@ -83,11 +97,6 @@ private extension AppDelegate {
         }
         let scriptDir = scriptURL.deletingLastPathComponent().path
         sys.path.append(scriptDir)
-        
-        let runpy = Python.import("runpy")
-        
-        // Use runpy to execute the script as __main__
-        runpy.run_path(scriptURL.path, run_name: "__main__")
     }
 
     func writeCommand(_ cmd: String) {

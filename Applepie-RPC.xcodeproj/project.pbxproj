@@ -8,10 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		620F1E492DB397F400898A8D /* ModernSlider in Frameworks */ = {isa = PBXBuildFile; productRef = 620F1E482DB397F400898A8D /* ModernSlider */; };
-		623815882DB2B82700AD874E /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 623815842DB2B82700AD874E /* .gitignore */; };
-		623815892DB2B82700AD874E /* applepie-rpc in Resources */ = {isa = PBXBuildFile; fileRef = 623815822DB2B82700AD874E /* applepie-rpc */; };
-		6238158A2DB2B82700AD874E /* applepie-rpc.py in Resources */ = {isa = PBXBuildFile; fileRef = 623815852DB2B82700AD874E /* applepie-rpc.py */; };
-		6238158B2DB2B82700AD874E /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 623815862DB2B82700AD874E /* README.md */; };
 		628618872DB60C290076E49F /* PythonKit in Frameworks */ = {isa = PBXBuildFile; productRef = 628618862DB60C290076E49F /* PythonKit */; };
 		62B562B32DB79DF70094DC22 /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B12DB79DF70094DC22 /* Python.xcframework */; };
 		62B562B72DB79E270094DC22 /* libcrypto.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B42DB79E270094DC22 /* libcrypto.3.dylib */; };
@@ -72,10 +68,6 @@
 		623815522DB2B12100AD874E /* Applepie-RPC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Applepie-RPC.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		623815632DB2B12300AD874E /* Applepie-RPCTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Applepie-RPCTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6238156D2DB2B12300AD874E /* Applepie-RPCUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Applepie-RPCUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		623815822DB2B82700AD874E /* applepie-rpc */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = "applepie-rpc"; sourceTree = "<group>"; };
-		623815842DB2B82700AD874E /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
-		623815852DB2B82700AD874E /* applepie-rpc.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = "applepie-rpc.py"; sourceTree = "<group>"; };
-		623815862DB2B82700AD874E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		62B562B12DB79DF70094DC22 /* Python.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Python.xcframework; sourceTree = "<group>"; };
 		62B562B42DB79E270094DC22 /* libcrypto.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libcrypto.3.dylib; sourceTree = "<group>"; };
 		62B562B52DB79E270094DC22 /* libssl.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libssl.3.dylib; sourceTree = "<group>"; };
@@ -108,6 +100,11 @@
 		623815702DB2B12300AD874E /* Applepie-RPCUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Applepie-RPCUITests";
+			sourceTree = "<group>";
+		};
+		627211092DB7E6440092DEF0 /* Applepie-RPC-core */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Applepie-RPC-core";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -145,8 +142,8 @@
 		623815492DB2B12100AD874E = {
 			isa = PBXGroup;
 			children = (
+				627211092DB7E6440092DEF0 /* Applepie-RPC-core */,
 				62B562B22DB79DF70094DC22 /* Frameworks */,
-				623815872DB2B82700AD874E /* Applepie-RPC-core */,
 				623815542DB2B12100AD874E /* Applepie-RPC */,
 				623815662DB2B12300AD874E /* Applepie-RPCTests */,
 				623815702DB2B12300AD874E /* Applepie-RPCUITests */,
@@ -162,25 +159,6 @@
 				6238156D2DB2B12300AD874E /* Applepie-RPCUITests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		623815832DB2B82700AD874E /* dist */ = {
-			isa = PBXGroup;
-			children = (
-				623815822DB2B82700AD874E /* applepie-rpc */,
-			);
-			path = dist;
-			sourceTree = "<group>";
-		};
-		623815872DB2B82700AD874E /* Applepie-RPC-core */ = {
-			isa = PBXGroup;
-			children = (
-				623815832DB2B82700AD874E /* dist */,
-				623815842DB2B82700AD874E /* .gitignore */,
-				623815852DB2B82700AD874E /* applepie-rpc.py */,
-				623815862DB2B82700AD874E /* README.md */,
-			);
-			path = "Applepie-RPC-core";
 			sourceTree = "<group>";
 		};
 		62B562B22DB79DF70094DC22 /* Frameworks */ = {
@@ -226,6 +204,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				623815542DB2B12100AD874E /* Applepie-RPC */,
+				627211092DB7E6440092DEF0 /* Applepie-RPC-core */,
 			);
 			name = "Applepie-RPC";
 			packageProductDependencies = (
@@ -335,10 +314,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				623815882DB2B82700AD874E /* .gitignore in Resources */,
-				623815892DB2B82700AD874E /* applepie-rpc in Resources */,
-				6238158A2DB2B82700AD874E /* applepie-rpc.py in Resources */,
-				6238158B2DB2B82700AD874E /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -361,7 +336,6 @@
 /* Begin PBXShellScriptBuildPhase section */
 		627B19C92DB7A857003A2898 /* Patch _hashlib.so install names */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -398,7 +372,6 @@
 		};
 		62B562AB2DB796CF0094DC22 /* ensurepip install */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -417,7 +390,6 @@
 		};
 		62B562AC2DB797B00094DC22 /* pip bootstrap */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -454,7 +426,6 @@
 		};
 		62B562BF2DB7A5E00094DC22 /* Patch app executable RPATHs */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);

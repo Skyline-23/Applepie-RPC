@@ -28,10 +28,6 @@ struct ApplepieRPCApp: App {
         // Send initial daemon command based on stored setting
         do {
             let settingsList = try container.mainContext.fetch(FetchDescriptor<AppSettings>())
-            if let initial = settingsList.first {
-                writeCommand(initial.isPaused ? "PAUSE" : "RESUME")
-                writeCommand("INTERVAL:\(Int(initial.updateInterval))")
-            }
         } catch {
             print("Failed to fetch AppSettings at launch:", error)
         }
@@ -45,27 +41,10 @@ struct ApplepieRPCApp: App {
         .menuBarExtraStyle(.window)
     }
 
-    
-    // ───────────────────────────────────────────────────────────────
-    // MARK: – Python 데몬 실행/종료 및 명령 쓰기
     private func showAlert(message: String) {
         let alert = NSAlert()
         alert.messageText = message
         alert.runModal()
-    }
-
-    func writeCommand(_ cmd: String) {
-        let cmdURL = URL(fileURLWithPath: "/tmp/applepie_rpc_cmd")
-        let data = (cmd + "\n").data(using: .utf8)!
-        if FileManager.default.fileExists(atPath: cmdURL.path) {
-            if let handle = try? FileHandle(forWritingTo: cmdURL) {
-                handle.seekToEndOfFile()
-                handle.write(data)
-                handle.closeFile()
-            }
-        } else {
-            try? data.write(to: cmdURL)
-        }
     }
 }
 
@@ -123,7 +102,11 @@ struct MainMenuView: View {
                 .frame(width: 140)
                 .onChange(of: selectedHost) { newHost in
                     if newHost == "Local" {
-                        fetchLocalNowPlaying()
+                        if let delegate = NSApp.delegate as? AppDelegate {
+                            delegate.nowPlayingService.fetchAsync { result in
+                                localNowPlaying = result
+                            }
+                        }
                     } else if let port = browser.servicePorts[newHost] {
                         browser.fetchNowPlaying(host: newHost, port: port)
                     }
@@ -156,7 +139,11 @@ struct MainMenuView: View {
                 Button("Refresh") {
                     // Trigger a fresh query for selected AirPlay device
                     if selectedHost == "Local" {
-                        fetchLocalNowPlaying()
+                        if let delegate = NSApp.delegate as? AppDelegate {
+                            delegate.nowPlayingService.fetchAsync { result in
+                                localNowPlaying = result
+                            }
+                        }
                     } else if let port = browser.servicePorts[selectedHost] {
                         browser.fetchNowPlaying(host: selectedHost, port: port)
                     }
@@ -166,7 +153,11 @@ struct MainMenuView: View {
             .padding(.vertical, 4)
             .onAppear {
                 if selectedHost == "Local" {
-                    fetchLocalNowPlaying()
+                    if let delegate = NSApp.delegate as? AppDelegate {
+                        delegate.nowPlayingService.fetchAsync { result in
+                            localNowPlaying = result
+                        }
+                    }
                 }
             }
 
@@ -231,6 +222,34 @@ struct MainMenuView: View {
         }
         .padding(10)
         .frame(width: 225)
+        .onAppear {
+            if let delegate = NSApp.delegate as? AppDelegate {
+                delegate.discordService?.startPeriodicUpdates(interval: setting.updateInterval) {
+                    return delegate.nowPlayingService.fetchSync()
+                }
+            }
+        }
+        .onChange(of: setting.updateInterval) { newInterval in
+            if let delegate = NSApp.delegate as? AppDelegate {
+                delegate.discordService?.startPeriodicUpdates(interval: newInterval) {
+                    return delegate.nowPlayingService.fetchSync()
+                }
+            }
+        }
+        .onChange(of: localNowPlaying) { _ in
+            if let delegate = NSApp.delegate as? AppDelegate {
+                delegate.discordService?.startPeriodicUpdates(interval: setting.updateInterval) {
+                    return delegate.nowPlayingService.fetchSync()
+                }
+            }
+        }
+        .onChange(of: browser.nowPlaying) { _ in
+            if let delegate = NSApp.delegate as? AppDelegate {
+                delegate.discordService?.startPeriodicUpdates(interval: setting.updateInterval) {
+                    return delegate.nowPlayingService.fetchSync()
+                }
+            }
+        }
     }
 
     private func showAlert(message: String) {
@@ -250,36 +269,6 @@ struct MainMenuView: View {
             }
         } else {
             try? data.write(to: cmdURL)
-        }
-    }
-    
-    /// Fetch now-playing info from Music app via AppleScript
-    func fetchLocalNowPlaying() {
-        let script = """
-        tell application "Music"
-            if player state is playing then
-                set t to name of current track
-                set a to artist of current track
-                return t & " - " & a
-            else
-                return ""
-            end if
-        end tell
-        """
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        process.arguments = ["-e", script]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        do {
-            try process.run()
-            process.waitUntilExit()
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            if let result = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
-                localNowPlaying = result
-            }
-        } catch {
-            print("Local now playing error:", error)
         }
     }
 }
