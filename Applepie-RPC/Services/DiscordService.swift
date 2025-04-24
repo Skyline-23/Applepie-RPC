@@ -115,10 +115,10 @@ class DiscordService: PythonService {
                     await self.clearActivity()
                     return
                 }
-                let lookupKey = itunesID ?? title // Use iTunes ID if available, otherwise use track name
+                let lookupKey = itunesID ?? title + " " + (artist ?? "") // Use iTunes ID if available, otherwise use track name
                 var extras = await self.musicService.fetchTrackExtras(trackID: lookupKey)
                 if extras["artworkUrl"]?.isEmpty ?? true {
-                    extras = await self.musicService.searchTrackExtras(name: title, artist: album ?? "", album: album)
+                    extras = await self.musicService.searchTrackExtras(name: title, artist: artist ?? "", album: album)
                 }
                 let artwork = extras["artworkUrl"]
                 let iTunes  = extras["iTunesUrl"]
@@ -244,31 +244,55 @@ class AppleMusicService {
                            artist: String,
                            album: String?,
                            country: String = Locale.current.region?.identifier.lowercased() ?? "us") async -> [String: String] {
-        let query = "\(artist) \(name)"
-            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        guard let url = URL(string: "https://itunes.apple.com/search?term=\(query)&entity=musicTrack&limit=1&country=\(country)") else {
+        // Use a composite key for search caching
+        let searchKey = "\(artist)-\(name)"
+        if let cached = cache.get(trackID: searchKey) {
+            return cached
+        }
+        // Build URL using URLComponents to ensure proper encoding
+        var comps = URLComponents(string: "https://itunes.apple.com/search")!
+        comps.queryItems = [
+            URLQueryItem(name: "term", value: "\(artist) \(name)"),
+            URLQueryItem(name: "entity", value: "musicTrack"),
+            URLQueryItem(name: "limit", value: "1"),
+            URLQueryItem(name: "country", value: country)
+        ]
+        guard let url = comps.url else {
+            cache.set([:], for: searchKey)
             return [:]
         }
         do {
             let (data, response) = try await session.data(from: url)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                cache.set([:], for: searchKey)
                 return [:]
             }
             struct SearchResponse: Codable {
                 struct Track: Codable {
                     let artworkUrl100: String?
                     let trackViewUrl: String?
+                    let collectionName: String?  // Album name
                 }
                 let results: [Track]
             }
             let search = try JSONDecoder().decode(SearchResponse.self, from: data)
             if let first = search.results.first {
                 let artwork = first.artworkUrl100?.replacingOccurrences(of: "100x100bb", with: "512x512bb") ?? ""
-                return ["artworkUrl": artwork, "iTunesUrl": first.trackViewUrl ?? ""]
+                let albumName = first.collectionName ?? ""
+                let info: [String: String] = [
+                    "artworkUrl": artwork,
+                    "iTunesUrl": first.trackViewUrl ?? "",
+                    "album": albumName
+                ]
+                cache.set(info, for: searchKey)
+                return info
             }
         } catch {
             print("AppleMusicService.searchTrackExtras error:", error)
+            cache.set([:], for: searchKey)
+            return [:]
         }
+        cache.set([:], for: searchKey)
         return [:]
     }
 }
