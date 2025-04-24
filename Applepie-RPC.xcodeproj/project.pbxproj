@@ -68,6 +68,7 @@
 		623815522DB2B12100AD874E /* Applepie-RPC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Applepie-RPC.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		623815632DB2B12300AD874E /* Applepie-RPCTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Applepie-RPCTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6238156D2DB2B12300AD874E /* Applepie-RPCUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Applepie-RPCUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		625BD3E62DBA24D0009567E7 /* MusicKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MusicKit.framework; path = System/Library/Frameworks/MusicKit.framework; sourceTree = SDKROOT; };
 		62B562B12DB79DF70094DC22 /* Python.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Python.xcframework; sourceTree = "<group>"; };
 		62B562B42DB79E270094DC22 /* libcrypto.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libcrypto.3.dylib; sourceTree = "<group>"; };
 		62B562B52DB79E270094DC22 /* libssl.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libssl.3.dylib; sourceTree = "<group>"; };
@@ -164,6 +165,7 @@
 		62B562B22DB79DF70094DC22 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				625BD3E62DBA24D0009567E7 /* MusicKit.framework */,
 				62B562B12DB79DF70094DC22 /* Python.xcframework */,
 				62B562B62DB79E270094DC22 /* OpenSSL */,
 			);
@@ -626,7 +628,9 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Applepie-RPC/Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Get info & Search Music on Apple Music";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "로컬 네트워크에서 Apple TV를 검색하기 위해 사용됩니다.";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -674,7 +678,9 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Applepie-RPC/Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Get info & Search Music on Apple Music";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "로컬 네트워크에서 Apple TV를 검색하기 위해 사용됩니다.";
 				LD_RUNPATH_SEARCH_PATHS = (

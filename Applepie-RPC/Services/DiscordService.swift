@@ -7,6 +7,7 @@
 
 import Foundation
 import PythonKit
+import MusicKit
 
 class DiscordService: PythonService {
     private var initRPC: PythonObject? = nil
@@ -46,6 +47,8 @@ class DiscordService: PythonService {
     init(clientID: String, executor: PythonExecutor) {
         self.clientID = clientID
         super.init(executor: executor)
+        
+        self.musicService.clearCache()
     }
     
     /// Calls the Python set_activity wrapper on the dedicated Python thread.
@@ -102,7 +105,7 @@ class DiscordService: PythonService {
     ///   - interval: seconds between each update
     ///   - detailsProvider: returns (trackID, details, artist?, album?, position, duration)
     func startPeriodicUpdates(interval: TimeInterval,
-                              detailsProvider: @escaping () -> (itunesID: String?, details: String, artist: String?, album: String?, position: Double, duration: Double)) {
+                              detailsProvider: @escaping () -> (itunesID: String?, title: String, artist: String?, album: String?, position: Double, duration: Double)) {
         print("[DiscordService] startPeriodicUpdates interval: \(interval)")
         self.timer?.invalidate()
         self.timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
@@ -115,11 +118,14 @@ class DiscordService: PythonService {
                     await self.clearActivity()
                     return
                 }
-                let lookupKey = itunesID ?? title + " " + (artist ?? "") // Use iTunes ID if available, otherwise use track name
-                var extras = await self.musicService.fetchTrackExtras(trackID: lookupKey)
-                if extras["artworkUrl"]?.isEmpty ?? true {
-                    extras = await self.musicService.searchTrackExtras(name: title, artist: artist ?? "", album: album)
+                let extras: [String: String]
+                if let itunesID = itunesID {
+                    extras = await self.musicService.fetchTrackExtras(lookupKey: itunesID, isStoreID: true)
+                } else {
+                    let lookupKey = title + " " + (artist ?? "") + " " + (album ?? "")
+                    extras = await self.musicService.fetchTrackExtras(lookupKey: lookupKey, isStoreID: false)
                 }
+                    
                 let artwork = extras["artworkUrl"]
                 let iTunes  = extras["iTunesUrl"]
                 // 3) Update Discord
@@ -193,106 +199,73 @@ class TrackExtrasCache {
         cache[trackID] = info
         UserDefaults.standard.set(cache, forKey: userDefaultsKey)
     }
+    
+    /// Clears all cached track extras from memory and UserDefaults.
+    func clear() {
+        cache.removeAll()
+        UserDefaults.standard.removeObject(forKey: userDefaultsKey)
+    }
 }
 
-/// Service to fetch artwork and iTunes URL from iTunes Lookup API.
+/// Service to fetch artwork and iTunes URL from Apple Music catalog via MusicKit.
 class AppleMusicService {
     private let cache = TrackExtrasCache()
-    private let session = URLSession.shared
-    
-    /// Fetch artworkUrl (512x512) and iTunes URL for a given track ID.
-    func fetchTrackExtras(trackID: String,
-                          country: String = Locale.current.region?.identifier.lowercased() ?? "us") async -> [String: String] {
-        // 1) Check cache
-        if let cached = cache.get(trackID: trackID) {
+
+    /// Fetch artworkUrl (512x512) and track URL using MusicKit lookup or HTTP search fallback, with caching.
+    func fetchTrackExtras(lookupKey key: String, isStoreID: Bool) async -> [String: String] {
+        // 1) Return cached if present
+        if let cached = cache.get(trackID: key) {
             return cached
         }
-        // 2) Build URL
-        guard let url = URL(string: "https://itunes.apple.com/lookup?id=\(trackID)&country=\(country)") else {
-            return [:]
-        }
-        do {
-            let (data, response) = try await session.data(from: url)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                return [:]
-            }
-            struct LookupResponse: Codable {
-                struct Result: Codable {
-                    let artworkUrl100: String?
-                    let trackViewUrl: String?
+
+        var info: [String: String] = [:]
+
+        // 2) If storeID is numeric, try MusicKit lookup
+        if isStoreID {
+            let request = MusicCatalogResourceRequest<Song>(
+                matching: \.id,
+                equalTo: MusicItemID(key)
+            )
+            do {
+                let response = try await request.response()
+                if let song = response.items.first, let artwork = song.artwork,
+                   let artURL = artwork.url(width: 512, height: 512)?.absoluteString {
+                    let trackUrl = song.url?.absoluteString ?? ""
+                    info = ["artworkUrl": artURL, "iTunesUrl": trackUrl]
                 }
-                let results: [Result]
+            } catch {
+                print("AppleMusicService (MusicKit) lookup error:", error)
             }
-            let lookup = try JSONDecoder().decode(LookupResponse.self, from: data)
-            if let first = lookup.results.first {
-                let artwork = first.artworkUrl100?.replacingOccurrences(of: "100x100bb", with: "512x512bb") ?? ""
-                let info: [String: String] = [
-                    "artworkUrl": artwork,
-                    "iTunesUrl": first.trackViewUrl ?? ""
-                ]
-                cache.set(info, for: trackID)
-                return info
-            }
-        } catch {
-            print("AppleMusicService.fetchTrackExtras error:", error)
-        }
-        return [:]
-    }
-    
-    /// Fallback search-based lookup via iTunes Search API.
-    func searchTrackExtras(name: String,
-                           artist: String,
-                           album: String?,
-                           country: String = Locale.current.region?.identifier.lowercased() ?? "us") async -> [String: String] {
-        // Use a composite key for search caching
-        let searchKey = "\(artist)-\(name)"
-        if let cached = cache.get(trackID: searchKey) {
-            return cached
-        }
-        // Build URL using URLComponents to ensure proper encoding
-        var comps = URLComponents(string: "https://itunes.apple.com/search")!
-        comps.queryItems = [
-            URLQueryItem(name: "term", value: "\(artist) \(name)"),
-            URLQueryItem(name: "entity", value: "musicTrack"),
-            URLQueryItem(name: "limit", value: "1"),
-            URLQueryItem(name: "country", value: country)
-        ]
-        guard let url = comps.url else {
-            cache.set([:], for: searchKey)
-            return [:]
-        }
-        do {
-            let (data, response) = try await session.data(from: url)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                cache.set([:], for: searchKey)
-                return [:]
-            }
-            struct SearchResponse: Codable {
-                struct Track: Codable {
-                    let artworkUrl100: String?
-                    let trackViewUrl: String?
-                    let collectionName: String?  // Album name
+        } else {
+            do {
+                var searchRequest = MusicCatalogSearchRequest(term: key, types: [Song.self])
+                searchRequest.limit = 1
+                let searchResponse = try await searchRequest.response()
+                if let song = searchResponse.songs.first, let artwork = song.artwork,
+                   let artURL = artwork.url(width: 512, height: 512)?.absoluteString {
+                    let trackUrl = song.url?.absoluteString ?? ""
+                    info = ["artworkUrl": artURL, "iTunesUrl": trackUrl]
                 }
-                let results: [Track]
+            } catch {
+                print("AppleMusicService MusicKit search error:", error)
             }
-            let search = try JSONDecoder().decode(SearchResponse.self, from: data)
-            if let first = search.results.first {
-                let artwork = first.artworkUrl100?.replacingOccurrences(of: "100x100bb", with: "512x512bb") ?? ""
-                let albumName = first.collectionName ?? ""
-                let info: [String: String] = [
-                    "artworkUrl": artwork,
-                    "iTunesUrl": first.trackViewUrl ?? "",
-                    "album": albumName
-                ]
-                cache.set(info, for: searchKey)
-                return info
-            }
-        } catch {
-            print("AppleMusicService.searchTrackExtras error:", error)
-            cache.set([:], for: searchKey)
-            return [:]
         }
-        cache.set([:], for: searchKey)
-        return [:]
+
+        // 4) Cache and return (even if empty)
+        cache.set(info, for: key)
+        return info
     }
+
+    /// Clear the cache for track extras.
+    func clearCache() {
+        cache.clear()
+    }
+}
+
+private struct LookupResponse: Codable {
+    struct Result: Codable {
+        let artworkUrl100: String?
+        let trackViewUrl: String?
+    }
+    let results: [Result]
 }

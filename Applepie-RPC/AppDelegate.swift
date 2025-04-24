@@ -7,6 +7,7 @@
 
 import Cocoa
 import SwiftData
+import MusicKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var discordService: DiscordService?
@@ -32,6 +33,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 3) Async RPC initialization and start updates
         Task { @MainActor in
+            // Request Apple Music authorization once at startup
+            let authStatus = await MusicAuthorization.request()
+            guard authStatus == .authorized else {
+                print("⚠️ Apple Music authorization denied: \(authStatus)")
+                return
+            }
             // 1) Set up Python environment synchronously
             await pythonExecutor.setupEnvironment()
 
