@@ -69,19 +69,24 @@ public final class PythonExecutor {
                 .appendingPathComponent("Versions/3.12")
             setenv("PYTHONHOME", pythonHome.path, 1)
             
-            // Add embedded C‑extension modules to Python path
-            let dynloadPath = Bundle.main.resourceURL!
-                .appendingPathComponent("PythonSupport/lib-dynload").path
+            // Add C‑extension modules directory from embedded framework
+            let version = "3.12"
+            let frameworkLib = frameworksURL
+                .appendingPathComponent("Python.framework")
+                .appendingPathComponent("Versions/\(version)")
+            let dynloadPath = frameworkLib
+                .appendingPathComponent("lib/python\(version)/lib-dynload").path
             let sys = Python.import("sys")
             sys.path.insert(0, dynloadPath)
-            
-            let stdlibPath = Bundle.main.resourceURL!
-              .appendingPathComponent("PythonSupport/python/lib/python3.12").path
+
+            // Add standard library from embedded framework
+            let stdlibPath = frameworkLib
+                .appendingPathComponent("lib/python\(version)").path
             sys.path.insert(1, stdlibPath)
 
-            // Add pip-installed site-packages path
-            let sitePackages = Bundle.main.resourceURL!
-              .appendingPathComponent("PythonSupport/python/lib/python3.12/site-packages").path
+            // Add site-packages from embedded framework
+            let sitePackages = frameworkLib
+                .appendingPathComponent("lib/python\(version)/site-packages").path
             sys.path.insert(2, sitePackages)
             
             // Include the app’s resource directory to locate bundled Python scripts (e.g., discord_service.py)

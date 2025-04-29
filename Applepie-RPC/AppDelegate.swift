@@ -8,11 +8,14 @@
 import Cocoa
 import SwiftData
 import MusicKit
+import Combine
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var discordService: DiscordService?
+    var pyatvService: PyatvService?
     let nowPlayingService = NowPlayingService()
     private let pythonExecutor = PythonExecutor()
+    private var cancellables = Set<AnyCancellable>()
 
     override init() {
         super.init()
@@ -43,14 +46,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             await pythonExecutor.setupEnvironment()
 
             // 2) Create and initialize the DiscordService using the async factory
-            let service = await DiscordService.create(
+            let discordService = await DiscordService.create(
                 clientID: "1362417259154374696",
                 executor: pythonExecutor
             )
-            self.discordService = service
-            service.startPeriodicUpdates(interval: interval) {
-                return self.nowPlayingService.fetchSync()
-            }
+            let pyatvService = await PyatvService.create(
+                executor: pythonExecutor
+            )
+            
+            self.discordService = discordService
+            self.pyatvService = pyatvService
+            nowPlayingService.setATVService(pyatvService)
+            
+            // Start periodic fetching in NowPlayingService
+            nowPlayingService.start(interval: interval, host: "localhost")
+            
+            // Subscribe to updates and forward to DiscordService
+            nowPlayingService.$playingData
+                .sink { [weak self] data in
+                    guard let self = self, let discord = self.discordService else { return }
+                    Task {
+                        if let data = data {
+                            await discord.setActivity(
+                                trackID: data.trackID,
+                                title: data.title,
+                                artist: data.artist ?? "",
+                                album: data.album,
+                                position: data.position,
+                                duration: data.duration
+                            )
+                        } else {
+                            await discord.clearActivity()
+                        }
+                    }
+                }
+                .store(in: &cancellables)
         }
     }
     
@@ -58,23 +88,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 4) Python 종료
         Task {
             await discordService?.clearActivity()
-        }
-    }
-}
-
-// MARK: - Python Daemon and Utilities
-private extension AppDelegate {
-    func writeCommand(_ cmd: String) {
-        let cmdURL = URL(fileURLWithPath: "/tmp/applepie_rpc_cmd")
-        let data = (cmd + "\n").data(using: .utf8)!
-        if FileManager.default.fileExists(atPath: cmdURL.path) {
-            if let handle = try? FileHandle(forWritingTo: cmdURL) {
-                handle.seekToEndOfFile()
-                handle.write(data)
-                handle.closeFile()
-            }
-        } else {
-            try? data.write(to: cmdURL)
         }
     }
 }

@@ -12,6 +12,7 @@ import SwiftData
 import Darwin
 import Foundation
 import Network
+import Combine
 
 @main
 struct ApplepieRPCApp: App {
@@ -37,6 +38,7 @@ struct ApplepieRPCApp: App {
         MenuBarExtra("Applepie", systemImage: "music.note.house") {
             MainMenuView()
                 .environment(\.modelContext, container.mainContext)
+                .environmentObject(delegate.nowPlayingService)
         }
         .menuBarExtraStyle(.window)
     }
@@ -53,18 +55,23 @@ struct MainMenuView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var isHoveringPause = false
     @State private var isHoveringQuit = false
-    @State private var selectedHost: String = "Local"
+    @State private var selectedHost: String = "localhost"
+    @State private var previousHost: String = "localhost"
     @StateObject private var browser = AirPlayBrowser()
-    @State private var showNowPlaying = false
-    @State private var localNowPlaying: String = ""
+    @EnvironmentObject var nowPlayingService: NowPlayingService
+
+    /// Current AppSettings instance, creating one if missing
+    private var setting: AppSettings {
+        if let existing = settings.first {
+            return existing
+        } else {
+            let newSetting = AppSettings()
+            modelContext.insert(newSetting)
+            return newSetting
+        }
+    }
 
     var body: some View {
-        let setting = settings.first ?? {
-            let new = AppSettings()
-            modelContext.insert(new)
-            return new
-        }()
-
         VStack(alignment: .leading, spacing: 4) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Update Interval")
@@ -76,14 +83,17 @@ struct MainMenuView: View {
                         sliderWidth: 180,
                         sliderHeight: 16,
                         value: Binding(
-                            get: { setting.updateInterval },
-                            set: { setting.updateInterval = $0 }
+                            get: { self.setting.updateInterval },
+                            set: {
+                                self.setting.updateInterval = $0
+                                nowPlayingService.updateTimer($0, browser.serviceIPs[selectedHost] ?? "")
+                            }
                         ),
                         in: 1...15
                     )
                     .padding(.horizontal, -12)
                     .padding(.vertical, -12)
-                    Text("\(Int(setting.updateInterval))s")
+                    Text("\(Int(self.setting.updateInterval))s")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -95,20 +105,42 @@ struct MainMenuView: View {
                     .foregroundColor(.secondary)
                 Picker("Device", selection: $selectedHost) {
                     ForEach(browser.hosts, id: \.self) { host in
-                        Text(host == "Local" ? "내 Mac" : host)
+                        Text(host == "localhost" ? "내 Mac" : host)
                             .tag(host)
                     }
                 }
                 .frame(width: 140)
                 .onChange(of: selectedHost) { newHost in
-                    if newHost == "Local" {
-                        if let delegate = NSApp.delegate as? AppDelegate {
-                            delegate.nowPlayingService.fetchAsync { result in
-                                localNowPlaying = result
+                    let oldHost = previousHost
+                    // Stop now-playing updates for old device
+                    nowPlayingService.stop()
+                    Task {
+                        // If not paired yet, perform two-step pairing
+                        if setting.credentials[newHost] == nil {
+                            // Begin pairing: show PIN on Apple TV
+                            let began = await nowPlayingService.pairDeviceBegin(host: browser.serviceIPs[newHost] ?? "")
+                            guard began else {
+                                // Revert on failure
+                                selectedHost = oldHost
+                                return
                             }
+                            // Prompt user for PIN
+                            guard let pin = promptForPIN(host: newHost) else {
+                                selectedHost = oldHost
+                                return
+                            }
+                            // Finish pairing with PIN
+                            guard let creds = await nowPlayingService.pairDeviceFinish(host: browser.serviceIPs[newHost] ?? "", pin: pin) else {
+                                selectedHost = oldHost
+                                return
+                            }
+                            // Store credentials for future
+                            setting.credentials[newHost] = creds
+                            try? modelContext.save()
                         }
-                    } else if let port = browser.servicePorts[newHost] {
-                        browser.fetchNowPlaying(host: newHost, port: port)
+                        // Resume now-playing updates on new device
+                        nowPlayingService.updateTimer(setting.updateInterval, browser.serviceIPs[newHost] ?? "")
+                        previousHost = newHost
                     }
                 }
             }
@@ -119,66 +151,32 @@ struct MainMenuView: View {
                 Text("Now Playing")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                if selectedHost == "Local" {
-                    if localNowPlaying.isEmpty {
-                        Text("정보 없음").italic()
-                    } else {
-                        Text(localNowPlaying)
-                    }
-                } else {
-                    if browser.nowPlaying.isEmpty {
-                        Text("정보 없음").italic()
-                    } else {
-                        ScrollView {
-                            Text(browser.nowPlaying)
-                                .font(.system(size: 11, weight: .regular, design: .monospaced))
-                        }
-                        .frame(height: 60)
-                    }
-                }
-                Button("Refresh") {
-                    // Trigger a fresh query for selected AirPlay device
-                    if selectedHost == "Local" {
-                        if let delegate = NSApp.delegate as? AppDelegate {
-                            delegate.nowPlayingService.fetchAsync { result in
-                                localNowPlaying = result
-                            }
-                        }
-                    } else if let port = browser.servicePorts[selectedHost] {
-                        browser.fetchNowPlaying(host: selectedHost, port: port)
-                    }
-                }
-                .buttonStyle(BorderlessButtonStyle())
+                let title = nowPlayingService.playingData?.title ?? ""
+                Text(title.isEmpty ? "정보 없음" : title)
+                    .italic(title.isEmpty)
             }
             .padding(.vertical, 4)
-            .onAppear {
-                if selectedHost == "Local" {
-                    if let delegate = NSApp.delegate as? AppDelegate {
-                        delegate.nowPlayingService.fetchAsync { result in
-                            localNowPlaying = result
-                        }
-                    }
-                }
-            }
 
             Button {
                 // Send command based on current paused state, then toggle
-                writeCommand(setting.isPaused ? "RESUME" : "PAUSE")
+                if self.setting.isPaused {
+                    
+                }
                 do {
                     try modelContext.save()
-                    setting.isPaused.toggle()
+                    self.setting.isPaused.toggle()
                 } catch {
                     print("Failed to save isPaused:", error)
                 }
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: setting.isPaused ? "play.fill" : "pause.fill")
+                    Image(systemName: self.setting.isPaused ? "play.fill" : "pause.fill")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 8, height: 8)
                         .padding(6)
                         .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
-                    Text(setting.isPaused ? "Resume Updates" : "Pause Updates")
+                    Text(self.setting.isPaused ? "Resume Updates" : "Pause Updates")
                     Spacer()
                     Text("⌘R")
                         .font(.system(size: 11))
@@ -219,37 +217,37 @@ struct MainMenuView: View {
             .background(isHoveringQuit ? Color(NSColor.selectedControlColor).opacity(0.2) : Color.clear)
             .cornerRadius(4)
             .keyboardShortcut("q")
+            
+            // Clear all stored pairing credentials
+            Button {
+                // Remove all saved credentials
+                setting.credentials.removeAll()
+                do {
+                    try modelContext.save()
+                } catch {
+                    print("Failed to clear credentials:", error)
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "trash")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 8, height: 8)
+                        .padding(6)
+                        .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
+                    Text("Clear Cache")
+                    Spacer()
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 2)
+            .onHover { hovering in /* no hover state needed */ }
+            .cornerRadius(4)
         }
         .padding(10)
         .frame(width: 225)
-        .onAppear {
-            if let delegate = NSApp.delegate as? AppDelegate {
-                delegate.discordService?.startPeriodicUpdates(interval: setting.updateInterval) {
-                    return delegate.nowPlayingService.fetchSync()
-                }
-            }
-        }
-        .onChange(of: setting.updateInterval) { newInterval in
-            if let delegate = NSApp.delegate as? AppDelegate {
-                delegate.discordService?.startPeriodicUpdates(interval: newInterval) {
-                    return delegate.nowPlayingService.fetchSync()
-                }
-            }
-        }
-        .onChange(of: localNowPlaying) { _ in
-            if let delegate = NSApp.delegate as? AppDelegate {
-                delegate.discordService?.startPeriodicUpdates(interval: setting.updateInterval) {
-                    return delegate.nowPlayingService.fetchSync()
-                }
-            }
-        }
-        .onChange(of: browser.nowPlaying) { _ in
-            if let delegate = NSApp.delegate as? AppDelegate {
-                delegate.discordService?.startPeriodicUpdates(interval: setting.updateInterval) {
-                    return delegate.nowPlayingService.fetchSync()
-                }
-            }
-        }
     }
 
     private func showAlert(message: String) {
@@ -257,18 +255,21 @@ struct MainMenuView: View {
         alert.messageText = message
         alert.runModal()
     }
-
-    func writeCommand(_ cmd: String) {
-        let cmdURL = URL(fileURLWithPath: "/tmp/applepie_rpc_cmd")
-        let data = (cmd + "\n").data(using: .utf8)!
-        if FileManager.default.fileExists(atPath: cmdURL.path) {
-            if let handle = try? FileHandle(forWritingTo: cmdURL) {
-                handle.seekToEndOfFile()
-                handle.write(data)
-                handle.closeFile()
-            }
-        } else {
-            try? data.write(to: cmdURL)
+    
+    /// Presents a modal dialog to ask user for the pairing PIN.
+    private func promptForPIN(host: String) -> Int? {
+        let alert = NSAlert()
+        alert.messageText = "페어링 PIN 입력"
+        alert.informativeText = "기기(\(host)) 화면에 표시된 4자리 PIN 코드를 입력하세요."
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        alert.accessoryView = input
+        alert.addButton(withTitle: "확인")
+        alert.addButton(withTitle: "취소")
+        let response = alert.runModal()
+        guard response == .alertFirstButtonReturn, let pin = Int(input.stringValue) else {
+            return nil
         }
+        return pin
     }
+    
 }

@@ -52,14 +52,23 @@ class DiscordService: PythonService {
     }
     
     /// Calls the Python set_activity wrapper on the dedicated Python thread.
-    func setActivity(title: String,
-                     artist: String,
-                     album: String?,
-                     position: Double,
-                     duration: Double,
-                     artworkUrl: String?,
-                     itunesUrl: String?,
-                     source: String) async {
+    func setActivity(trackID: String?, title: String, artist: String?, album: String?, position: Double, duration: Double) async {
+        // If there's no current track, clear any existing activity and skip update
+        if title.isEmpty {
+            await self.clearActivity()
+            return
+        }
+        let extras: [String: String]
+        if let trackID = trackID {
+            extras = await self.musicService.fetchTrackExtras(lookupKey: trackID, isStoreID: true)
+        } else {
+            let lookupKey = title + " " + (artist ?? "") + " " + (album ?? "")
+            extras = await self.musicService.fetchTrackExtras(lookupKey: lookupKey, isStoreID: false)
+        }
+            
+        let artworkUrl = extras["artworkUrl"]
+        let iTunesUrl  = extras["iTunesUrl"]
+        
         guard let rpc = self.rpc else {
             print("[DiscordService] RPC is not initialized")
             return
@@ -76,9 +85,9 @@ class DiscordService: PythonService {
                 "position": PythonObject(position),
                 "duration": PythonObject(duration),
                 "artworkUrl": PythonObject(artworkUrl ?? ""),
-                "itunes_id": PythonObject(itunesUrl ?? "")
+                "itunes_id": PythonObject(iTunesUrl ?? "")
             ]
-            let pySource = PythonObject(source)
+            let pySource = PythonObject("Music.app")
             let countryCode = Locale.current.region?.identifier.lowercased() ?? "us"
             let pyCountry = PythonObject(countryCode)
             _ = setFunc(rpc, pyMeta, pySource, pyCountry)
@@ -99,57 +108,7 @@ class DiscordService: PythonService {
             _ = clearFunc(rpc)
         }
     }
-    
-    /// Begin sending activity at a regular interval using full playback data.
-    /// - Parameters:
-    ///   - interval: seconds between each update
-    ///   - detailsProvider: returns (trackID, details, artist?, album?, position, duration)
-    func startPeriodicUpdates(interval: TimeInterval,
-                              detailsProvider: @escaping () -> (itunesID: String?, title: String, artist: String?, album: String?, position: Double, duration: Double)) {
-        print("[DiscordService] startPeriodicUpdates interval: \(interval)")
-        self.timer?.invalidate()
-        self.timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            Task {
-                // 1) Core playback data
-                let (itunesID, title, artist, album, position, duration) = detailsProvider()
-                // If there's no current track, clear any existing activity and skip update
-                if title.isEmpty {
-                    await self.clearActivity()
-                    return
-                }
-                let extras: [String: String]
-                if let itunesID = itunesID {
-                    extras = await self.musicService.fetchTrackExtras(lookupKey: itunesID, isStoreID: true)
-                } else {
-                    let lookupKey = title + " " + (artist ?? "") + " " + (album ?? "")
-                    extras = await self.musicService.fetchTrackExtras(lookupKey: lookupKey, isStoreID: false)
-                }
-                    
-                let artwork = extras["artworkUrl"]
-                let iTunes  = extras["iTunesUrl"]
-                // 3) Update Discord
-                await self.setActivity(
-                    title: title,
-                    artist: artist ?? "",
-                    album: album,
-                    position: position,
-                    duration: duration,
-                    artworkUrl: artwork,
-                    itunesUrl: iTunes,
-                    source: "Music.app"
-                )
-            }
-        }
-        RunLoop.main.add(self.timer!, forMode: .common)
-    }
-    
-    /// Stop the periodic updates.
-    func stopPeriodicUpdates() {
-        print("[DiscordService] stopPeriodicUpdates called")
-        timer?.invalidate()
-        timer = nil
-    }
+
     
     /// Manually start/restart the Discord RPC connection.
     func start() {
