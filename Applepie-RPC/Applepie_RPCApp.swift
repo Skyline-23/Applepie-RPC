@@ -183,7 +183,7 @@ struct MainMenuView: View {
             // Clear all stored pairing credentials
             Button {
                 Task {
-                    switchHost(to: "localhost")
+                    resetToLocalhost()
                     if await nowPlayingService.clearCache() {
                         showAlert(message: .localizable(.cacheClearedSuccessfully))
                     } else {
@@ -240,6 +240,14 @@ struct MainMenuView: View {
             previousHost = newHost
         }
     }
+    
+    private func resetToLocalhost() {
+        // Reset to localhost
+        selectedHost = .localizable(.localhostName)
+        previousHost = .localizable(.localhostName)
+        nowPlayingService.updateTimer(setting.updateInterval, "localhost")
+    }
+        
 
     private func showAlert(message: String) {
         let alert = NSAlert()
