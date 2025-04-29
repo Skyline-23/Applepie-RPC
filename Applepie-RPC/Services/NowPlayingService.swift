@@ -132,4 +132,15 @@ class NowPlayingService: ObservableObject {
         guard let service = atvService else { return nil }
         return await service.pairDeviceFinishSync(host: host, pin: pin)
     }
+    
+    /// Check pairing needed
+    func isPairingNeeded(host: String) async -> Bool {
+        guard let service = atvService else { return false }
+        return await service.isPairingNeeded(host: host)
+    }
+    
+    func clearCache() async -> Bool {
+        guard let service = atvService else { return false }
+        return await service.removePairing()
+    }
 }

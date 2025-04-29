@@ -86,7 +86,10 @@ struct MainMenuView: View {
                             get: { self.setting.updateInterval },
                             set: {
                                 self.setting.updateInterval = $0
-                                nowPlayingService.updateTimer($0, browser.serviceIPs[selectedHost] ?? "")
+                                // Only update timer if not paused
+                                if !self.setting.isPaused {
+                                    nowPlayingService.updateTimer($0, browser.serviceIPs[selectedHost] ?? "")
+                                }
                             }
                         ),
                         in: 1...15
@@ -115,10 +118,10 @@ struct MainMenuView: View {
                     // Stop now-playing updates for old device
                     nowPlayingService.stop()
                     Task {
-                        // If not paired yet, perform two-step pairing
-                        if setting.credentials[newHost] == nil {
+                        let newHostIP = browser.serviceIPs[newHost] ?? ""
+                        if await nowPlayingService.isPairingNeeded(host: newHostIP) {
                             // Begin pairing: show PIN on Apple TV
-                            let began = await nowPlayingService.pairDeviceBegin(host: browser.serviceIPs[newHost] ?? "")
+                            let began = await nowPlayingService.pairDeviceBegin(host: newHostIP)
                             guard began else {
                                 // Revert on failure
                                 selectedHost = oldHost
@@ -130,16 +133,23 @@ struct MainMenuView: View {
                                 return
                             }
                             // Finish pairing with PIN
-                            guard let creds = await nowPlayingService.pairDeviceFinish(host: browser.serviceIPs[newHost] ?? "", pin: pin) else {
+                            guard let creds = await nowPlayingService.pairDeviceFinish(host: newHostIP, pin: pin) else {
                                 selectedHost = oldHost
                                 return
                             }
-                            // Store credentials for future
-                            setting.credentials[newHost] = creds
-                            try? modelContext.save()
+                            print("[PyatvService] Pairing finished with credentials:", creds)
+                        } else {
+                            // Only resume updates if not paused
+                            if !setting.isPaused {
+                                nowPlayingService.updateTimer(setting.updateInterval, newHostIP)
+                            }
+                            previousHost = newHost
                         }
-                        // Resume now-playing updates on new device
-                        nowPlayingService.updateTimer(setting.updateInterval, browser.serviceIPs[newHost] ?? "")
+                        
+                        // Only resume updates if not paused
+                        if !setting.isPaused {
+                            nowPlayingService.updateTimer(setting.updateInterval, newHostIP)
+                        }
                         previousHost = newHost
                     }
                 }
@@ -159,8 +169,13 @@ struct MainMenuView: View {
 
             Button {
                 // Send command based on current paused state, then toggle
+                let hostIP = browser.serviceIPs[selectedHost] ?? ""
                 if self.setting.isPaused {
-                    
+                    // Currently paused → resume updates
+                    nowPlayingService.updateTimer(self.setting.updateInterval, hostIP)
+                } else {
+                    // Currently running → pause updates
+                    nowPlayingService.stop()
                 }
                 do {
                     try modelContext.save()
@@ -220,12 +235,13 @@ struct MainMenuView: View {
             
             // Clear all stored pairing credentials
             Button {
-                // Remove all saved credentials
-                setting.credentials.removeAll()
-                do {
-                    try modelContext.save()
-                } catch {
-                    print("Failed to clear credentials:", error)
+                Task {
+                    selectedHost = "localhost"
+                    if await nowPlayingService.clearCache() {
+                        showAlert(message: "Cache cleared successfully")
+                    } else {
+                        showAlert(message: "Cache clearing failed")
+                    }
                 }
             } label: {
                 HStack(spacing: 6) {

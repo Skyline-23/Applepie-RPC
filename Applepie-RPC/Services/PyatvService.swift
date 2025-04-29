@@ -16,6 +16,8 @@ class PyatvService: PythonService {
     private var pairDeviceBeginSyncFunc: PythonObject? = nil
     private var pairDeviceFinishFunc: PythonObject? = nil
     private var pairDeviceFinishSyncFunc: PythonObject? = nil
+    private var isPairingNeededSyncFunc: PythonObject? = nil
+    private var removePairingSyncFunc: PythonObject? = nil
     
     /// Factory to create and set up PyatvService on the Python thread.
     static public func create(executor: PythonExecutor) async -> PyatvService {
@@ -33,6 +35,8 @@ class PyatvService: PythonService {
             await executor.performAsync { [service] in
                 service.pairDeviceBeginSyncFunc = mod.pair_device_begin_sync
                 service.pairDeviceFinishSyncFunc = mod.pair_device_finish_sync
+                service.isPairingNeededSyncFunc = mod.is_pairing_needed_sync
+                service.removePairingSyncFunc = mod.remove_pairing_sync
             }
             print("[PyatvService] Imported pyatv_service module")
         }
@@ -124,5 +128,29 @@ class PyatvService: PythonService {
             return result == Python.None ? nil : String(result)
         }
         
+    }
+    
+    /// Check whether pairing is mandatory for the given host.
+    func isPairingNeeded(host: String) async -> Bool {
+        guard let f = isPairingNeededSyncFunc else {
+            print("[PyatvService] is_pairing_needed_sync function is not initialized")
+            return false
+        }
+        return await callPython { () -> Bool in
+            let result = f(host)
+            return Bool(result) ?? false
+        }
+    }
+    
+    /// Remove cached pairing.
+    func removePairing() async -> Bool {
+        guard let f = removePairingSyncFunc else {
+            print("[PyatvService] remove_pairing_sync function is not initialized")
+            return false
+        }
+        return await callPython { () -> Bool in
+            let result = f()
+            return Bool(result) ?? false
+        }
     }
 }
