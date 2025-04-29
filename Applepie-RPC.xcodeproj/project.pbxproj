@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		620F1E492DB397F400898A8D /* ModernSlider in Frameworks */ = {isa = PBXBuildFile; productRef = 620F1E482DB397F400898A8D /* ModernSlider */; };
+		627E6A222DC0A1990001015C /* xcstrings-tool in Frameworks */ = {isa = PBXBuildFile; productRef = 627E6A212DC0A1990001015C /* xcstrings-tool */; };
 		628618872DB60C290076E49F /* PythonKit in Frameworks */ = {isa = PBXBuildFile; productRef = 628618862DB60C290076E49F /* PythonKit */; };
 		62B562B32DB79DF70094DC22 /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B12DB79DF70094DC22 /* Python.xcframework */; };
 		62B562B72DB79E270094DC22 /* libcrypto.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B42DB79E270094DC22 /* libcrypto.3.dylib */; };
@@ -78,7 +79,7 @@
 		628618822DB5FF340076E49F /* Exceptions for "Applepie-RPC" folder in "Applepie-RPC" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Info.plist,
+				Resources/Info.plist,
 			);
 			target = 623815512DB2B12100AD874E /* Applepie-RPC */;
 		};
@@ -115,6 +116,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				627E6A222DC0A1990001015C /* xcstrings-tool in Frameworks */,
 				620F1E492DB397F400898A8D /* ModernSlider in Frameworks */,
 				62B562B32DB79DF70094DC22 /* Python.xcframework in Frameworks */,
 				62B562B72DB79E270094DC22 /* libcrypto.3.dylib in Frameworks */,
@@ -203,6 +205,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				627E6A242DC0A1BF0001015C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				623815542DB2B12100AD874E /* Applepie-RPC */,
@@ -212,6 +215,7 @@
 			packageProductDependencies = (
 				620F1E482DB397F400898A8D /* ModernSlider */,
 				628618862DB60C290076E49F /* PythonKit */,
+				627E6A212DC0A1990001015C /* xcstrings-tool */,
 			);
 			productName = "Applepie-RPC";
 			productReference = 623815522DB2B12100AD874E /* Applepie-RPC.app */;
@@ -292,12 +296,14 @@
 			knownRegions = (
 				en,
 				Base,
+				ko,
 			);
 			mainGroup = 623815492DB2B12100AD874E;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				620F1E472DB397F400898A8D /* XCRemoteSwiftPackageReference "ModernSlider" */,
 				628618852DB60C290076E49F /* XCRemoteSwiftPackageReference "PythonKit" */,
+				627E6A202DC0A1990001015C /* XCRemoteSwiftPackageReference "xcstrings-tool" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 623815532DB2B12100AD874E /* Products */;
@@ -481,6 +487,10 @@
 			target = 623815512DB2B12100AD874E /* Applepie-RPC */;
 			targetProxy = 6238156E2DB2B12300AD874E /* PBXContainerItemProxy */;
 		};
+		627E6A242DC0A1BF0001015C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = 627E6A232DC0A1BF0001015C /* XCStringsToolPlugin */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -545,6 +555,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -603,6 +614,7 @@
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Release;
 		};
@@ -611,7 +623,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "Applepie-RPC/Applepie_RPC.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "Applepie-RPC/Resources/Applepie_RPC.entitlements";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -627,7 +639,7 @@
 					"$(PROJECT_DIR)",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Applepie-RPC/Info.plist";
+				INFOPLIST_FILE = "Applepie-RPC/Resources/Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Get info & Search Music on Apple Music";
@@ -661,7 +673,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "Applepie-RPC/Applepie_RPC.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "Applepie-RPC/Resources/Applepie_RPC.entitlements";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -677,7 +689,7 @@
 					"$(PROJECT_DIR)",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Applepie-RPC/Info.plist";
+				INFOPLIST_FILE = "Applepie-RPC/Resources/Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Get info & Search Music on Apple Music";
@@ -824,6 +836,14 @@
 				kind = branch;
 			};
 		};
+		627E6A202DC0A1990001015C /* XCRemoteSwiftPackageReference "xcstrings-tool" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/liamnichols/xcstrings-tool?tab=readme-ov-file";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.0;
+			};
+		};
 		628618852DB60C290076E49F /* XCRemoteSwiftPackageReference "PythonKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/pvieito/PythonKit.git";
@@ -839,6 +859,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 620F1E472DB397F400898A8D /* XCRemoteSwiftPackageReference "ModernSlider" */;
 			productName = ModernSlider;
+		};
+		627E6A212DC0A1990001015C /* xcstrings-tool */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 627E6A202DC0A1990001015C /* XCRemoteSwiftPackageReference "xcstrings-tool" */;
+			productName = "xcstrings-tool";
+		};
+		627E6A232DC0A1BF0001015C /* XCStringsToolPlugin */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 627E6A202DC0A1990001015C /* XCRemoteSwiftPackageReference "xcstrings-tool" */;
+			productName = "plugin:XCStringsToolPlugin";
 		};
 		628618862DB60C290076E49F /* PythonKit */ = {
 			isa = XCSwiftPackageProductDependency;

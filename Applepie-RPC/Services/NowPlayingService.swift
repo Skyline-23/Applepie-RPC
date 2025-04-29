@@ -97,7 +97,6 @@ class NowPlayingService: ObservableObject {
             let raw = String(data: data, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let parts = raw.split(separator: "#", maxSplits: 5).map { String($0) }
-            // parts: ["", title, artist, album, position, duration]
             let title    = parts.count > 1 ? parts[1] : ""
             let artist   = parts.count > 2 ? parts[2] : ""
             let album    = parts.count > 3 ? parts[3] : ""
@@ -135,6 +134,9 @@ class NowPlayingService: ObservableObject {
     
     /// Check pairing needed
     func isPairingNeeded(host: String) async -> Bool {
+        if host == "localhost" {
+            return false
+        }
         guard let service = atvService else { return false }
         return await service.isPairingNeeded(host: host)
     }

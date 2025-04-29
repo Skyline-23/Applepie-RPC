@@ -25,7 +25,7 @@ struct ApplepieRPCApp: App {
     }()
 
     var body: some Scene {
-        MenuBarExtra("Applepie", systemImage: "music.note.house") {
+        MenuBarExtra(.localizable(.appName), systemImage: "music.note.house") {
             MainMenuView()
                 .environment(\.modelContext, delegate.container?.mainContext ?? defaultContainer.mainContext)
                 .environmentObject(delegate.nowPlayingService)
@@ -45,8 +45,8 @@ struct MainMenuView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var isHoveringPause = false
     @State private var isHoveringQuit = false
-    @State private var selectedHost: String = "localhost"
-    @State private var previousHost: String = "localhost"
+    @State private var selectedHost: String = .localizable(.localhostName)
+    @State private var previousHost: String = .localizable(.localhostName)
     @StateObject private var browser = AirPlayBrowser()
     @EnvironmentObject var nowPlayingService: NowPlayingService
 
@@ -69,7 +69,7 @@ struct MainMenuView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Update Interval")
+                Text(.localizable(.updateInterval))
                     .font(.caption)
                     .foregroundColor(.secondary)
                 HStack {
@@ -88,23 +88,24 @@ struct MainMenuView: View {
                     )
                     .padding(.horizontal, -12)
                     .padding(.vertical, -12)
-                    Text("\(Int(self.setting.updateInterval))s")
+                    Text(.localizable(.llds(Int(self.setting.updateInterval))))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
             // Device Selection
             VStack(alignment: .leading, spacing: 4) {
-                Text("Device")
+                Text(.localizable(.device))
                     .font(.caption)
                     .foregroundColor(.secondary)
-                Picker("Device", selection: $selectedHost) {
+                Picker(.localizable(.device), selection: $selectedHost) {
                     ForEach(browser.hosts, id: \.self) { host in
-                        Text(host == "localhost" ? "내 Mac" : host)
+                        Text(host)
                             .tag(host)
                     }
                 }
-                .frame(width: 140)
+                .labelsHidden()
+                .frame(maxWidth: .infinity)
                 .onChange(of: selectedHost) { newHost in
                     switchHost(to: newHost)
                 }
@@ -113,11 +114,11 @@ struct MainMenuView: View {
 
             // Now Playing Info
             VStack(alignment: .leading, spacing: 4) {
-                Text("Now Playing")
+                Text(.localizable(.nowPlaying))
                     .font(.caption)
                     .foregroundColor(.secondary)
                 let title = nowPlayingService.playingData?.title ?? ""
-                Text(title.isEmpty ? "정보 없음" : title)
+                Text(title.isEmpty ? .localizable(.noInformation) : title)
                     .italic(title.isEmpty)
             }
             .padding(.vertical, 4)
@@ -137,9 +138,9 @@ struct MainMenuView: View {
                         .frame(width: 8, height: 8)
                         .padding(6)
                         .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
-                    Text(self.setting.isPaused ? "Resume Updates" : "Pause Updates")
+                    Text(self.setting.isPaused ? .localizable(.resumeUpdates) : .localizable(.pauseUpdates))
                     Spacer()
-                    Text("⌘R")
+                    Text(.localizable(.r))
                         .font(.system(size: 11))
                         .foregroundColor(.primary.opacity(0.5))
                 }
@@ -163,9 +164,9 @@ struct MainMenuView: View {
                         .frame(width: 8, height: 8)
                         .padding(6)
                         .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
-                    Text("Quit")
+                    Text(.localizable(.quit))
                     Spacer()
-                    Text("⌘Q")
+                    Text(.localizable(.q))
                         .font(.system(size: 11))
                         .foregroundColor(.primary.opacity(0.5))
                 }
@@ -184,9 +185,9 @@ struct MainMenuView: View {
                 Task {
                     switchHost(to: "localhost")
                     if await nowPlayingService.clearCache() {
-                        showAlert(message: "Cache cleared successfully")
+                        showAlert(message: .localizable(.cacheClearedSuccessfully))
                     } else {
-                        showAlert(message: "Cache clearing failed")
+                        showAlert(message: .localizable(.cacheClearingFailed))
                     }
                 }
             } label: {
@@ -197,7 +198,7 @@ struct MainMenuView: View {
                         .frame(width: 8, height: 8)
                         .padding(6)
                         .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
-                    Text("Clear Cache")
+                    Text(.localizable(.clearCache))
                     Spacer()
                 }
             }
@@ -249,17 +250,16 @@ struct MainMenuView: View {
     /// Presents a modal dialog to ask user for the pairing PIN.
     private func promptForPIN(host: String) -> Int? {
         let alert = NSAlert()
-        alert.messageText = "페어링 PIN 입력"
-        alert.informativeText = "기기(\(host)) 화면에 표시된 4자리 PIN 코드를 입력하세요."
+        alert.messageText = .localizable(.enterPairingPINNumber)
+        alert.informativeText = .localizable(.enterThe4PINNumbersOnTheScreen)
         let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
         alert.accessoryView = input
-        alert.addButton(withTitle: "확인")
-        alert.addButton(withTitle: "취소")
+        alert.addButton(withTitle: .localizable(.confirm))
+        alert.addButton(withTitle: .localizable(.deny))
         let response = alert.runModal()
         guard response == .alertFirstButtonReturn, let pin = Int(input.stringValue) else {
             return nil
         }
         return pin
     }
-    
 }

@@ -12,9 +12,9 @@ import Darwin
 // 1) mDNS로 AirPlay 기기(Apple TV)를 찾는 브라우저
 class AirPlayBrowser: NSObject, ObservableObject, NetServiceBrowserDelegate, NetServiceDelegate {
     /// Currently playing metadata from the selected Apple TV
-    @Published var hosts: [String] = ["localhost"]
+    @Published var hosts: [String] = [.localizable(.localhostName)]
     /// Resolved IPv4/IPv6 address for each service name
-    var serviceIPs: [String: String] = [:]
+    var serviceIPs: [String: String] = [.localizable(.localhostName):"localhost"]
     private let browser = NetServiceBrowser()
     private var resolvingServices: [NetService] = []
 
