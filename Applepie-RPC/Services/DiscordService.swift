@@ -35,9 +35,6 @@ class DiscordService: PythonService {
                 service.initRPC = mod.init_rpc_sync
                 service.setActivityFunc = mod.set_activity
                 service.clearActivityFunc = mod.clear_activity
-                if let initRPC = service.initRPC {
-                    service.rpc = initRPC(service.clientID)
-                }
             }
             print("[DiscordService] RPC object initialized: \(service.rpc != nil)")
         }
@@ -58,6 +55,16 @@ class DiscordService: PythonService {
             await self.clearActivity()
             return
         }
+        
+        if self.rpc == nil {
+            await self.start()
+        }
+        
+        guard let rpc = self.rpc else {
+            print("[DiscordService] RPC is not initialized")
+            return
+        }
+        
         let extras: [String: String]
         if let trackID = trackID {
             extras = await self.musicService.fetchTrackExtras(lookupKey: trackID, isStoreID: true)
@@ -65,19 +72,16 @@ class DiscordService: PythonService {
             let lookupKey = title + " " + (artist ?? "") + " " + (album ?? "")
             extras = await self.musicService.fetchTrackExtras(lookupKey: lookupKey, isStoreID: false)
         }
-            
+        
         let artworkUrl = extras["artworkUrl"]
         let iTunesUrl  = extras["iTunesUrl"]
         
-        guard let rpc = self.rpc else {
-            print("[DiscordService] RPC is not initialized")
-            return
-        }
-        guard let setFunc = self.setActivityFunc else {
-            print("[DiscordService] setActivityFunc is not initialized")
-            return
-        }
         await callPython {
+            guard let setFunc = self.setActivityFunc else {
+                print("[DiscordService] setActivityFunc is not initialized")
+                return
+            }
+            
             let pyMeta: PythonObject = [
                 "title": PythonObject(title),
                 "artist": PythonObject(artist),
@@ -96,46 +100,36 @@ class DiscordService: PythonService {
     
     /// Clears the activity on the dedicated Python thread.
     func clearActivity() async {
-        guard let rpc = self.rpc else {
-            print("[DiscordService] RPC is not initialized")
-            return
-        }
-        guard let clearFunc = self.clearActivityFunc else {
-            print("[DiscordService] clearActivityFunc is not initialized")
-            return
-        }
-        await callPython {
-            _ = clearFunc(rpc)
-        }
+        await stop()
     }
-
+    
     
     /// Manually start/restart the Discord RPC connection.
-    func start() {
+    private func start() async {
         print("[DiscordService] start() called")
         guard let initRPCFunc = initRPC else {
             print("[DiscordService] initRPC function is not initialized")
             return
         }
-        rpc = initRPCFunc(clientID)
+        await callPython {
+            self.rpc = initRPCFunc(self.clientID)
+        }
         print("[DiscordService] RPC start result: \(rpc != nil)")
     }
     
     /// Manually stop the Discord RPC connection and clear activity.
-    func stop() {
+    private func stop() async {
         print("[DiscordService] stop() called")
-        Task {
-            // Safely clear if function exists
-            guard let clearFunc = clearActivityFunc, let rpcObj = rpc else {
-                print("[DiscordService] clearActivity function or rpc is nil")
-                return
-            }
-            await callPython {
-                _ = clearFunc(rpcObj)
-            }
-            self.rpc = nil
-            print("[DiscordService] RPC stopped and cleared")
+        // Safely clear if function exists
+        guard let clearFunc = clearActivityFunc, let rpcObj = rpc else {
+            print("[DiscordService] clearActivity function or rpc is nil")
+            return
         }
+        await callPython {
+            _ = clearFunc(rpcObj)
+        }
+        self.rpc = nil
+        print("[DiscordService] RPC stopped and cleared")
     }
 }
 
@@ -169,16 +163,16 @@ class TrackExtrasCache {
 /// Service to fetch artwork and iTunes URL from Apple Music catalog via MusicKit.
 class AppleMusicService {
     private let cache = TrackExtrasCache()
-
+    
     /// Fetch artworkUrl (512x512) and track URL using MusicKit lookup or HTTP search fallback, with caching.
     func fetchTrackExtras(lookupKey key: String, isStoreID: Bool) async -> [String: String] {
         // 1) Return cached if present
         if let cached = cache.get(trackID: key) {
             return cached
         }
-
+        
         var info: [String: String] = [:]
-
+        
         // 2) If storeID is numeric, try MusicKit lookup
         if isStoreID {
             let request = MusicCatalogResourceRequest<Song>(
@@ -209,12 +203,12 @@ class AppleMusicService {
                 print("AppleMusicService MusicKit search error:", error)
             }
         }
-
+        
         // 4) Cache and return (even if empty)
         cache.set(info, for: key)
         return info
     }
-
+    
     /// Clear the cache for track extras.
     func clearCache() {
         cache.clear()

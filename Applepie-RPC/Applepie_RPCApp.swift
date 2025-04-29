@@ -9,35 +9,25 @@ import SwiftUI
 import AppKit
 import ModernSlider
 import SwiftData
-import Darwin
-import Foundation
-import Network
 import Combine
 
 @main
 struct ApplepieRPCApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
-    let container: ModelContainer
 
-    init() {
+    // Fallback container if AppDelegate's container is not available
+    private let defaultContainer: ModelContainer = {
         do {
-            container = try ModelContainer(for: AppSettings.self)
+            return try ModelContainer(for: AppSettings.self)
         } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
+            fatalError("Failed to create fallback ModelContainer: \(error)")
         }
-
-        // Send initial daemon command based on stored setting
-        do {
-            let settingsList = try container.mainContext.fetch(FetchDescriptor<AppSettings>())
-        } catch {
-            print("Failed to fetch AppSettings at launch:", error)
-        }
-    }
+    }()
 
     var body: some Scene {
         MenuBarExtra("Applepie", systemImage: "music.note.house") {
             MainMenuView()
-                .environment(\.modelContext, container.mainContext)
+                .environment(\.modelContext, delegate.container?.mainContext ?? defaultContainer.mainContext)
                 .environmentObject(delegate.nowPlayingService)
         }
         .menuBarExtraStyle(.window)
@@ -71,6 +61,11 @@ struct MainMenuView: View {
         }
     }
 
+    /// Returns the IP address for the currently selected host.
+    private var currentHostIP: String {
+        browser.serviceIPs[selectedHost] ?? ""
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             VStack(alignment: .leading, spacing: 4) {
@@ -86,10 +81,7 @@ struct MainMenuView: View {
                             get: { self.setting.updateInterval },
                             set: {
                                 self.setting.updateInterval = $0
-                                // Only update timer if not paused
-                                if !self.setting.isPaused {
-                                    nowPlayingService.updateTimer($0, browser.serviceIPs[selectedHost] ?? "")
-                                }
+                                nowPlayingService.updateTimer($0, browser.serviceIPs[selectedHost] ?? "")
                             }
                         ),
                         in: 1...15
@@ -114,44 +106,7 @@ struct MainMenuView: View {
                 }
                 .frame(width: 140)
                 .onChange(of: selectedHost) { newHost in
-                    let oldHost = previousHost
-                    // Stop now-playing updates for old device
-                    nowPlayingService.stop()
-                    Task {
-                        let newHostIP = browser.serviceIPs[newHost] ?? ""
-                        if await nowPlayingService.isPairingNeeded(host: newHostIP) {
-                            // Begin pairing: show PIN on Apple TV
-                            let began = await nowPlayingService.pairDeviceBegin(host: newHostIP)
-                            guard began else {
-                                // Revert on failure
-                                selectedHost = oldHost
-                                return
-                            }
-                            // Prompt user for PIN
-                            guard let pin = promptForPIN(host: newHost) else {
-                                selectedHost = oldHost
-                                return
-                            }
-                            // Finish pairing with PIN
-                            guard let creds = await nowPlayingService.pairDeviceFinish(host: newHostIP, pin: pin) else {
-                                selectedHost = oldHost
-                                return
-                            }
-                            print("[PyatvService] Pairing finished with credentials:", creds)
-                        } else {
-                            // Only resume updates if not paused
-                            if !setting.isPaused {
-                                nowPlayingService.updateTimer(setting.updateInterval, newHostIP)
-                            }
-                            previousHost = newHost
-                        }
-                        
-                        // Only resume updates if not paused
-                        if !setting.isPaused {
-                            nowPlayingService.updateTimer(setting.updateInterval, newHostIP)
-                        }
-                        previousHost = newHost
-                    }
+                    switchHost(to: newHost)
                 }
             }
             .padding(.vertical, 4)
@@ -168,18 +123,9 @@ struct MainMenuView: View {
             .padding(.vertical, 4)
 
             Button {
-                // Send command based on current paused state, then toggle
-                let hostIP = browser.serviceIPs[selectedHost] ?? ""
-                if self.setting.isPaused {
-                    // Currently paused → resume updates
-                    nowPlayingService.updateTimer(self.setting.updateInterval, hostIP)
-                } else {
-                    // Currently running → pause updates
-                    nowPlayingService.stop()
-                }
                 do {
-                    try modelContext.save()
                     self.setting.isPaused.toggle()
+                    try modelContext.save()
                 } catch {
                     print("Failed to save isPaused:", error)
                 }
@@ -236,7 +182,7 @@ struct MainMenuView: View {
             // Clear all stored pairing credentials
             Button {
                 Task {
-                    selectedHost = "localhost"
+                    switchHost(to: "localhost")
                     if await nowPlayingService.clearCache() {
                         showAlert(message: "Cache cleared successfully")
                     } else {
@@ -264,6 +210,34 @@ struct MainMenuView: View {
         }
         .padding(10)
         .frame(width: 225)
+    }
+    
+    // MARK: - Methods
+
+    /// Handle switching to a new host: stop updates, perform pairing if needed, then resume.
+    private func switchHost(to newHost: String) {
+        let oldHost = previousHost
+        // Stop now-playing updates for old device
+        nowPlayingService.stop()
+        Task {
+            let newHostIP = browser.serviceIPs[newHost] ?? ""
+            if await nowPlayingService.isPairingNeeded(host: newHostIP) {
+                // Begin pairing: show PIN on Apple TV
+                let began = await nowPlayingService.pairDeviceBegin(host: newHostIP)
+                guard began, let pin = promptForPIN(host: newHost) else {
+                    // Revert selection on failure
+                    selectedHost = oldHost
+                    return
+                }
+                guard let creds = await nowPlayingService.pairDeviceFinish(host: newHostIP, pin: pin) else {
+                    selectedHost = oldHost
+                    return
+                }
+                print("[PyatvService] Pairing finished with credentials:", creds)
+            }
+            nowPlayingService.updateTimer(setting.updateInterval, currentHostIP)
+            previousHost = newHost
+        }
     }
 
     private func showAlert(message: String) {

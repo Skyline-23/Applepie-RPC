@@ -16,6 +16,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let nowPlayingService = NowPlayingService()
     private let pythonExecutor = PythonExecutor()
     private var cancellables = Set<AnyCancellable>()
+    private var appSettings: AppSettings?
+    var container: ModelContainer?
 
     override init() {
         super.init()
@@ -25,14 +27,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Load saved update interval from AppSettings
         var interval: Double = 1.0
         do {
-            let container = try ModelContainer(for: AppSettings.self)
-            let list = try container.mainContext.fetch(FetchDescriptor<AppSettings>())
-            if let setting = list.first {
+            self.container = try ModelContainer(for: AppSettings.self)
+            let list = try container?.mainContext.fetch(FetchDescriptor<AppSettings>())
+            if let setting = list?.first {
+                self.appSettings = setting
+            } else {
+                let newSetting = AppSettings()
+                container?.mainContext.insert(newSetting)
+                self.appSettings = newSetting
+            }
+            if let setting = self.appSettings {
                 interval = setting.updateInterval
             }
         } catch {
-            print("Failed to fetch updateInterval:", error)
+            print("Failed to fetch AppSettings:", error)
         }
+
+        // Observe SwiftData save notifications to refresh AppSettings
+        NotificationCenter.default
+            .publisher(for: ModelContext.didSave)
+            .sink { [weak self] _ in
+                guard let self = self, let context = self.container?.mainContext else { return }
+                if let updated = try? context.fetch(FetchDescriptor<AppSettings>()).first {
+                    self.appSettings = updated
+                }
+            }
+            .store(in: &cancellables)
 
         // 3) Async RPC initialization and start updates
         Task { @MainActor in
@@ -64,8 +84,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Subscribe to updates and forward to DiscordService
             nowPlayingService.$playingData
                 .sink { [weak self] data in
-                    guard let self = self, let discord = self.discordService else { return }
+                    guard
+                        let self = self,
+                        let discord = self.discordService,
+                        let setting = self.appSettings
+                    else {
+                        return
+                    }
                     Task {
+                        if setting.isPaused {
+                            await discord.clearActivity()
+                            return
+                        }
                         if let data = data {
                             await discord.setActivity(
                                 trackID: data.trackID,
