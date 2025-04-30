@@ -3,18 +3,17 @@ name: 📦 macOS Release
 on:
   push:
     tags:
-      - 'v*.*.*'  # v1.0.0 같은 태그 푸시 시 실행
+      - 'v*.*.*'
 
 jobs:
   build-and-release:
     runs-on: macos-latest
     env:
       APP_SCHEME: Applepie-RPC
-      ARCHIVE_PATH: ${{ runner.workspace }}/build/${{ env.APP_SCHEME }}.xcarchive
-      EXPORT_DIR:   ${{ runner.workspace }}/dist
+      ARCHIVE_PATH: $GITHUB_WORKSPACE/build/${{ env.APP_SCHEME }}.xcarchive
+      EXPORT_DIR:   $GITHUB_WORKSPACE/dist
       DMG_NAME:     "${{ env.APP_SCHEME }}-${{ github.ref_name }}"
-      DMG_PATH:     ${{ env.EXPORT_DIR }}/${{ env.DMG_NAME }}.dmg
-
+      DMG_PATH:     $GITHUB_WORKSPACE/dist/${{ env.DMG_NAME }}.dmg
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -41,7 +40,7 @@ jobs:
         uses: QQxiaoming/create-dmg-action@v0.0.2
         with:
           name: ${{ env.DMG_NAME }}
-          srcdir: ${{ env.EXPORT_DIR }}  # 여기서 .app 이 담긴 디렉터리 경로를 지정  [oai_citation:0‡GitHub](https://github.com/marketplace/actions/create-dmg-action)
+          srcdir: ${{ env.EXPORT_DIR }}
 
       - name: Notarize & Staple DMG
         uses: GuillaumeFalourd/notary-tools@v1
@@ -50,7 +49,7 @@ jobs:
           apple_id: ${{ secrets.APPLE_ID }}
           password: ${{ secrets.APPLE_PASSWORD }}
           team_id: ${{ secrets.TEAM_ID }}
-          staple: true                     # Staple 까지 자동 수행  [oai_citation:1‡GitHub](https://github.com/marketplace/actions/notary-tools)
+          staple: true
 
       - name: Create GitHub Release
         id: release
