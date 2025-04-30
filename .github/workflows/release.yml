@@ -67,7 +67,7 @@ jobs:
             -skipPackagePluginValidation \
             -archivePath "${{ github.workspace }}/build/${{ env.APP_SCHEME }}.xcarchive" \
             -exportOptionsPlist "${{ github.workspace }}/scripts/ExportOptions.plist" \
-            -exportPath "${{ github.workspace }}/dist"
+            -exportPath "${{ github.workspace }}/dist" \
             -allowProvisioningUpdates \
             -allowProvisioningDeviceRegistration \
             -authenticationKeyIssuerID ${{ secrets.APPSTORE_ISSUER_ID }} \
