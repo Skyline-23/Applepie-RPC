@@ -27,6 +27,21 @@ jobs:
           create-keychain: true
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
 
+      - name: Authenticate with App Store Connect
+        uses: apple-actions/authenticate-with-app-store@v1
+        with:
+          issuer-id:   ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id:  ${{ secrets.APPSTORE_KEY_ID }}
+          private-key: ${{ secrets.APPSTORE_PRIVATE_KEY_P8 }}
+
+      - name: Write AuthKey .p8 file
+        run: |
+          echo "${{ secrets.APPSTORE_PRIVATE_KEY_P8 }}" > AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8
+          chmod 600 AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8
+
+      - name: Import Code-Signing Certificate
+        uses: apple-actions/import-codesign-certs@v3
+        
       - name: Checkout code
         uses: actions/checkout@v3
 
