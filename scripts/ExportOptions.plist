@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" 
+   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- macOS Developer ID 배포 -->
+  <key>method</key>
+  <string>developer-id</string>
+
+  <!-- 자동 서명 방식 -->
+  <key>signingStyle</key>
+  <string>automatic</string>
+
+  <!-- 번들 식별자별 프로비저닝 프로파일 지정 -->
+  <key>provisioningProfiles</key>
+  <dict>
+    <key>com.skyline23.Applepie-RPC</key>
+    <string>Applepie-RPC Profile Name</string>
+  </dict>
+
+  <!-- 사용할 서명 인증서 -->
+  <key>signingCertificate</key>
+  <string>Developer ID Application: Buseong Kim (6C922D256U)</string>
+</dict>
+</plist>
