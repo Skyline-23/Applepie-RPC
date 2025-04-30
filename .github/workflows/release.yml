@@ -47,6 +47,7 @@ jobs:
             -scheme "${{ env.APP_SCHEME }}" \
             -archivePath "${{ github.workspace }}/build/${{ env.APP_SCHEME }}.xcarchive" \
             SKIP_INSTALL=NO \
+            -configuration Release \
             -allowProvisioningUpdates \
             -allowProvisioningDeviceRegistration \
             -authenticationKeyIssuerID ${{ secrets.APPSTORE_ISSUER_ID }} \
