@@ -1,5 +1,5 @@
 {
-  "originHash" : "28e387f4485ce2e46cf2285cc9f4688e823a228171d1db39569f183c13538807",
+  "originHash" : "03d9bee29ccf57f0833033b1e14ee8efe2383510c071984f0011ddb712066de0",
   "pins" : [
     {
       "identity" : "modernslider",
@@ -38,9 +38,9 @@
       }
     },
     {
-      "identity" : "xcstrings-tool?tab=readme-ov-file",
+      "identity" : "xcstrings-tool",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/liamnichols/xcstrings-tool?tab=readme-ov-file",
+      "location" : "https://github.com/liamnichols/xcstrings-tool.git",
       "state" : {
         "revision" : "2ca4be369ff93d2bdb016f634c67ced8aebbc016",
         "version" : "1.1.0"

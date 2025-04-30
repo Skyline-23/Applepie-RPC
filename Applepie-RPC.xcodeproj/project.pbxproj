@@ -840,7 +840,7 @@
 		};
 		627E6A202DC0A1990001015C /* XCRemoteSwiftPackageReference "xcstrings-tool" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/liamnichols/xcstrings-tool?tab=readme-ov-file";
+			repositoryURL = "https://github.com/liamnichols/xcstrings-tool.git";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 1.1.0;
