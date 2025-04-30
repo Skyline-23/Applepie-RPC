@@ -18,6 +18,13 @@ jobs:
 
       - name: Verify Xcode version
         run: xcodebuild -version
+
+      - name: Import signing certificate & provisioning profile
+        uses: apple-actions/import-codesign-certs@v1
+        with:
+          p12-file-base64:             ${{ secrets.CERT_P12_BASE64 }}
+          p12-password:                ${{ secrets.CERT_PASSWORD }}
+          provisioning-profile-base64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
         
       - name: Checkout code
         uses: actions/checkout@v3
