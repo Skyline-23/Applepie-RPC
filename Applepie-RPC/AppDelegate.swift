@@ -18,7 +18,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables = Set<AnyCancellable>()
     private var appSettings: AppSettings?
     var container: ModelContainer?
-
+    
     override init() {
         super.init()
     }
@@ -42,7 +42,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             print("Failed to fetch AppSettings:", error)
         }
-
+        
         // Observe SwiftData save notifications to refresh AppSettings
         NotificationCenter.default
             .publisher(for: ModelContext.didSave)
@@ -53,7 +53,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             .store(in: &cancellables)
-
+        
         // 3) Async RPC initialization and start updates
         Task { @MainActor in
             // Request Apple Music authorization once at startup
@@ -64,7 +64,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             // 1) Set up Python environment synchronously
             await pythonExecutor.setupEnvironment()
-
+            
             // 2) Create and initialize the DiscordService using the async factory
             let discordService = await DiscordService.create(
                 clientID: "1362417259154374696",

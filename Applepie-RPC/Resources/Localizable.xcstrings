@@ -1,9 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "" : {
-
-    },
     "%llds" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -140,6 +137,23 @@
         }
       }
     },
+    "Connected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connected"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연결됨"
+          }
+        }
+      }
+    },
     "Deny" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -170,6 +184,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "기기"
+          }
+        }
+      }
+    },
+    "Disconnected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disconnected"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "해제됨"
           }
         }
       }
@@ -259,19 +290,19 @@
         }
       }
     },
-    "Pause Updates" : {
+    "Pairing Failed" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pause Updates"
+            "value" : "Pairing Failed"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "업데이트 중지"
+            "value" : "페어링 실패"
           }
         }
       }
@@ -289,23 +320,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "종료"
-          }
-        }
-      }
-    },
-    "Resume Updates" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Resume Updates"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "업데이트 재개"
           }
         }
       }
