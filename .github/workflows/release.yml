@@ -19,6 +19,9 @@ jobs:
       - name: Verify Xcode version
         run: xcodebuild -version
 
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Import signing certificate & provisioning profile
         uses: apple-actions/import-codesign-certs@v3
         with:
@@ -32,9 +35,6 @@ jobs:
           echo "${{ secrets.APPSTORE_PRIVATE_KEY_P8 }}" | base64 --decode \
             > "${GITHUB_WORKSPACE}/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
           chmod 600 "${GITHUB_WORKSPACE}/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
-        
-      - name: Checkout code
-        uses: actions/checkout@v3
 
       - name: Install create-dmg
         run: |
