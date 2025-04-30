@@ -44,6 +44,7 @@ jobs:
       - name: Build & Archive .app
         run: |
           xcodebuild archive \
+            -skipPackagePluginValidation \
             -scheme "${{ env.APP_SCHEME }}" \
             -archivePath "${{ github.workspace }}/build/${{ env.APP_SCHEME }}.xcarchive" \
             SKIP_INSTALL=NO \
