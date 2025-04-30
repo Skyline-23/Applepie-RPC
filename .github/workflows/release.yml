@@ -22,6 +22,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
       - name: Import signing certificate & provisioning profile
         uses: apple-actions/import-codesign-certs@v3
         with:
