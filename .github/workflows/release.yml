@@ -53,6 +53,7 @@ jobs:
             -authenticationKeyIssuerID ${{ secrets.APPSTORE_ISSUER_ID }} \
             -authenticationKeyID       ${{ secrets.APPSTORE_KEY_ID }} \
             -authenticationKeyPath     "${GITHUB_WORKSPACE}/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
+            OTHER_SWIFT_FLAGS="-no-verify-emitted-module-interface"
 
       - name: Export .app from archive
         run: |
@@ -67,6 +68,7 @@ jobs:
             -authenticationKeyIssuerID ${{ secrets.APPSTORE_ISSUER_ID }} \
             -authenticationKeyID       ${{ secrets.APPSTORE_KEY_ID }} \
             -authenticationKeyPath     "${GITHUB_WORKSPACE}/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
+            OTHER_SWIFT_FLAGS="-no-verify-emitted-module-interface"
 
       - name: Create DMG
         uses: QQxiaoming/create-dmg-action@v0.0.2
