@@ -27,10 +27,11 @@ jobs:
           create-keychain: true
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
 
-      - name: Create API Key file
+      - name: Create App Store Connect API Key file
         run: |
           echo "${{ secrets.APPSTORE_PRIVATE_KEY_P8 }}" | base64 --decode \
-            > AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8
+            > "${GITHUB_WORKSPACE}/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
+          chmod 600 "${GITHUB_WORKSPACE}/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
         
       - name: Checkout code
         uses: actions/checkout@v3
@@ -51,7 +52,7 @@ jobs:
             -allowProvisioningDeviceRegistration \
             -authenticationKeyIssuerID ${{ secrets.APPSTORE_ISSUER_ID }} \
             -authenticationKeyID       ${{ secrets.APPSTORE_KEY_ID }} \
-            -authenticationKeyPath     AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8
+            -authenticationKeyPath     "${GITHUB_WORKSPACE}/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
 
       - name: Export .app from archive
         run: |
@@ -65,7 +66,7 @@ jobs:
             -allowProvisioningDeviceRegistration \
             -authenticationKeyIssuerID ${{ secrets.APPSTORE_ISSUER_ID }} \
             -authenticationKeyID       ${{ secrets.APPSTORE_KEY_ID }} \
-            -authenticationKeyPath     AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8
+            -authenticationKeyPath     "${GITHUB_WORKSPACE}/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
 
       - name: Create DMG
         uses: QQxiaoming/create-dmg-action@v0.0.2
