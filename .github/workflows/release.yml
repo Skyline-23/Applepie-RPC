@@ -84,6 +84,7 @@ jobs:
           password: ${{ secrets.APPLE_PASSWORD }}
           team_id: ${{ secrets.TEAM_ID }}
           staple: true
+          xcode_path: '/Applications/Xcode_16.3.app'
 
       - name: Create GitHub Release
         id: create_release
