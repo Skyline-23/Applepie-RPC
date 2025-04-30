@@ -44,19 +44,19 @@ jobs:
       - name: Build & Archive .app
         run: |
           xcodebuild archive \
-            -skipPackagePluginValidation \
-            -allowProvisioningUpdates \
             -scheme "${{ env.APP_SCHEME }}" \
             -archivePath "${{ github.workspace }}/build/${{ env.APP_SCHEME }}.xcarchive" \
             SKIP_INSTALL=NO \
-            BUILD_LIBRARY_FOR_DISTRIBUTION=YES
+            BUILD_LIBRARY_FOR_DISTRIBUTION=YES \
+            CODE_SIGN_IDENTITY="Developer ID Application: Buseong Kim (6C922D256U)" \
+            PROVISIONING_PROFILE_SPECIFIER="Applepie-RPC Profile Name" \
+            DEVELOPMENT_TEAM="6C922D256U"
 
       - name: Export .app from archive
         run: |
           mkdir -p "${{ github.workspace }}/dist"
           xcodebuild -exportArchive \
             -skipPackagePluginValidation \
-            -allowProvisioningUpdates \
             -archivePath "${{ github.workspace }}/build/${{ env.APP_SCHEME }}.xcarchive" \
             -exportOptionsPlist ExportOptions.plist \
             -exportPath "${{ github.workspace }}/dist"
