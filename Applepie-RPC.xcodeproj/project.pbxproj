@@ -358,7 +358,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "#!/bin/bash\nset -e\n\nDLIBS=(\n  \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/MacOS/Applepie-RPC.debug.dylib\"\n  # 필요하다면 다른 internal .dylib들도 추가\n)\n\nfor D in \"${DLIBS[@]}\"; do\n  install_name_tool -change \\\n    \"/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib\" \\\n    \"@rpath/OpenSSL/libcrypto.3.dylib\" \\\n    \"$D\"\n  install_name_tool -change \\\n    \"/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib\" \\\n    \"@rpath/OpenSSL/libssl.3.dylib\" \\\n    \"$D\"\ndone\n";
+			shellScript = "#!/bin/bash\nset -e\n\nDLIBS=(\n  \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/MacOS/Applepie-RPC.debug.dylib\"\n  \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/MacOS/Applepie-RPC\"\n)\n\nfor D in \"${DLIBS[@]}\"; do\n  if [ ! -e \"$D\" ]; then\n    echo \"Skipping missing file: $D\"\n    continue\n  fi\n  install_name_tool -change \\\n    \"/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib\" \\\n    \"@rpath/OpenSSL/libcrypto.3.dylib\" \\\n    \"$D\"\n  install_name_tool -change \\\n    \"/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib\" \\\n    \"@rpath/OpenSSL/libssl.3.dylib\" \\\n    \"$D\"\ndone\n";
 		};
 		627B19CB2DB7A990003A2898 /* install_name_tool on libssl.3.dylib */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -448,7 +448,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "#!/bin/bash\nset -e\n\nPY_VER=\"3.12\"; SHORT_VER=${PY_VER//./}\n\n# 검사할 후보 경로 배열\nCANDIDATES=(\n  \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PythonSupport/lib-dynload/_hashlib.cpython-${SHORT_VER}-darwin.so\"\n  \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/${PY_VER}/lib/python${PY_VER}/lib-dynload/_hashlib.cpython-${SHORT_VER}-darwin.so\"\n)\n\nfor HASHLIB_SO in \"${CANDIDATES[@]}\"; do\n  if [ -f \"$HASHLIB_SO\" ]; then\n    echo \"🔧 패치할 _hashlib.so 찾음: $HASHLIB_SO\"\n    install_name_tool -change \\\n      \"/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib\" \\\n      \"@rpath/OpenSSL/libcrypto.3.dylib\" \\\n      \"$HASHLIB_SO\"\n    install_name_tool -change \\\n      \"/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib\" \\\n      \"@rpath/OpenSSL/libssl.3.dylib\" \\\n      \"$HASHLIB_SO\"\n    codesign --force --options runtime --sign \"${CODE_SIGN_IDENTITY}\" \"$HASHLIB_SO\"\n    echo \"✅ _hashlib.so 패치 & 코드사인 완료\"\n    break\n  fi\ndone\n\nif [ $HASHLIB_SO == \"\" ] || [ ! -f \"$HASHLIB_SO\" ]; then\n  echo \"⚠️ _hashlib.so 파일을 찾지 못했습니다. 복사 위치를 다시 확인해주세요.\"\nfi\n";
+			shellScript = "#!/bin/bash\nset -e\n\nPY_VER=\"3.12\"; SHORT_VER=${PY_VER//./}\n\n# 검사할 후보 경로 배열\nCANDIDATES=(\n  \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PythonSupport/lib-dynload/_hashlib.cpython-${SHORT_VER}-darwin.so\"\n  \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/${PY_VER}/lib/python${PY_VER}/lib-dynload/_hashlib.cpython-${SHORT_VER}-darwin.so\"\n)\n\nfor HASHLIB_SO in \"${CANDIDATES[@]}\"; do\n  if [ -f \"$HASHLIB_SO\" ]; then\n    echo \"🔧 패치할 _hashlib.so 찾음: $HASHLIB_SO\"\n    install_name_tool -change \\\n      \"/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib\" \\\n      \"@rpath/OpenSSL/libcrypto.3.dylib\" \\\n      \"$HASHLIB_SO\"\n    install_name_tool -change \\\n      \"/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib\" \\\n      \"@rpath/OpenSSL/libssl.3.dylib\" \\\n      \"$HASHLIB_SO\"\n    codesign --force --options runtime --sign \"${CODE_SIGN_IDENTITY}\" \"$HASHLIB_SO\"\n    echo \"✅ _hashlib.so 패치 & 코드사인 완료\"\n\n    # Explicitly code-sign OpenSSL dylibs to avoid invalid page errors\n    OPENSSL_FRAMEWORKS_DIR=\"${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Frameworks/OpenSSL\"\n    for dylib in libcrypto.3.dylib libssl.3.dylib; do\n      if [ -f \"$OPENSSL_FRAMEWORKS_DIR/$dylib\" ]; then\n        codesign --force --options runtime --sign \"${CODE_SIGN_IDENTITY}\" \\\n          \"$OPENSSL_FRAMEWORKS_DIR/$dylib\"\n        echo \"✅ Code-signed $dylib\"\n      fi\n    done\n\n    break\n  fi\ndone\n\nif [ $HASHLIB_SO == \"\" ] || [ ! -f \"$HASHLIB_SO\" ]; then\n  echo \"⚠️ _hashlib.so 파일을 찾지 못했습니다. 복사 위치를 다시 확인해주세요.\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -656,6 +656,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks/OpenSSL",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
 					"-Wl,-rpath,@executable_path/../Frameworks/OpenSSL",
@@ -706,6 +707,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks/OpenSSL",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
 					"-Wl,-rpath,@executable_path/../Frameworks/OpenSSL",
