@@ -18,6 +18,7 @@ class PyatvService: PythonService {
     private var pairDeviceFinishSyncFunc: PythonObject? = nil
     private var isPairingNeededSyncFunc: PythonObject? = nil
     private var removePairingSyncFunc: PythonObject? = nil
+    private var canclelPairingSyncFunc: PythonObject? = nil
     
     /// Factory to create and set up PyatvService on the Python thread.
     static public func create(executor: PythonExecutor) async -> PyatvService {
@@ -37,6 +38,7 @@ class PyatvService: PythonService {
                 service.pairDeviceFinishSyncFunc = mod.pair_device_finish_sync
                 service.isPairingNeededSyncFunc = mod.is_pairing_needed_sync
                 service.removePairingSyncFunc = mod.remove_pairing_sync
+                service.canclelPairingSyncFunc = mod.cancel_pairing_sync
             }
             print("[PyatvService] Imported pyatv_service module")
         }
@@ -150,6 +152,18 @@ class PyatvService: PythonService {
         }
         return await callPython { () -> Bool in
             let result = f()
+            return Bool(result) ?? false
+        }
+    }
+    
+    /// Cancel pairing.
+    func cancelPairing(host: String) async -> Bool {
+        guard let f = canclelPairingSyncFunc else {
+            print("[PyatvService] cancel_pairing_sync function is not initialized")
+            return false
+        }
+        return await callPython { () -> Bool in
+            let result = f(host)
             return Bool(result) ?? false
         }
     }

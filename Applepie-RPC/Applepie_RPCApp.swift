@@ -7,14 +7,14 @@
 
 import SwiftUI
 import AppKit
+
 import ModernSlider
 import SwiftData
-import Combine
 
 @main
 struct ApplepieRPCApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
-
+    
     // Fallback container if AppDelegate's container is not available
     private let defaultContainer: ModelContainer = {
         do {
@@ -23,7 +23,7 @@ struct ApplepieRPCApp: App {
             fatalError("Failed to create fallback ModelContainer: \(error)")
         }
     }()
-
+    
     var body: some Scene {
         MenuBarExtra(.localizable(.appName), systemImage: "music.note.house") {
             MainMenuView()
@@ -32,7 +32,7 @@ struct ApplepieRPCApp: App {
         }
         .menuBarExtraStyle(.window)
     }
-
+    
     private func showAlert(message: String) {
         let alert = NSAlert()
         alert.messageText = message
@@ -49,7 +49,7 @@ struct MainMenuView: View {
     @State private var previousHost: String = .localizable(.localhostName)
     @StateObject private var browser = AirPlayBrowser()
     @EnvironmentObject var nowPlayingService: NowPlayingService
-
+    
     /// Current AppSettings instance, creating one if missing
     private var setting: AppSettings {
         if let existing = settings.first {
@@ -60,12 +60,12 @@ struct MainMenuView: View {
             return newSetting
         }
     }
-
+    
     /// Returns the IP address for the currently selected host.
     private var currentHostIP: String {
         browser.serviceIPs[selectedHost] ?? ""
     }
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             VStack(alignment: .leading, spacing: 4) {
@@ -107,11 +107,13 @@ struct MainMenuView: View {
                 .labelsHidden()
                 .frame(maxWidth: .infinity)
                 .onChange(of: selectedHost) { newHost in
+                    // Only perform switch if the host truly changed
+                    guard newHost != previousHost else { return }
                     switchHost(to: newHost)
                 }
             }
             .padding(.vertical, 4)
-
+            
             // Now Playing Info
             VStack(alignment: .leading, spacing: 4) {
                 Text(.localizable(.nowPlaying))
@@ -122,7 +124,7 @@ struct MainMenuView: View {
                     .italic(title.isEmpty)
             }
             .padding(.vertical, 4)
-
+            
             Button {
                 do {
                     self.setting.isPaused.toggle()
@@ -153,7 +155,7 @@ struct MainMenuView: View {
             .background(isHoveringPause ? Color(NSColor.selectedControlColor).opacity(0.2) : Color.clear)
             .cornerRadius(4)
             .keyboardShortcut("r")
-
+            
             Button {
                 NSApp.terminate(nil)
             } label: {
@@ -214,7 +216,7 @@ struct MainMenuView: View {
     }
     
     // MARK: - Methods
-
+    
     /// Handle switching to a new host: stop updates, perform pairing if needed, then resume.
     private func switchHost(to newHost: String) {
         let oldHost = previousHost
@@ -222,21 +224,30 @@ struct MainMenuView: View {
         nowPlayingService.stop()
         Task {
             let newHostIP = browser.serviceIPs[newHost] ?? ""
+            
             if await nowPlayingService.isPairingNeeded(host: newHostIP) {
-                // Begin pairing: show PIN on Apple TV
                 let began = await nowPlayingService.pairDeviceBegin(host: newHostIP)
-                guard began, let pin = promptForPIN(host: newHost) else {
-                    // Revert selection on failure
+                guard began else {
                     selectedHost = oldHost
                     return
                 }
-                guard let creds = await nowPlayingService.pairDeviceFinish(host: newHostIP, pin: pin) else {
+                // Await PIN input
+                if let pin = await showPINWindow() {
+                    if let creds = await nowPlayingService.pairDeviceFinish(host: newHostIP, pin: pin) {
+                        print("[PyatvService] Pairing finished with credentials:", creds)
+                        nowPlayingService.updateTimer(setting.updateInterval, newHostIP)
+                        previousHost = newHost
+                    } else {
+                        print("[PyatvService] Pairing failed")
+                        selectedHost = oldHost
+                    }
+                } else {
+                    _ = await nowPlayingService.pairDeviceCancel(host: newHostIP)
                     selectedHost = oldHost
-                    return
                 }
-                print("[PyatvService] Pairing finished with credentials:", creds)
+                return
             }
-            nowPlayingService.updateTimer(setting.updateInterval, currentHostIP)
+            nowPlayingService.updateTimer(setting.updateInterval, newHostIP)
             previousHost = newHost
         }
     }
@@ -247,27 +258,119 @@ struct MainMenuView: View {
         previousHost = .localizable(.localhostName)
         nowPlayingService.updateTimer(setting.updateInterval, "localhost")
     }
-        
-
+    
+    /// Display PIN entry window and await user input
+    private func showPINWindow() async -> Int? {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Int?, Never>) in
+            var pinWindow: NSWindow? = nil
+            // Create SwiftUI content view
+            let contentView = PINPromptWindow { pin in
+                pinWindow?.close()
+                continuation.resume(returning: pin)
+            }
+            // Wrap in hosting controller
+            let hostingController = NSHostingController(rootView: contentView)
+            // Create window
+            pinWindow = NSWindow(contentViewController: hostingController)
+            pinWindow?.titleVisibility = .hidden
+            pinWindow?.titlebarAppearsTransparent = true
+            pinWindow?.isOpaque = false
+            pinWindow?.backgroundColor = .clear
+            pinWindow?.styleMask = [.titled, .closable]
+            // Insert fullSizeContentView and customize titlebar buttons
+            pinWindow?.styleMask.insert(.fullSizeContentView)
+            pinWindow?.standardWindowButton(.closeButton)?.isHidden = true
+            pinWindow?.standardWindowButton(.miniaturizeButton)?.isHidden = true
+            pinWindow?.standardWindowButton(.zoomButton)?.isHidden = true
+            pinWindow?.isMovableByWindowBackground = true
+            // Set window content size and recenter
+            pinWindow?.setContentSize(NSSize(width: 350, height: 200))
+            pinWindow?.center()
+            pinWindow?.level = .floating
+            pinWindow?.makeKeyAndOrderFront(nil)
+        }
+    }
+    
+    
     private func showAlert(message: String) {
         let alert = NSAlert()
         alert.messageText = message
         alert.runModal()
     }
+}
+struct PINPromptWindow: View {
+    @State private var digits = ["", "", "", ""]
+    var onComplete: (Int?) -> Void
     
-    /// Presents a modal dialog to ask user for the pairing PIN.
-    private func promptForPIN(host: String) -> Int? {
-        let alert = NSAlert()
-        alert.messageText = .localizable(.enterPairingPINNumber)
-        alert.informativeText = .localizable(.enterThe4PINNumbersOnTheScreen)
-        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
-        alert.accessoryView = input
-        alert.addButton(withTitle: .localizable(.confirm))
-        alert.addButton(withTitle: .localizable(.deny))
-        let response = alert.runModal()
-        guard response == .alertFirstButtonReturn, let pin = Int(input.stringValue) else {
-            return nil
+    var body: some View {
+        VStack(spacing: 16) {
+            PINEntryView(digits: $digits)  // Update PINEntryView to accept binding
+            HStack(spacing: 12) {
+                Button("Deny") {
+                    // Cancel pairing session on Python side
+                    onComplete(nil)
+                }
+                Button("Confirm") {
+                    let pin = Int(digits.joined())
+                    onComplete(pin)
+                }
+            }
         }
-        return pin
+        .padding(20)
+        .background(Color(NSColor.windowBackgroundColor).opacity(0.95))
+        .cornerRadius(12)
+        .frame(width: 300)
+    }
+}
+
+/// SwiftUI view for entering a 4-digit PIN
+struct PINEntryView: View {
+    @Binding var digits: [String]
+    @FocusState private var focusIndex: Int?
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<4, id: \.self) { idx in
+                TextField("", text: $digits[idx])
+                    .frame(width: 50, height: 50)
+                    .multilineTextAlignment(.center)
+                    .background(Color.clear)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color(NSColor.separatorColor), lineWidth: 1)
+                    )
+                    .font(.system(size: 18))
+                    .textFieldStyle(.plain)
+                    .focused($focusIndex, equals: idx)
+                    .onChange(of: digits[idx]) { newValue in
+                        // Filter out non-digits and keep only the first character
+                        let filtered = newValue.filter { $0.isNumber }
+                        let first = filtered.first.map(String.init) ?? ""
+                        if digits[idx] != first {
+                            digits[idx] = first
+                        }
+                        if !first.isEmpty {
+                            // Auto-advance when one digit entered
+                            if idx < 3 {
+                                focusIndex = idx + 1
+                            }
+                        } else {
+                            // Auto-back when deleted
+                            if idx > 0 {
+                                focusIndex = idx - 1
+                            }
+                        }
+                    }
+            }
+        }
+        .padding(8)
+        .onAppear {
+            focusIndex = 0
+        }
+    }
+    
+    /// Returns the concatenated PIN string
+    func pinString() -> String {
+        digits.joined()
     }
 }

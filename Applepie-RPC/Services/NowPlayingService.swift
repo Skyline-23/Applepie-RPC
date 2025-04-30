@@ -132,6 +132,12 @@ class NowPlayingService: ObservableObject {
         return await service.pairDeviceFinishSync(host: host, pin: pin)
     }
     
+    /// Cancel pairing
+    func pairDeviceCancel(host: String) async -> Bool {
+        guard let service = atvService else { return false }
+        return await service.cancelPairing(host: host)
+    }
+    
     /// Check pairing needed
     func isPairingNeeded(host: String) async -> Bool {
         if host == "localhost" {
