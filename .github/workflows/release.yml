@@ -47,7 +47,6 @@ jobs:
             -scheme "${{ env.APP_SCHEME }}" \
             -archivePath "${{ github.workspace }}/build/${{ env.APP_SCHEME }}.xcarchive" \
             SKIP_INSTALL=NO \
-            BUILD_LIBRARY_FOR_DISTRIBUTION=YES \
             -allowProvisioningUpdates \
             -allowProvisioningDeviceRegistration \
             -authenticationKeyIssuerID ${{ secrets.APPSTORE_ISSUER_ID }} \
@@ -67,8 +66,7 @@ jobs:
             -allowProvisioningDeviceRegistration \
             -authenticationKeyIssuerID ${{ secrets.APPSTORE_ISSUER_ID }} \
             -authenticationKeyID       ${{ secrets.APPSTORE_KEY_ID }} \
-            -authenticationKeyPath     "${GITHUB_WORKSPACE}/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8" \
-            OTHER_SWIFT_FLAGS="-no-verify-emitted-module-interface"
+            -authenticationKeyPath     "${GITHUB_WORKSPACE}/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
 
       - name: Create DMG
         uses: QQxiaoming/create-dmg-action@v0.0.2
