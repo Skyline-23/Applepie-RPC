@@ -24,8 +24,8 @@ jobs:
         with:
           p12-file-base64: ${{ secrets.CERT_P12_BASE64 }}
           p12-password: ${{ secrets.CERT_PASSWORD }}
-          create-keychain:  true
-          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD 
+          create-keychain: true
+          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
 
       - name: Install provisioning profile
         run: |
