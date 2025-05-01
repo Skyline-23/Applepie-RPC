@@ -49,7 +49,8 @@ jobs:
           echo "Found Developer ID cert: $DEV_IDENTITY"
           echo "CODE_SIGN_IDENTITY=$DEV_IDENTITY" >> $GITHUB_ENV
         env:
-          KEYCHAIN_PATH: ${{ steps.import-certs.outputs.keychain }}
+          KEYCHAIN_NAME: ${{ steps.import-certs.outputs.keychain }}
+          KEYCHAIN_PATH: "$HOME/Library/Keychains/${KEYCHAIN_NAME}.keychain-db"
 
       - name: Fail if no code signing identity
         run: |
