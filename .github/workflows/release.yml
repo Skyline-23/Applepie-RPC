@@ -64,7 +64,7 @@ jobs:
             -allowProvisioningUpdates \
             -allowProvisioningDeviceRegistration \
             CODE_SIGN_STYLE="Manual" \
-            CODE_SIGN_IDENTITY="${{ env.CODE_SIGN_IDENTITY }}" \
+            CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
             OTHER_SWIFT_FLAGS="-no-verify-emitted-module-interface"
 
       - name: Extract .app from archive
