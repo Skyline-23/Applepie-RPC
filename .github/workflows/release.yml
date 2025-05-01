@@ -35,6 +35,15 @@ jobs:
           create-keychain: true
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
 
+      - name: Find Developer ID Application identity
+        run: |
+          DEV_IDENTITY=$(
+            security find-identity -v -p codesigning \
+              | awk -F\" '/Developer ID Application:/ {print $2; exit}'
+          )
+          echo "Found Developer ID cert: $DEV_IDENTITY"
+          echo "CODE_SIGN_IDENTITY=$DEV_IDENTITY" >> $GITHUB_ENV
+
       - name: Create App Store Connect API Key file
         run: |
           echo "${{ secrets.APPSTORE_PRIVATE_KEY_P8 }}" | base64 --decode \
@@ -55,9 +64,8 @@ jobs:
             -configuration Release \
             -allowProvisioningUpdates \
             -allowProvisioningDeviceRegistration \
-            -authenticationKeyIssuerID ${{ secrets.APPSTORE_ISSUER_ID }} \
-            -authenticationKeyID       ${{ secrets.APPSTORE_KEY_ID }} \
-            -authenticationKeyPath     "${GITHUB_WORKSPACE}/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8" \
+            CODE_SIGN_STYLE="Manual" \
+            CODE_SIGN_IDENTITY="${{ env.CODE_SIGN_IDENTITY }}" \
             OTHER_SWIFT_FLAGS="-no-verify-emitted-module-interface"
 
       - name: Extract .app from archive
