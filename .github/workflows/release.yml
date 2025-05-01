@@ -127,7 +127,7 @@ jobs:
         uses: GuillaumeFalourd/notary-tools@v1
         with:
           # 만들어진 DMG 경로
-          product_path: "${{ github.workspace }}/${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg"
+          product_path: "${{ github.workspace }}/dist/${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg"
           # Repository secrets에 등록한 값
           apple_id: ${{ secrets.APPLE_ID }}
           password: ${{ secrets.APPLE_PASSWORD }}
