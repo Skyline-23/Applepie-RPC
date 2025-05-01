@@ -49,7 +49,7 @@ jobs:
           echo "Found Developer ID cert: $DEV_IDENTITY"
           echo "CODE_SIGN_IDENTITY=$DEV_IDENTITY" >> $GITHUB_ENV
         env:
-          KEYCHAIN_PATH: ${{ runner.user_home }}/Library/Keychains/signing_temp.keychain-db
+          KEYCHAIN_PATH: $HOME/Library/Keychains/signing_temp.keychain-db
 
       - name: Fail if no code signing identity
         run: |
