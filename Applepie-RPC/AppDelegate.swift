@@ -9,6 +9,7 @@ import Cocoa
 import SwiftData
 import MusicKit
 import Combine
+import ApplicationServices
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var discordService: DiscordService?
@@ -24,6 +25,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Request Accessibility permission if needed
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        if !AXIsProcessTrustedWithOptions(options) {
+            let alert = NSAlert()
+            alert.messageText = .localizable(.permissionRequired)
+            alert.informativeText = .localizable(.permissionRequiredDesc)
+            alert.alertStyle = .warning
+            alert.runModal()
+            NSApp.terminate(nil)
+        }
         // Load saved update interval from AppSettings
         var interval: Double = 1.0
         do {
