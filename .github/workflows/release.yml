@@ -42,7 +42,7 @@ jobs:
               | awk -F\" '/Developer ID Application:/ {print $2; exit}'
           )
           echo "Found Developer ID cert: $DEV_IDENTITY"
-          echo "CODE_SIGN_IDENTITY=$DEV_IDENTITY"
+          echo "CODE_SIGN_IDENTITY=$DEV_IDENTITY" >> $GITHUB_ENV
 
       - name: Create App Store Connect API Key file
         run: |
