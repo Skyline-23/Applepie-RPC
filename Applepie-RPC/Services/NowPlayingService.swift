@@ -79,7 +79,7 @@ class NowPlayingService: ObservableObject {
                 set ar to artist of current track
                 set pos to player position
                 set dur to duration of current track
-                return "#" & t & "#" & ar & "#" & al & "#" & pos & "#" & dur
+                return "|" & t & "|" & ar & "|" & al & "|" & pos & "|" & dur
             else
                 return ""
             end if
@@ -96,12 +96,12 @@ class NowPlayingService: ObservableObject {
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             let raw = String(data: data, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let parts = raw.split(separator: "#", maxSplits: 5).map { String($0) }
-            let title    = parts.count > 1 ? parts[1] : ""
-            let artist   = parts.count > 2 ? parts[2] : ""
-            let album    = parts.count > 3 ? parts[3] : ""
-            let position = parts.count > 4 ? Double(parts[4]) ?? 0.0 : 0.0
-            let duration = parts.count > 5 ? Double(parts[5]) ?? 0.0 : 0.0
+            let parts = raw.split(separator: "|").map(String.init)
+            let title    = parts.count > 0 ? parts[0] : ""
+            let artist   = parts.count > 1 ? parts[1] : ""
+            let album    = parts.count > 2 ? parts[2] : ""
+            let position = parts.count > 3 ? Double(parts[3]) ?? 0.0 : 0.0
+            let duration = parts.count > 4 ? Double(parts[4]) ?? 0.0 : 0.0
             return (trackID: nil, title: title, artist: artist, album: album, position: position, duration: duration)
         } catch {
             return (trackID: nil, title: "", artist: nil, album: nil, position: 0.0, duration: 0.0)
