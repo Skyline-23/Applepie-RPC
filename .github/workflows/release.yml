@@ -44,7 +44,11 @@ jobs:
           
           security list-keychains -d user -s "$KEYCHAIN_PATH" \
             $(security list-keychains -d user | sed -e 's/"//g')
-            
+
+          echo "----- ALL IDENTITIES IN KEYCHAIN -----"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+          echo "--------------------------------------"
+    
           DEV_IDENTITY=$(
             security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
               | awk -F\" '/Developer ID Application:/ {print $2; exit}'
