@@ -104,7 +104,6 @@ jobs:
         run: |
           APP_PATH="${{ github.workspace }}/dist/${{ env.APP_SCHEME }}.app"
           DIST_DIR="${{ github.workspace }}/dist"
-          # 1) Info.plist 에서 버전 꺼내기
           VERSION=$(/usr/libexec/PlistBuddy \
             -c "Print :CFBundleShortVersionString" \
             "$APP_PATH/Contents/Info.plist")
@@ -114,9 +113,8 @@ jobs:
             "$APP_PATH" \
             "$DIST_DIR" \
             --overwrite \
-            --volname "${{ env.APP_SCHEME }}-${VERSION}"
+            --dmg-title="${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg"
 
-          # 3) 생성된 기본 DMG 파일명(예: Applepie-RPC 1.0.dmg) 찾아서 리네임
           GENERATED=$(ls "$DIST_DIR" | grep "${{ env.APP_SCHEME }} ${VERSION}.dmg" || true)
           if [ -z "$GENERATED" ]; then
             exit 1
