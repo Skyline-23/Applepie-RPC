@@ -412,7 +412,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "#!/bin/bash\nset -e\n\n# 1) 시스템 Python CLI 찾기\nif command -v python3.12 >/dev/null 2>&1; then\n  PYBIN=python3.12\nelif command -v python3 >/dev/null 2>&1; then\n  PYBIN=python3\nelse\n  echo \"❌ python3.12/ python3 CLI가 필요합니다.\" >&2\n  exit 1\nfi\necho \"➡️ 부트스트랩에 사용할 Python: $($PYBIN --version)\"\n\n# 2) site-packages 경로\nPY_VER=\"3.12\"\nSITE_PKGS=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/${PY_VER}/lib/python${PY_VER}/site-packages\"\nmkdir -p \"$SITE_PKGS\"\n\n# 3) ensurepip → pip 부트스트랩\n\"$PYBIN\" -m ensurepip --upgrade\n\"$PYBIN\" -m pip install --upgrade pip setuptools wheel \\\n     --no-deps --target \"$SITE_PKGS\"\n\n# 4) 프로젝트 패키지 설치\n\"$PYBIN\" -m pip install pyatv aiohttp \\\n     https://github.com/qwertyquerty/pypresence/archive/master.zip \\\n     --no-deps --upgrade --target \"$SITE_PKGS\"\n\n# 5) 설치된 C-extension(.so) 서명\nfind \"$SITE_PKGS\" -name '*.so' \\\n     -exec codesign --force --options runtime --timestamp \\\n         --sign \"${CODE_SIGN_IDENTITY}\" {} \\;\n\n# Site-packages inside the embedded Python.framework\nFRAMEWORK_SITE_PKGS=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/${PY_VER}/lib/python${PY_VER}/site-packages\"\nif [ -d \"$FRAMEWORK_SITE_PKGS\" ]; then\n  find \"$FRAMEWORK_SITE_PKGS\" -name '*.so' \\\n       -exec codesign --force --options runtime --timestamp \\\n           --sign \"${CODE_SIGN_IDENTITY}\" {} \\;\n  echo \"✅ Framework site-packages .so 코드사인 완료\"\nfi\n\necho \"✅ pip 부트스트랩 & 패키지 설치 완료\"\n";
+			shellScript = "#!/bin/bash\nset -e\n\n# 1) 시스템 Python CLI 찾기\nif command -v python3.12 >/dev/null 2>&1; then\n  PYBIN=python3.12\nelif command -v python3 >/dev/null 2>&1; then\n  PYBIN=python3\nelse\n  echo \"❌ python3.12/ python3 CLI가 필요합니다.\" >&2\n  exit 1\nfi\necho \"➡️ 부트스트랩에 사용할 Python: $($PYBIN --version)\"\n\n# 2) site-packages 경로\nPY_VER=\"3.12\"\nSITE_PKGS=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/${PY_VER}/lib/python${PY_VER}/site-packages\"\nmkdir -p \"$SITE_PKGS\"\n\n# 3) ensurepip → pip 부트스트랩\n\"$PYBIN\" -m ensurepip --upgrade\n\"$PYBIN\" -m pip install --upgrade pip setuptools wheel \\\n     --no-deps --target \"$SITE_PKGS\"\n\n# 4) 프로젝트 패키지 설치\n\"$PYBIN\" -m pip install pyatv aiohttp \\\n     https://github.com/qwertyquerty/pypresence/archive/master.zip \\\n     --no-deps --upgrade --target \"$SITE_PKGS\"\n\n# 5) 설치된 C-extension(.so) 서명\nfind \"$SITE_PKGS\" -name '*.so' \\\n     -exec codesign --force --options runtime --timestamp \\\n         --sign \"${CODE_SIGN_IDENTITY}\" {} \\;\n\necho \"✅ pip 부트스트랩 & 패키지 설치 완료\"\n";
 		};
 		62B562AD2DB799D90094DC22 /* Codesign .so / dylib */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -430,7 +430,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "#!/bin/bash\nset -e\n\n# 1. lib-dynload 경로\nDYNL=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PythonSupport/lib-dynload\"\n\necho \"🔐 code‑signing lib-dynload/.so files in $DYNL …\"\n\n# 2. .so 들 강제로 코드사인\nfind \"$DYNL\" -type f -name '*.so' | while read so; do\n  echo \"  • codesign $so\"\n  codesign --force --options runtime --timestamp \\\n           --sign \"${CODE_SIGN_IDENTITY}\" \\\n           \"$so\"\ndone\n\n# 3. (선택) 만약 Python.framework 내부 lib-dynload 도 필요하면\nFW_DYNL=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/lib/python3.12/lib-dynload\"\nif [ -d \"$FW_DYNL\" ]; then\n  echo \"🔐 code‑signing Python.framework lib-dynload/.so files in $FW_DYNL …\"\n  find \"$FW_DYNL\" -type f -name '*.so' | while read so; do\n    echo \"  • codesign $so\"\n    codesign --force --options runtime --timestamp \\\n             --sign \"${CODE_SIGN_IDENTITY}\" \\\n             \"$so\"\n  done\nfi\n\n# 4. site-packages 내 모든 .so 파일 코드사인\nSITE_PKGS=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages\"\nif [ -d \"$SITE_PKGS\" ]; then\n  echo \"🔐 code‑signing site-packages .so files in $SITE_PKGS …\"\n  find \"$SITE_PKGS\" -type f -name '*.so' | while read so; do\n    echo \"  • codesign $so\"\n    codesign --force --options runtime --timestamp \\\n             --sign \"${CODE_SIGN_IDENTITY}\" \\\n             \"$so\"\n  done\n  echo \"✅ site-packages 코드사인 완료\"\nfi\n\necho \"✅ lib‑dynload 코드사인 완료\"\n\necho \"✅ Signing main binary with timestamp\"\ncodesign --force --options runtime --timestamp \\\n    --sign \"${CODE_SIGN_IDENTITY}\" \\\n    \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/MacOS/${PRODUCT_NAME}\"\n";
+			shellScript = "#!/bin/bash\nset -e\n\n# 1. lib-dynload 경로\nDYNL=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PythonSupport/lib-dynload\"\n\necho \"🔐 code‑signing lib-dynload/.so files in $DYNL …\"\n\n# 2. .so 들 강제로 코드사인\nfind \"$DYNL\" -type f -name '*.so' | while read so; do\n  echo \"  • codesign $so\"\n  codesign --force --options runtime --timestamp \\\n           --sign \"${CODE_SIGN_IDENTITY}\" \\\n           \"$so\"\ndone\n\n# 3. (선택) 만약 Python.framework 내부 lib-dynload 도 필요하면\nFW_DYNL=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/lib/python3.12/lib-dynload\"\nif [ -d \"$FW_DYNL\" ]; then\n  echo \"🔐 code‑signing Python.framework lib-dynload/.so files in $FW_DYNL …\"\n  find \"$FW_DYNL\" -type f -name '*.so' | while read so; do\n    echo \"  • codesign $so\"\n    codesign --force --options runtime --timestamp \\\n             --sign \"${CODE_SIGN_IDENTITY}\" \\\n             \"$so\"\n  done\nfi\n\n# 4. site-packages 내 모든 .so 파일 코드사인\nSITE_PKGS=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages\"\nif [ -d \"$SITE_PKGS\" ]; then\n  echo \"🔐 code‑signing site-packages .so files in $SITE_PKGS …\"\n  find \"$SITE_PKGS\" -type f -name '*.so' | while read so; do\n    echo \"  • codesign $so\"\n    codesign --force --options runtime --timestamp \\\n             --sign \"${CODE_SIGN_IDENTITY}\" \\\n             \"$so\"\n  done\n  echo \"✅ site-packages 코드사인 완료\"\nfi\n\n# 4.1. Resources 내 site-packages .so 파일 추가 서명\nRES_SITE_PKGS=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PythonSupport/lib/python3.12/site-packages\"\nif [ -d \"$RES_SITE_PKGS\" ]; then\n  echo \"🔐 code‑signing Resources site-packages .so files in $RES_SITE_PKGS …\"\n  find \"$RES_SITE_PKGS\" -type f -name '*.so' | while read so; do\n    echo \"  • codesign $so\"\n    codesign --force --options runtime --timestamp \\\n             --sign \"${CODE_SIGN_IDENTITY}\" \\\n             \"$so\"\n  done\n  echo \"✅ Resources site-packages 코드사인 완료\"\nfi\n\necho \"✅ lib‑dynload 코드사인 완료\"\n\necho \"✅ Signing main binary with timestamp\"\ncodesign --force --options runtime --timestamp \\\n    --sign \"${CODE_SIGN_IDENTITY}\" \\\n    \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/MacOS/${PRODUCT_NAME}\"\n\n# 4.2. 코드사인 Resources 내 실행파일\nRES_BIN=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/applepie-rpc\"\nif [ -f \"$RES_BIN\" ]; then\n  echo \"🔐 code-signing Resources executable $RES_BIN …\"\n  codesign --force --options runtime --timestamp \\\n           --entitlements \"${PROJECT_DIR}/Applepie-RPC/Resources/Applepie_RPC.entitlements\" \\\n           --sign \"${CODE_SIGN_IDENTITY}\" \\\n           \"$RES_BIN\"\n  echo \"✅ Resources executable 코드사인 완료\"\nfi\n\n# 5. 코드사인 OpenSSL 라이브러리\nOPENSSL_DIR=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/OpenSSL\"\nif [ -d \"$OPENSSL_DIR\" ]; then\n  echo \"🔐 code‑signing OpenSSL dylibs in $OPENSSL_DIR …\"\n  find \"$OPENSSL_DIR\" -type f \\( -name '*.dylib' \\) | while read lib; do\n    echo \"  • codesign $lib\"\n    codesign --force --options runtime --timestamp \\\n             --sign \"${CODE_SIGN_IDENTITY}\" \\\n             \"$lib\"\n  done\nfi\n\n# 5b. 재서명: Python.framework 내 모든 .dylib\nAPP=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH\"\necho \"🔐 Signing all Python.framework .dylib in $APP/Frameworks/Python.framework/Versions/3.12/lib …\"\nfind \"$APP/Frameworks/Python.framework/Versions/3.12/lib\" -name '*.dylib' | while read lib; do\n  echo \"  • Signing $lib\"\n  codesign --force --options runtime --timestamp \\\n           --sign \"${CODE_SIGN_IDENTITY}\" \\\n           \"$lib\"\ndone\n\n# 5a. Python config object 파일 서명\nCONFIG_OBJ_DIR=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/lib/python3.12/config-3.12-darwin\"\nif [ -d \"$CONFIG_OBJ_DIR\" ]; then\n  echo \"🔐 code‑signing config object files in $CONFIG_OBJ_DIR …\"\n  find \"$CONFIG_OBJ_DIR\" -type f -name '*.o' | while read obj; do\n    echo \"  • codesign $obj\"\n    codesign --force --options runtime --timestamp \\\n             --sign \"${CODE_SIGN_IDENTITY}\" \\\n             \"$obj\"\n  done\n  echo \"✅ config object files 코드사인 완료\"\nfi\n\n# 6. 코드사인 Python 실행 파일\nPY_EXE_DIR=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/bin\"\nif [ -d \"$PY_EXE_DIR\" ]; then\n  echo \"🔐 code‑signing Python executables in $PY_EXE_DIR …\"\n  find \"$PY_EXE_DIR\" -type f -perm +111 | while read exe; do\n    echo \"  • codesign $exe\"\n    codesign --force --options runtime --timestamp \\\n             --sign \"${CODE_SIGN_IDENTITY}\" \\\n             \"$exe\"\n  done\nfi\n";
 		};
 		62B562BF2DB7A5E00094DC22 /* Patch app executable RPATHs */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -624,6 +624,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Applepie-RPC/Resources/Applepie_RPC.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -658,12 +659,14 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
+				OTHER_CODE_SIGN_FLAGS = "--timestamp";
 				OTHER_LDFLAGS = (
 					"-Wl,-rpath,@executable_path/../Frameworks/OpenSSL",
 					"-Wl,-rpath,@executable_path/../Frameworks/Python.framework/Versions/3.12/lib/python3.12",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -675,6 +678,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Applepie-RPC/Resources/Applepie_RPC.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -709,12 +713,14 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
+				OTHER_CODE_SIGN_FLAGS = "--timestamp";
 				OTHER_LDFLAGS = (
 					"-Wl,-rpath,@executable_path/../Frameworks/OpenSSL",
 					"-Wl,-rpath,@executable_path/../Frameworks/Python.framework/Versions/3.12/lib/python3.12",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
