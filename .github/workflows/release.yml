@@ -44,6 +44,13 @@ jobs:
           echo "Found Developer ID cert: $DEV_IDENTITY"
           echo "CODE_SIGN_IDENTITY=$DEV_IDENTITY" >> $GITHUB_ENV
 
+      - name: Fail if no code signing identity
+        run: |
+          if [ -z "${CODE_SIGN_IDENTITY}" ]; then
+            echo "❌ CODE_SIGN_IDENTITY is not set. Aborting."
+            exit 1
+          fi
+
       - name: Create App Store Connect API Key file
         run: |
           echo "${{ secrets.APPSTORE_PRIVATE_KEY_P8 }}" | base64 --decode \
