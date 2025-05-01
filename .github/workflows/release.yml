@@ -78,15 +78,14 @@ jobs:
         run: |
           echo "🔍 CODE_SIGN_IDENTITY is: [$CODE_SIGN_IDENTITY]"
           xcodebuild archive \
-            -skipPackagePluginValidation \
             -scheme "${{ env.APP_SCHEME }}" \
-            -archivePath "${{ github.workspace }}/build/${{ env.APP_SCHEME }}.xcarchive" \
-            SKIP_INSTALL=NO \
+            -skipPackagePluginValidation \
             -configuration Release \
-            -allowProvisioningUpdates \
-            -allowProvisioningDeviceRegistration \
+            -archivePath "${{ github.workspace }}/build/${{ env.APP_SCHEME }}.xcarchive" \
             CODE_SIGN_STYLE="Manual" \
             CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            DEVELOPMENT_TEAM="Q23JLSJCCV"
             OTHER_SWIFT_FLAGS="-no-verify-emitted-module-interface"
 
       - name: Extract .app from archive
