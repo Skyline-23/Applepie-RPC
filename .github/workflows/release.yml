@@ -99,6 +99,7 @@ jobs:
         run: |
           APP="${{ github.workspace }}/dist/${{ env.APP_SCHEME }}.app"
           codesign --force --deep --options runtime --timestamp \
+                   --entitlements "${PROJECT_DIR}/Applepie-RPC/Applepie-RPC.entitlements" \
                    --sign "${CODE_SIGN_IDENTITY}" \
                    "$APP"
 
