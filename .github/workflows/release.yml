@@ -38,9 +38,9 @@ jobs:
 
       - name: Find Developer ID Application identity
         run: |
-          security list-keychains -d user -s "$KEYCHAIN_PATH" \
-            "$(security list-keychains -d user | sed -e 's/"//g')"
-
+          security list-keychains -d user -s "${{ steps.import-certs.outputs.keychain-path }}" \
+            $(security list-keychains -d user | sed -e 's/"//g')
+            
           DEV_IDENTITY=$(
             security find-identity -v -p codesigning "${{ steps.import-certs.outputs.keychain-path }}" \
               | awk -F\" '/Developer ID Application:/ {print $2; exit}'
