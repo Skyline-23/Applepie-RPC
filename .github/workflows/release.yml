@@ -100,7 +100,7 @@ jobs:
           APP="${{ github.workspace }}/dist/${{ env.APP_SCHEME }}.app"
           ENTITLEMENTS="${{ github.workspace }}/Applepie-RPC/Resources/Applepie_RPC.entitlements"
           codesign --force --deep --options runtime --timestamp \
-                   --entitlements "${PROJECT_DIR}/Applepie-RPC/Resources/Applepie_RPC.entitlements" \
+                   --entitlements "$ENTITLEMENTS" \
                    --sign "${CODE_SIGN_IDENTITY}" \
                    "$APP"
 
