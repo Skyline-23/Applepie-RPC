@@ -37,12 +37,17 @@ jobs:
 
       - name: Find Developer ID Application identity
         run: |
+          security list-keychains -d user -s "$KEYCHAIN_PATH" \
+            "$(security list-keychains -d user | sed -e 's/"//g')"
+
           DEV_IDENTITY=$(
-            security find-identity -v -p codesigning \
+            security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
               | awk -F\" '/Developer ID Application:/ {print $2; exit}'
           )
           echo "Found Developer ID cert: $DEV_IDENTITY"
           echo "CODE_SIGN_IDENTITY=$DEV_IDENTITY" >> $GITHUB_ENV
+        env:
+          KEYCHAIN_PATH: ${{ steps.import-certs.outputs.keychain-path }}
 
       - name: Fail if no code signing identity
         run: |
