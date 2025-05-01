@@ -101,15 +101,15 @@ jobs:
       - name: Verify Python scripts are bundled
         run: |
           APP="dist/${{ env.APP_SCHEME }}.app"
-          echo "🔍 Checking Python scripts in $APP/Contents/Resources/python/"
+          echo "🔍 Checking Python scripts in $APP/Contents/Resources/"
           MISSING=0
-          for SCRIPT in discord_service.py pyatv_service.py applepie-rpc.py; do
-            if [ ! -f "$APP/Contents/Resources/python/$SCRIPT" ]; then
+          for SCRIPT in discord_service.py pyatv_service.py; do
+            if [ ! -f "$APP/Contents/Resources/$SCRIPT" ]; then
               echo "::error:: Missing script: $SCRIPT"
               MISSING=1
             fi
           done
-          ls -R "$APP/Contents/Resources/python" || true
+          ls -R "$APP/Contents/Resources" || true
           if [ $MISSING -ne 0 ]; then
             echo "::error:: One or more Python scripts are not bundled in the .app"
             exit 1
