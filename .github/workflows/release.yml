@@ -142,6 +142,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-          file: ${{ github.workspace }}/dist/${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg
+          files: ${{ github.workspace }}/dist/${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
