@@ -42,7 +42,7 @@ jobs:
               | awk -F\" '/Developer ID Application:/ {print $2; exit}'
           )
           echo "Found Developer ID cert: $DEV_IDENTITY"
-          echo "CODE_SIGN_IDENTITY=$DEV_IDENTITY" >> $GITHUB_ENV
+          echo "CODE_SIGN_IDENTITY=$DEV_IDENTITY"
 
       - name: Create App Store Connect API Key file
         run: |
@@ -55,6 +55,7 @@ jobs:
 
       - name: Build & Archive .app
         run: |
+          echo "🔍 CODE_SIGN_IDENTITY is: [$CODE_SIGN_IDENTITY]"
           xcodebuild archive \
             -skipPackagePluginValidation \
             -scheme "${{ env.APP_SCHEME }}" \
