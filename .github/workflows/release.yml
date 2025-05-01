@@ -28,6 +28,7 @@ jobs:
           python-version: '3.12'
 
       - name: Import signing certificate & provisioning profile
+        id: import-certs
         uses: apple-actions/import-codesign-certs@v3
         with:
           p12-file-base64: ${{ secrets.CERT_P12_BASE64 }}
@@ -41,7 +42,7 @@ jobs:
             "$(security list-keychains -d user | sed -e 's/"//g')"
 
           DEV_IDENTITY=$(
-            security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
+            security find-identity -v -p codesigning "${{ steps.import-certs.outputs.keychain-path }}" \
               | awk -F\" '/Developer ID Application:/ {print $2; exit}'
           )
           echo "Found Developer ID cert: $DEV_IDENTITY"
