@@ -50,9 +50,8 @@ jobs:
             > "${GITHUB_WORKSPACE}/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
           chmod 600 "${GITHUB_WORKSPACE}/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
 
-      - name: Install create-dmg
-        run: |
-          brew install create-dmg
+      - name: Install create-dmg CLI
+        run: npm install --global create-dmg
 
       - name: Build & Archive .app
         run: |
@@ -74,13 +73,17 @@ jobs:
           cp -R "$GITHUB_WORKSPACE/build/$APP_SCHEME.xcarchive/Products/Applications/$APP_SCHEME.app" \
                 "$GITHUB_WORKSPACE/dist/"
 
+      - name: Deep code sign .app
+        run: |
+          APP="${{ github.workspace }}/dist/${{ env.APP_SCHEME }}.app"
+          codesign --force --deep --options runtime --timestamp \
+                   --sign "${CODE_SIGN_IDENTITY}" \
+                   "$APP"
+
       - name: Create DMG
-        uses: QQxiaoming/create-dmg-action@v0.0.2
-        with:
-          # DMG 파일 이름: Applepie-RPC-v1.2.3.dmg 식으로 생성
-          name: "${{ env.APP_SCHEME }}-${{ github.ref_name }}"
-          # .app 이 들어있는 폴더
-          srcdir: "${{ github.workspace }}/dist"
+        run: |
+          create-dmg "${{ github.workspace }}/dist/${{ env.APP_SCHEME }}.app" \
+                     "${{ github.workspace }}/dist" --overwrite --dmg-title="${{ github.workspace }}/dist/${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg"
 
       - name: Notarize & Staple DMG
         uses: GuillaumeFalourd/notary-tools@v1
