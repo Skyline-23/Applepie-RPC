@@ -82,6 +82,7 @@ jobs:
             -skipPackagePluginValidation \
             -configuration Release \
             -archivePath "${{ github.workspace }}/build/${{ env.APP_SCHEME }}.xcarchive" \
+            -derivedDataPath "${{ github.workspace }}/build" \
             CODE_SIGN_STYLE="Manual" \
             CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
             PROVISIONING_PROFILE_SPECIFIER="" \
