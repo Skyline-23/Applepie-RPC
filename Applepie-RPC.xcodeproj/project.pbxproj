@@ -104,11 +104,6 @@
 			path = "Applepie-RPCUITests";
 			sourceTree = "<group>";
 		};
-		627211092DB7E6440092DEF0 /* Applepie-RPC-core */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Applepie-RPC-core";
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -145,7 +140,6 @@
 		623815492DB2B12100AD874E = {
 			isa = PBXGroup;
 			children = (
-				627211092DB7E6440092DEF0 /* Applepie-RPC-core */,
 				62B562B22DB79DF70094DC22 /* Frameworks */,
 				623815542DB2B12100AD874E /* Applepie-RPC */,
 				623815662DB2B12300AD874E /* Applepie-RPCTests */,
@@ -209,7 +203,6 @@
 			);
 			fileSystemSynchronizedGroups = (
 				623815542DB2B12100AD874E /* Applepie-RPC */,
-				627211092DB7E6440092DEF0 /* Applepie-RPC-core */,
 			);
 			name = "Applepie-RPC";
 			packageProductDependencies = (

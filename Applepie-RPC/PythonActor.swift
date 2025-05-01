@@ -90,7 +90,7 @@ public final class PythonExecutor {
             sys.path.insert(2, sitePackages)
             
             // Include the app’s resource directory to locate bundled Python scripts (e.g., discord_service.py)
-            if let resourcesPath = Bundle.main.resourceURL?.path {
+            if let resourcesPath = Bundle.main.resourceURL?.appendingPathComponent("Applepie-RPC-core").path {
                 sys.path.insert(3, resourcesPath)
             }
         }
