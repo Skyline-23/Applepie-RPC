@@ -103,7 +103,7 @@ jobs:
       - name: Create DMG
         run: |
           create-dmg "${{ github.workspace }}/dist/${{ env.APP_SCHEME }}.app" \
-                     "${{ github.workspace }}/dist" --overwrite --dmg-title="${{ github.workspace }}/dist/${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg"
+                     "${{ github.workspace }}/dist" --overwrite --dmg-title="${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg"
 
       - name: Notarize & Staple DMG
         uses: GuillaumeFalourd/notary-tools@v1
