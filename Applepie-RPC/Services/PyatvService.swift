@@ -72,6 +72,30 @@ class PyatvService {
         }
     }
 
+    private struct TimeoutError: Error {
+        let operation: String
+        let seconds: Double
+    }
+
+    private func withTimeout<T>(
+        seconds: Double,
+        operation: String,
+        _ work: @escaping () async throws -> T
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await work()
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw TimeoutError(operation: operation, seconds: seconds)
+            }
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
+        }
+    }
+
     private func scanConfig(
         host: String,
         protocolType proto: Pyatv.Const.PyatvProtocol_? = nil
@@ -130,51 +154,138 @@ class PyatvService {
     func getATVProps(
         host: String
     ) async -> (trackID: String?, title: String, artist: String?, album: String?, position: Double, duration: Double)? {
-        do {
-            guard let config = try await scanConfig(host: host, protocolType: .airPlay) else {
-                return nil
-            }
-            guard let atv = try await pyatv.connect(
-                config: config,
-                loop: loop,
-                protocol_: .airPlay,
-                storage: storage
-            ) else {
-                return nil
-            }
-            defer {
-                Task { try? await atv.close() }
-            }
-
-            guard let metadata = try await atv.metadata() else { return nil }
-            guard let playing = try await metadata.playing() else { return nil }
-
-            if let state = try await playing.device_state() {
-                if state == .idle || state == .pauEd {
-                    return nil
+        func availableProtocols(config: Pyatv.Interface.BaseconfigInstance) async -> [Pyatv.Const.PyatvProtocol_] {
+            guard let services = try? await config.services(), !services.isEmpty else { return [] }
+            var collected: [Pyatv.Const.PyatvProtocol_] = []
+            for service in services {
+                if let proto = try? await service.protocol() {
+                    collected.append(proto)
                 }
             }
+            if !collected.isEmpty {
+                let protos = collected.map { String(describing: $0) }
+                print("[PyatvService] Available protocols:", protos.joined(separator: ", "))
+            }
+            return collected
+        }
 
-            let title = (try await playing.title()) ?? ""
-            if title.isEmpty {
+        func fetchWithProtocol(
+            _ proto: Pyatv.Const.PyatvProtocol_,
+            config: Pyatv.Interface.BaseconfigInstance
+        ) async -> (trackID: String?, title: String, artist: String?, album: String?, position: Double, duration: Double)? {
+            do {
+                print("[PyatvService] connecting (host=\(host), proto=\(proto))")
+                let atv = try await withTimeout(seconds: 4, operation: "connect") {
+                    try await self.pyatv.connect(
+                        config: config,
+                        loop: self.loop,
+                        protocol_: proto,
+                        storage: self.storage
+                    )
+                }
+                guard let atv else {
+                    print("[PyatvService] connect returned nil (host=\(host), proto=\(proto))")
+                    _ = await availableProtocols(config: config)
+                    return nil
+                }
+                defer {
+                    Task { try? await atv.close() }
+                }
+
+                print("[PyatvService] fetching metadata (host=\(host), proto=\(proto))")
+                let metadata = try await withTimeout(seconds: 3, operation: "metadata") {
+                    try await atv.metadata()
+                }
+                guard let metadata else {
+                    print("[PyatvService] metadata is nil (host=\(host), proto=\(proto))")
+                    return nil
+                }
+                let playing = try await withTimeout(seconds: 3, operation: "playing") {
+                    try await metadata.playing()
+                }
+                guard let playing else {
+                    print("[PyatvService] playing is nil (host=\(host), proto=\(proto))")
+                    return nil
+                }
+
+                if let state = try await playing.device_state() {
+                    if state == .idle {
+                        print("[PyatvService] device_state=idle (host=\(host), proto=\(proto))")
+                        return nil
+                    }
+                    print("[PyatvService] device_state=\(state) (host=\(host), proto=\(proto))")
+                }
+
+                let title = (try await playing.title()) ?? ""
+                if title.isEmpty {
+                    print("[PyatvService] title is empty (host=\(host), proto=\(proto))")
+                    return nil
+                }
+
+                let artist = try await playing.artist()
+                let album = try await playing.album()
+                var duration = Double((try await playing.total_time()) ?? 0)
+                var position = Double((try await playing.position()) ?? 0)
+                if duration == 0 || position == 0 {
+                    if let ref = await playing.objectRef() {
+                        if duration == 0, let rawTotal = try? await ref.total_time.double() {
+                            duration = rawTotal
+                        }
+                        if position == 0, let rawPosition = try? await ref.position.double() {
+                            position = rawPosition
+                        }
+                    }
+                }
+                let itunesId = try await playing.itunes_store_identifier()
+                let trackID = itunesId.flatMap { $0 > 0 ? String($0) : nil }
+
+                if duration <= 0 {
+                    print("[PyatvService] duration unavailable (host=\(host), proto=\(proto))")
+                    return nil
+                }
+
+                return (
+                    trackID: trackID,
+                    title: title,
+                    artist: artist,
+                    album: album,
+                    position: position,
+                    duration: duration
+                )
+            } catch let timeout as TimeoutError {
+                print("[PyatvService] \(timeout.operation) timed out after \(timeout.seconds)s (host=\(host), proto=\(proto))")
+                return nil
+            } catch {
+                print("[PyatvService] fetch failed (host=\(host), proto=\(proto)): \(error)")
+                return nil
+            }
+        }
+
+        do {
+            let config = try await withTimeout(seconds: 3, operation: "scan") {
+                try await self.scanConfig(host: host)
+            }
+            guard let config else {
+                print("[PyatvService] scan returned no config (host=\(host))")
                 return nil
             }
 
-            let artist = try await playing.artist()
-            let album = try await playing.album()
-            let duration = Double((try await playing.total_time()) ?? 0)
-            let position = Double((try await playing.position()) ?? 0)
-            let itunesId = try await playing.itunes_store_identifier()
-            let trackID = itunesId.map { String($0) }
-
-            return (
-                trackID: trackID,
-                title: title,
-                artist: artist,
-                album: album,
-                position: position,
-                duration: duration
-            )
+            let name = (try? await config.name()) ?? "unknown"
+            let identifier = (try? await config.identifier()) ?? "unknown"
+            print("[PyatvService] scan result host=\(host) name=\(name) id=\(identifier)")
+            let available = await availableProtocols(config: config)
+            let desiredOrder: [Pyatv.Const.PyatvProtocol_] = [.mRP, .companion, .airPlay]
+            let protocolsToTry = desiredOrder.filter { available.contains($0) }
+            let fallbackProtocols = protocolsToTry.isEmpty ? desiredOrder : protocolsToTry
+            for proto in fallbackProtocols {
+                if let result = await fetchWithProtocol(proto, config: config) {
+                    return result
+                }
+            }
+            return nil
+        } catch let timeout as TimeoutError {
+            print("[PyatvService] \(timeout.operation) timed out after \(timeout.seconds)s (host=\(host))")
+            return nil
         } catch {
             print("[PyatvService] Failed to fetch ATV props: \(error)")
             return nil
