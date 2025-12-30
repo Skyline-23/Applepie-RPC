@@ -72,6 +72,18 @@ jobs:
       - name: Install create-dmg CLI
         run: npm install --global create-dmg
 
+      - name: Use latest available Xcode
+        run: |
+          LATEST_XCODE=$(ls /Applications | grep -E '^Xcode_.*\.app$' | sort -V | tail -n 1)
+          if [ -n "$LATEST_XCODE" ]; then
+            export DEVELOPER_DIR="/Applications/$LATEST_XCODE/Contents/Developer"
+            echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
+            echo "✅ Using $LATEST_XCODE"
+          else
+            echo "ℹ️ No alternate Xcode found; using default"
+          fi
+          xcodebuild -version
+
       - name: Build & Archive .app
         run: |
           echo "🔍 CODE_SIGN_IDENTITY is: [$CODE_SIGN_IDENTITY]"
