@@ -6,127 +6,157 @@
 //
 
 import Foundation
-import PythonKit
+import PylibKit_Mac
 import MusicKit
 
-class DiscordService: PythonService {
-    private var initRPC: PythonObject? = nil
-    private var setActivityFunc: PythonObject? = nil
-    private var clearActivityFunc: PythonObject? = nil
-    private var rpc: PythonObject? = nil
-    private var timer: Timer?
+class DiscordService {
+    private var rpc: Pypresence.Client.ClientInstance?
     private let clientID: String
+    private let executor: PythonExecutor
     private let musicService = AppleMusicService()
-    
-    /// Factory to create and initialize a DiscordService on the Python thread.
-    static public func create(
+
+    /// Factory to create and initialize a DiscordService.
+    static func create(
         clientID: String,
         executor: PythonExecutor
     ) async -> DiscordService {
-        // Perform all PythonKit work on the Python thread
-        let service = await executor.createOnPythonThread {
-            DiscordService(clientID: clientID, executor: executor)
-        }
-        // Initialize RPC using executor’s async API
-        await executor.importModule(named: "discord_service")
-        if let mod = await executor.module(named: "discord_service") {
-            // Perform all Python-related assignments on the dedicated Python thread
-            await executor.performAsync { [service] in
-                service.initRPC = mod.init_rpc_sync
-                service.setActivityFunc = mod.set_activity
-                service.clearActivityFunc = mod.clear_activity
-            }
-            print("[DiscordService] RPC object initialized: \(service.rpc != nil)")
-        }
+        let service = DiscordService(clientID: clientID, executor: executor)
+        await service.start()
         return service
     }
-    
+
     init(clientID: String, executor: PythonExecutor) {
         self.clientID = clientID
-        super.init(executor: executor)
-        
+        self.executor = executor
         self.musicService.clearCache()
     }
-    
-    /// Calls the Python set_activity wrapper on the dedicated Python thread.
-    func setActivity(trackID: String?, title: String, artist: String?, album: String?, position: Double, duration: Double) async {
+
+    /// Calls the pypresence set_activity on the Python thread.
+    func setActivity(
+        trackID: String?,
+        title: String,
+        artist: String?,
+        album: String?,
+        position: Double,
+        duration: Double
+    ) async {
         // If there's no current track, clear any existing activity and skip update
         if title.isEmpty {
-            await self.clearActivity()
+            await clearActivity()
             return
         }
-        
-        if self.rpc == nil {
-            await self.start()
+
+        if rpc == nil {
+            await start()
         }
-        
-        guard let rpc = self.rpc else {
+
+        guard let rpc else {
             print("[DiscordService] RPC is not initialized")
             return
         }
-        
+
         let extras: [String: String]
         if let trackID = trackID {
-            extras = await self.musicService.fetchTrackExtras(lookupKey: trackID, isStoreID: true)
+            extras = await musicService.fetchTrackExtras(lookupKey: trackID, isStoreID: true)
         } else {
             let lookupKey = title + " " + (artist ?? "") + " " + (album ?? "")
-            extras = await self.musicService.fetchTrackExtras(lookupKey: lookupKey, isStoreID: false)
+            extras = await musicService.fetchTrackExtras(lookupKey: lookupKey, isStoreID: false)
         }
-        
+
         let artworkUrl = extras["artworkUrl"]
-        let iTunesUrl  = extras["iTunesUrl"]
-        
-        await callPython {
-            guard let setFunc = self.setActivityFunc else {
-                print("[DiscordService] setActivityFunc is not initialized")
-                return
+        let iTunesUrl = extras["iTunesUrl"]
+
+        let details = String(title.prefix(128))
+        let stateSource = (artist?.isEmpty == false) ? artist! : "Music.app"
+        let state = String(stateSource.prefix(128))
+        let largeText: String?
+        if let album, !album.isEmpty {
+            largeText = String(album.prefix(128))
+        } else {
+            largeText = nil
+        }
+
+        var buttons: [[String: String]] = []
+        if let iTunesUrl, !iTunesUrl.isEmpty {
+            buttons.append([
+                "label": "Play on Apple Music",
+                "url": iTunesUrl
+            ])
+        } else {
+            let query = "\(title) \(album ?? "")".trimmingCharacters(in: .whitespacesAndNewlines)
+            if !query.isEmpty {
+                let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+                let countryCode = Locale.current.region?.identifier.lowercased() ?? "us"
+                let searchUrl = "https://music.apple.com/\(countryCode)/search?term=\(encoded)"
+                buttons.append([
+                    "label": "Search on Apple Music",
+                    "url": searchUrl
+                ])
             }
-            
-            let pyMeta: PythonObject = [
-                "title": PythonObject(title),
-                "artist": PythonObject(artist),
-                "album": PythonObject(album ?? ""),
-                "position": PythonObject(position),
-                "duration": PythonObject(duration),
-                "artworkUrl": PythonObject(artworkUrl ?? ""),
-                "itunes_id": PythonObject(iTunesUrl ?? "")
-            ]
-            let pySource = PythonObject("Music.app")
-            let countryCode = Locale.current.region?.identifier.lowercased() ?? "us"
-            let pyCountry = PythonObject(countryCode)
-            _ = setFunc(rpc, pyMeta, pySource, pyCountry)
+        }
+
+        let now = Int(Date().timeIntervalSince1970)
+        let pos = max(0, Int(position))
+        let dur = max(0, Int(duration))
+        let remaining = max(0, dur - pos)
+        let start = dur > 0 ? now - pos : nil
+        let end = dur > 0 ? now + remaining : nil
+
+        do {
+            _ = try await rpc.set_activity(
+                activity_type: .lISTENING,
+                state: state,
+                details: details,
+                start: start,
+                end: end,
+                large_image: artworkUrl ?? "appicon",
+                large_text: largeText,
+                buttons: buttons.isEmpty ? nil : buttons,
+                instance: false
+            )
+        } catch {
+            print("[DiscordService] Failed to set activity: \(error)")
         }
     }
-    
-    /// Clears the activity on the dedicated Python thread.
+
+    /// Clears the activity on the Discord RPC connection.
     func clearActivity() async {
         await stop()
     }
-    
-    
+
     /// Manually start/restart the Discord RPC connection.
     private func start() async {
+        guard rpc == nil else { return }
         print("[DiscordService] start() called")
-        guard let initRPCFunc = initRPC else {
-            print("[DiscordService] initRPC function is not initialized")
-            return
+        do {
+            let client = try await Pypresence.Client.ClientInstance.create(
+                executor: executor,
+                client_id: clientID
+            )
+            _ = try await client.handshake()
+            rpc = client
+            print("[DiscordService] RPC start result: true")
+        } catch {
+            print("[DiscordService] RPC start failed: \(error)")
         }
-        await callPython {
-            self.rpc = initRPCFunc(self.clientID)
-        }
-        print("[DiscordService] RPC start result: \(rpc != nil)")
     }
-    
+
     /// Manually stop the Discord RPC connection and clear activity.
     private func stop() async {
-        print("[DiscordService] stop() called")
-        // Safely clear if function exists
-        guard let clearFunc = clearActivityFunc, let rpcObj = rpc else {
-            print("[DiscordService] clearActivity function or rpc is nil")
+        guard let rpc else {
+            print("[DiscordService] RPC is nil")
             return
         }
-        await callPython {
-            _ = clearFunc(rpcObj)
+        print("[DiscordService] stop() called")
+        do {
+            _ = try await rpc.clear_activity()
+        } catch {
+            print("[DiscordService] Failed to clear activity: \(error)")
+        }
+        do {
+            _ = try await rpc.close()
+        } catch {
+            print("[DiscordService] Failed to close RPC: \(error)")
         }
         self.rpc = nil
         print("[DiscordService] RPC stopped and cleared")
@@ -139,20 +169,20 @@ class DiscordService: PythonService {
 class TrackExtrasCache {
     private let userDefaultsKey = "TrackExtrasCache"
     private var cache: [String: [String: String]]
-    
+
     init() {
         cache = UserDefaults.standard.dictionary(forKey: userDefaultsKey) as? [String: [String: String]] ?? [:]
     }
-    
+
     func get(trackID: String) -> [String: String]? {
         return cache[trackID]
     }
-    
+
     func set(_ info: [String: String], for trackID: String) {
         cache[trackID] = info
         UserDefaults.standard.set(cache, forKey: userDefaultsKey)
     }
-    
+
     /// Clears all cached track extras from memory and UserDefaults.
     func clear() {
         cache.removeAll()
@@ -163,16 +193,16 @@ class TrackExtrasCache {
 /// Service to fetch artwork and iTunes URL from Apple Music catalog via MusicKit.
 class AppleMusicService {
     private let cache = TrackExtrasCache()
-    
+
     /// Fetch artworkUrl (512x512) and track URL using MusicKit lookup or HTTP search fallback, with caching.
     func fetchTrackExtras(lookupKey key: String, isStoreID: Bool) async -> [String: String] {
         // 1) Return cached if present
         if let cached = cache.get(trackID: key) {
             return cached
         }
-        
+
         var info: [String: String] = [:]
-        
+
         // 2) If storeID is numeric, try MusicKit lookup
         if isStoreID {
             let request = MusicCatalogResourceRequest<Song>(
@@ -203,12 +233,12 @@ class AppleMusicService {
                 print("AppleMusicService MusicKit search error:", error)
             }
         }
-        
+
         // 4) Cache and return (even if empty)
         cache.set(info, for: key)
         return info
     }
-    
+
     /// Clear the cache for track extras.
     func clearCache() {
         cache.clear()

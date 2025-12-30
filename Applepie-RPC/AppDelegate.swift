@@ -10,12 +10,13 @@ import SwiftData
 import MusicKit
 import Combine
 import ApplicationServices
+import PylibKit_Mac
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var discordService: DiscordService?
     var pyatvService: PyatvService?
     let nowPlayingService = NowPlayingService()
-    private let pythonExecutor = PythonExecutor()
+    private let pythonExecutor = PythonExecutor(threadName: "PylibKitThread")
     private var cancellables = Set<AnyCancellable>()
     private var appSettings: AppSettings?
     var container: ModelContainer?
@@ -65,7 +66,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             .store(in: &cancellables)
         
-        // 3) Async RPC initialization and start updates
+        // Async RPC initialization and start updates
         Task { @MainActor in
             // Request Apple Music authorization once at startup
             let authStatus = await MusicAuthorization.request()
@@ -73,10 +74,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 print("⚠️ Apple Music authorization denied: \(authStatus)")
                 return
             }
-            // 1) Set up Python environment synchronously
-            await pythonExecutor.setupEnvironment()
-            
-            // 2) Create and initialize the DiscordService using the async factory
+            // Create and initialize the DiscordService using the async factory
             let discordService = await DiscordService.create(
                 clientID: "1362417259154374696",
                 executor: pythonExecutor
