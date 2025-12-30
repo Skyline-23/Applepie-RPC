@@ -14,8 +14,6 @@
 		62B562B72DB79E270094DC22 /* libcrypto.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B42DB79E270094DC22 /* libcrypto.3.dylib */; };
 		62B562B82DB79E270094DC22 /* libssl.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B52DB79E270094DC22 /* libssl.3.dylib */; };
 		62B562BA2DB79EDA0094DC22 /* Python.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B12DB79DF70094DC22 /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		62B562BB2DB7A12A0094DC22 /* libcrypto.3.dylib in Copy OpenSSL */ = {isa = PBXBuildFile; fileRef = 62B562B42DB79E270094DC22 /* libcrypto.3.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		62B562BC2DB7A12A0094DC22 /* libssl.3.dylib in Copy OpenSSL */ = {isa = PBXBuildFile; fileRef = 62B562B52DB79E270094DC22 /* libssl.3.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		62B562BD2DB7A4570094DC22 /* libcrypto.3.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B42DB79E270094DC22 /* libcrypto.3.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		62B562BE2DB7A4570094DC22 /* libssl.3.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B52DB79E270094DC22 /* libssl.3.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -49,18 +47,6 @@
 				62B562BA2DB79EDA0094DC22 /* Python.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		62B562B92DB79E800094DC22 /* Copy OpenSSL */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = OpenSSL;
-			dstSubfolderSpec = 10;
-			files = (
-				62B562BB2DB7A12A0094DC22 /* libcrypto.3.dylib in Copy OpenSSL */,
-				62B562BC2DB7A12A0094DC22 /* libssl.3.dylib in Copy OpenSSL */,
-			);
-			name = "Copy OpenSSL";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -188,13 +174,6 @@
 				6238154E2DB2B12100AD874E /* Sources */,
 				6238154F2DB2B12100AD874E /* Frameworks */,
 				625006F32DB6220100FA81F9 /* Embed Frameworks */,
-				62B562AB2DB796CF0094DC22 /* ensurepip install */,
-				62B562AC2DB797B00094DC22 /* pip bootstrap */,
-				62B562B92DB79E800094DC22 /* Copy OpenSSL */,
-				627B19CB2DB7A990003A2898 /* install_name_tool on libssl.3.dylib */,
-				627B19C92DB7A857003A2898 /* Patch _hashlib.so install names */,
-				62B562BF2DB7A5E00094DC22 /* Patch app executable RPATHs */,
-				62B562AD2DB799D90094DC22 /* Codesign .so / dylib */,
 			);
 			buildRules = (
 			);
@@ -333,117 +312,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		627B19C92DB7A857003A2898 /* Patch _hashlib.so install names */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Patch _hashlib.so install names";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "#!/bin/bash\nset -e\n\nDLIBS=(\n  \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/MacOS/Applepie-RPC.debug.dylib\"\n  \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/MacOS/Applepie-RPC\"\n)\n\nfor D in \"${DLIBS[@]}\"; do\n  if [ ! -e \"$D\" ]; then\n    echo \"Skipping missing file: $D\"\n    continue\n  fi\n  install_name_tool -change \\\n    \"/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib\" \\\n    \"@rpath/OpenSSL/libcrypto.3.dylib\" \\\n    \"$D\"\n  install_name_tool -change \\\n    \"/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib\" \\\n    \"@rpath/OpenSSL/libssl.3.dylib\" \\\n    \"$D\"\ndone\n";
-		};
-		627B19CB2DB7A990003A2898 /* install_name_tool on libssl.3.dylib */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "install_name_tool on libssl.3.dylib";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# OpenSSL 번들 디렉토리\nOPENSSL_DST=\"${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Frameworks/OpenSSL\"\nSSL_DYLIB=\"$OPENSSL_DST/libssl.3.dylib\"\n\necho \"🔧 libssl.3.dylib 패치 중: $SSL_DYLIB\"\ninstall_name_tool \\\n  -change \"/opt/homebrew/Cellar/openssl@3/3.4.1/lib/libcrypto.3.dylib\" \\\n          \"@rpath/OpenSSL/libcrypto.3.dylib\" \\\n  \"$SSL_DYLIB\"\necho \"✅ libssl.3.dylib 패치 완료\"\n";
-		};
-		62B562AB2DB796CF0094DC22 /* ensurepip install */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "ensurepip install";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "#!/bin/bash\nset -e\n\n# 1. PythonSupport 내 Python lib 경로\nPY_VER=\"3.12\"\nDEST_BASE=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PythonSupport/python/lib/python${PY_VER}\"\n\necho \"➡️ GitHub에서 ensurepip 모듈 가져오기: $DEST_BASE\"\n\n# 2. 대상 디렉터리 생성\nmkdir -p \"$DEST_BASE\"\nmkdir -p \"$DEST_BASE/site-packages\"\n\n# 3. svn 이 있으면 svn export, 없으면 git sparse‑checkout\nif command -v svn >/dev/null 2>&1; then\n  echo \"📦 svn export 사용\"\n  svn export --non-interactive --force \\\n    https://github.com/python/cpython/trunk/Lib/ensurepip \\\n    \"$DEST_BASE/ensurepip\"\nelif command -v git >/dev/null 2>&1; then\n  echo \"📦 git sparse‑checkout 사용\"\n  TMPDIR=$(mktemp -d)\n  git clone --depth 1 --filter=blob:none --sparse https://github.com/python/cpython.git \"$TMPDIR\"\n  cd \"$TMPDIR\"\n  git sparse-checkout init --cone\n  git sparse-checkout set Lib/ensurepip\n  cp -R Lib/ensurepip \"$DEST_BASE/ensurepip\"\n  cd -\n  rm -rf \"$TMPDIR\"\nelse\n  echo \"❌ svn, git 모두 없어서 ensurepip 모듈을 가져올 수 없습니다.\" >&2\n  exit 1\nfi\n\necho \"✅ ensurepip 모듈 복사 완료\"\n";
-		};
-		62B562AC2DB797B00094DC22 /* pip bootstrap */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "pip bootstrap";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "#!/bin/bash\nset -e\n\n# git 저장소 캐시 삭제를 위한 단계 추가\nrm -rf ~/.cache/pip/git\n\n# 또는 전체 pip 캐시 삭제\nrm -rf ~/.cache/pip\n\n# 1) 시스템 Python CLI 찾기\nif command -v python3.12 >/dev/null 2>&1; then\n  PYBIN=python3.12\nelif command -v python3 >/dev/null 2>&1; then\n  PYBIN=python3\nelse\n  echo \"❌ python3.12/ python3 CLI가 필요합니다.\" >&2\n  exit 1\nfi\necho \"➡️ 부트스트랩에 사용할 Python: $($PYBIN --version)\"\n\n# 2) site-packages 경로\nPY_VER=\"3.12\"\nSITE_PKGS=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/${PY_VER}/lib/python${PY_VER}/site-packages\"\nrm -rf \"$SITE_PKGS\"/*\nmkdir -p \"$SITE_PKGS\"\n\n# 3) ensurepip → pip 부트스트랩\n\"$PYBIN\" -m ensurepip --upgrade\n\"$PYBIN\" -m pip install --upgrade pip setuptools wheel \\\n     --no-deps --target \"$SITE_PKGS\"\n\n# 4) 프로젝트 패키지 설치\n\"$PYBIN\" -m pip install \\\n    --upgrade --no-cache-dir --force-reinstall --no-deps \\\n    https://github.com/qwertyquerty/pypresence/archive/master.zip \\\n    --target \"$SITE_PKGS\"\n\n\"$PYBIN\" -m pip install \\\n    --upgrade --no-cache-dir --force-reinstall \\\n    pyatv aiohttp \\\n    --target \"$SITE_PKGS\"\n\n# 5) 설치된 C-extension(.so) 서명\nfind \"$SITE_PKGS\" -name '*.so' \\\n     -exec codesign --force --options runtime --timestamp \\\n         --sign \"${CODE_SIGN_IDENTITY}\" {} \\;\n\necho \"✅ pip 부트스트랩 & 패키지 설치 완료\"\n";
-		};
-		62B562AD2DB799D90094DC22 /* Codesign .so / dylib */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Codesign .so / dylib";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "##!/bin/bash\n#set -e\n#\n#echo \"🔍 Using CODE_SIGN_IDENTITY: ${EXPANDED_CODE_SIGN_IDENTITY}\"\n#\n## Use the expanded code signing identity provided by Xcode\n#SIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY}\"\n#\n#sign_items() {\n#  local pattern=$1\n#  echo \"🔐 Signing files matching '$pattern' in $2\"\n#  find \"$2\" -type f -name \"$pattern\" | while read file; do\n#    echo \"  • codesign $file\"\n#    codesign --force --options runtime --timestamp \\\n#             --sign \"${SIGN_IDENTITY}\" \\\n#             \"$file\"\n#  done\n#}\n#\n## 1. lib-dynload 경로\n#DYNL=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PythonSupport/lib-dynload\"\n#\n#echo \"🔐 code‑signing lib-dynload/.so files in $DYNL …\"\n#sign_items '*.so' \"$DYNL\"\n#\n## 3. (선택) 만약 Python.framework 내부 lib-dynload 도 필요하면\n#FW_DYNL=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/lib/python3.12/lib-dynload\"\n#if [ -d \"$FW_DYNL\" ]; then\n#  echo \"🔐 code‑signing Python.framework lib-dynload/.so files in $FW_DYNL …\"\n#  sign_items '*.so' \"$FW_DYNL\"\n#fi\n#\n## 4. site-packages 내 모든 .so 파일 코드사인\n#SITE_PKGS=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages\"\n#if [ -d \"$SITE_PKGS\" ]; then\n#  echo \"🔐 code‑signing site-packages .so files in $SITE_PKGS …\"\n#  sign_items '*.so' \"$SITE_PKGS\"\n#  echo \"✅ site-packages 코드사인 완료\"\n#fi\n#\n## 4.1. Resources 내 site-packages .so 파일 추가 서명\n#RES_SITE_PKGS=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PythonSupport/lib/python3.12/site-packages\"\n#if [ -d \"$RES_SITE_PKGS\" ]; then\n#  echo \"🔐 code‑signing Resources site-packages .so files in $RES_SITE_PKGS …\"\n#  sign_items '*.so' \"$RES_SITE_PKGS\"\n#  echo \"✅ Resources site-packages 코드사인 완료\"\n#fi\n#\n#echo \"✅ lib‑dynload 코드사인 완료\"\n#\n## 7. Re-sign debug dylib if present\n#DEBUG_DYLIB=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/lib/python3.12/lib-dynload/_debug.cpython-312-darwin.so\"\n#if [ -f \"$DEBUG_DYLIB\" ]; then\n#  echo \"🔐 Re-signing debug dylib $DEBUG_DYLIB\"\n#  codesign --force --options runtime --timestamp \\\n#           --sign \"${SIGN_IDENTITY}\" \\\n#           \"$DEBUG_DYLIB\"\n#fi\n#\n## Re-sign __preview.dylib if present\n#PREVIEW_DYLIB=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/lib/python3.12/__preview__.dylib\"\n#if [ -f \"$PREVIEW_DYLIB\" ]; then\n#  echo \"🔐 Re-signing preview dylib $PREVIEW_DYLIB\"\n#  codesign --force --options runtime --timestamp \\\n#           --sign \"${SIGN_IDENTITY}\" \\\n#           \"$PREVIEW_DYLIB\"\n#fi\n#\n## 5. 코드사인 OpenSSL 라이브러리\n#OPENSSL_DIR=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/OpenSSL\"\n#if [ -d \"$OPENSSL_DIR\" ]; then\n#  echo \"🔐 code‑signing OpenSSL dylibs in $OPENSSL_DIR …\"\n#  sign_items '*.dylib' \"$OPENSSL_DIR\"\n#fi\n#\n## 5b. 재서명: Python.framework 내 모든 .dylib\n#APP=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH\"\n#PY_LIB_DIR=\"$APP/Frameworks/Python.framework/Versions/3.12/lib\"\n#echo \"🔐 Signing all Python.framework .dylib in $PY_LIB_DIR …\"\n#sign_items '*.dylib' \"$PY_LIB_DIR\"\n#\n#echo \"🔐 Signing main binary\"\n#codesign --force --options runtime --timestamp \\\n#    --sign \"${SIGN_IDENTITY}\" \\\n#    \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/MacOS/${PRODUCT_NAME}\"\n#\n## 4.2. 코드사인 Resources 내 실행파일\n#RES_BIN=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/applepie-rpc\"\n#if [ -f \"$RES_BIN\" ]; then\n#  echo \"🔐 code-signing Resources executable $RES_BIN …\"\n#  codesign --force --options runtime --timestamp \\\n#           --entitlements \"${PROJECT_DIR}/Applepie-RPC/Resources/Applepie_RPC.entitlements\" \\\n#           --sign \"${SIGN_IDENTITY}\" \\\n#           \"$RES_BIN\"\n#  echo \"✅ Resources executable 코드사인 완료\"\n#fi\n#\n## 5a. Python config object 파일 서명\n#CONFIG_OBJ_DIR=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/lib/python3.12/config-3.12-darwin\"\n#if [ -d \"$CONFIG_OBJ_DIR\" ]; then\n#  echo \"🔐 code‑signing config object files in $CONFIG_OBJ_DIR …\"\n#  sign_items '*.o' \"$CONFIG_OBJ_DIR\"\n#  echo \"✅ config object files 코드사인 완료\"\n#fi\n#\n## 6. 코드사인 Python 실행 파일\n#PY_EXE_DIR=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/bin\"\n#if [ -d \"$PY_EXE_DIR\" ]; then\n#  echo \"🔐 code‑signing Python executables in $PY_EXE_DIR …\"\n#  # Using -perm +111 is deprecated, use -executable instead\n#  find \"$PY_EXE_DIR\" -type f -executable | while read exe; do\n#    echo \"  • codesign $exe\"\n#    codesign --force --options runtime --timestamp \\\n#             --sign \"${SIGN_IDENTITY}\" \\\n#             \"$exe\"\n#  done\n#fi\n#\n";
-		};
-		62B562BF2DB7A5E00094DC22 /* Patch app executable RPATHs */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Patch app executable RPATHs";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "#!/bin/bash\nset -e\n\necho \"🔍 Using CODE_SIGN_IDENTITY: ${EXPANDED_CODE_SIGN_IDENTITY}\"\n\n# Use the expanded code signing identity provided by Xcode\nSIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY}\"\n\nsign_items() {\n  local pattern=$1\n  echo \"🔐 Signing files matching '$pattern' in $2\"\n  find \"$2\" -type f -name \"$pattern\" | while read file; do\n    echo \"  • codesign $file\"\n    codesign --force --options runtime --timestamp \\\n             --sign \"${SIGN_IDENTITY}\" \\\n             \"$file\"\n  done\n}\n\n# 1. lib-dynload 경로\nDYNL=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PythonSupport/lib-dynload\"\n\necho \"🔐 code‑signing lib-dynload/.so files in $DYNL …\"\nsign_items '*.so' \"$DYNL\"\n\n# 3. (선택) 만약 Python.framework 내부 lib-dynload 도 필요하면\nFW_DYNL=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/lib/python3.12/lib-dynload\"\nif [ -d \"$FW_DYNL\" ]; then\n  echo \"🔐 code‑signing Python.framework lib-dynload/.so files in $FW_DYNL …\"\n  sign_items '*.so' \"$FW_DYNL\"\nfi\n\n# 4. site-packages 내 모든 .so 파일 코드사인\nSITE_PKGS=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages\"\nif [ -d \"$SITE_PKGS\" ]; then\n  echo \"🔐 code‑signing site-packages .so files in $SITE_PKGS …\"\n  sign_items '*.so' \"$SITE_PKGS\"\n  echo \"✅ site-packages 코드사인 완료\"\nfi\n\n# 4.1. Resources 내 site-packages .so 파일 추가 서명\nRES_SITE_PKGS=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/PythonSupport/lib/python3.12/site-packages\"\nif [ -d \"$RES_SITE_PKGS\" ]; then\n  echo \"🔐 code‑signing Resources site-packages .so files in $RES_SITE_PKGS …\"\n  sign_items '*.so' \"$RES_SITE_PKGS\"\n  echo \"✅ Resources site-packages 코드사인 완료\"\nfi\n\necho \"✅ lib‑dynload 코드사인 완료\"\n\n# 5. 코드사인 OpenSSL 라이브러리\nOPENSSL_DIR=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/OpenSSL\"\nif [ -d \"$OPENSSL_DIR\" ]; then\n  echo \"🔐 code‑signing OpenSSL dylibs in $OPENSSL_DIR …\"\n  sign_items '*.dylib' \"$OPENSSL_DIR\"\nfi\n\n# 5b. 재서명: Python.framework 내 모든 .dylib\nAPP=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH\"\nPY_LIB_DIR=\"$APP/Frameworks/Python.framework/Versions/3.12/lib\"\necho \"🔐 Signing all Python.framework .dylib in $PY_LIB_DIR …\"\nsign_items '*.dylib' \"$PY_LIB_DIR\"\n\n# 7. Re-sign debug dylib if present\nDEBUG_DYLIB=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/MacOS/${PRODUCT_NAME}.debug.dylib\"\nif [ -f \"$DEBUG_DYLIB\" ]; then\n  echo \"🔐 code‑signing debug dylib $DEBUG_DYLIB …\"\n  codesign --force --options runtime --timestamp \\\n           --sign \"${SIGN_IDENTITY}\" \\\n           \"$DEBUG_DYLIB\"\n  echo \"✅ Debug dylib 코드사인 완료\"\nfi\n\n# 8. Re-sign SwiftUI preview support dylib if present\nPREVIEW_DYLIB=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/MacOS/__preview.dylib\"\nif [ -f \"$PREVIEW_DYLIB\" ]; then\n  echo \"🔐 code‑signing preview dylib $PREVIEW_DYLIB …\"\n  codesign --force --options runtime --timestamp \\\n           --sign \"${SIGN_IDENTITY}\" \\\n           \"$PREVIEW_DYLIB\"\n  echo \"✅ Preview dylib 코드사인 완료\"\nfi\n\necho \"🔐 Signing main binary\"\ncodesign --force --options runtime --timestamp \\\n    --sign \"${SIGN_IDENTITY}\" \\\n    \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/MacOS/${PRODUCT_NAME}\"\n\n# 4.2. 코드사인 Resources 내 실행파일\nRES_BIN=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources/applepie-rpc\"\nif [ -f \"$RES_BIN\" ]; then\n  echo \"🔐 code-signing Resources executable $RES_BIN …\"\n  codesign --force --options runtime --timestamp \\\n           --entitlements \"${PROJECT_DIR}/Applepie-RPC/Resources/Applepie_RPC.entitlements\" \\\n           --sign \"${SIGN_IDENTITY}\" \\\n           \"$RES_BIN\"\n  echo \"✅ Resources executable 코드사인 완료\"\nfi\n\n# 5a. Python config object 파일 서명\nCONFIG_OBJ_DIR=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/lib/python3.12/config-3.12-darwin\"\nif [ -d \"$CONFIG_OBJ_DIR\" ]; then\n  echo \"🔐 code‑signing config object files in $CONFIG_OBJ_DIR …\"\n  sign_items '*.o' \"$CONFIG_OBJ_DIR\"\n  echo \"✅ config object files 코드사인 완료\"\nfi\n\n# 6. 코드사인 Python 실행 파일\nPY_EXE_DIR=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks/Python.framework/Versions/3.12/bin\"\nif [ -d \"$PY_EXE_DIR\" ]; then\n  echo \"🔐 code‑signing Python executables in $PY_EXE_DIR …\"\n  # Using -perm +111 is deprecated, use -executable instead\n  find \"$PY_EXE_DIR\" -type f -executable | while read exe; do\n    echo \"  • codesign $exe\"\n    codesign --force --options runtime --timestamp \\\n             --sign \"${SIGN_IDENTITY}\" \\\n             \"$exe\"\n  done\nfi\n\n# Re-sign patched _hashlib after install_name_tool\nHASHLIB_SO=\"$FW_DYNL/_hashlib.cpython-312-darwin.so\"\nif [ -f \"$HASHLIB_SO\" ]; then\n  echo \"🔐 Re-signing patched $HASHLIB_SO\"\n  codesign --force --options runtime --timestamp \\\n           --sign \"${SIGN_IDENTITY}\" \\\n           \"$HASHLIB_SO\"\nfi\n";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		6238154E2DB2B12100AD874E /* Sources */ = {
