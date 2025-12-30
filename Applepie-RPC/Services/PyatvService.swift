@@ -129,7 +129,9 @@ class PyatvService {
             let settings = try await storage.get_settings(config: config)
             guard let settings else { return nil }
             guard let jsonRef = try await settings.model_dump_json() else { return nil }
-            let jsonString: String = try executor.coerce(jsonRef)
+            let namespace = await executor.makeNamespace(callables: [:])
+            try await namespace.payload.setValue(jsonRef)
+            let jsonString = try await namespace.payload.string()
             guard let data = jsonString.data(using: .utf8) else { return nil }
             guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
             guard let protocols = obj["protocols"] as? [String: Any] else { return nil }
