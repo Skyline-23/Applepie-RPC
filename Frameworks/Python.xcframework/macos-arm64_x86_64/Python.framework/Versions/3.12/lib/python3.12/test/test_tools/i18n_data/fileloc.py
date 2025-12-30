@@ -1,26 +1,3 @@
-# Test file locations
-from gettext import gettext as _
-
-# Duplicate strings
-_('foo')
-_('foo')
-
-# Duplicate strings on the same line should only add one location to the output
-_('bar'), _('bar')
-
-
-# Duplicate docstrings
-class A:
-    """docstring"""
-
-
-def f():
-    """docstring"""
-
-
-# Duplicate message and docstring
-_('baz')
-
-
-def g():
-    """baz"""
+version https://git-lfs.github.com/spec/v1
+oid sha256:c19b3fb9ca7b16e124fea3572c2f2b9ad45185e27a569508c81a841a109ad713
+size 349

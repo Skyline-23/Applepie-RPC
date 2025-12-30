@@ -1,10 +1,3 @@
-# helper to the helper for testing skip_file_prefixes.
-
-import os
-
-package_path = os.path.dirname(__file__)
-
-def inner_api(message, *, stacklevel, warnings_module):
-    warnings_module.warn(
-            message, stacklevel=stacklevel,
-            skip_file_prefixes=(package_path,))
+version https://git-lfs.github.com/spec/v1
+oid sha256:a3ddca5f37affd3918a7b090e6daafde69878722acc9c7a3742e1a78c5f4afb6
+size 283

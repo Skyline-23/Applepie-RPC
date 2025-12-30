@@ -1,10 +1,3 @@
-import unittest
-
-class LongExpText(unittest.TestCase):
-    def test_longexp(self):
-        REPS = 65580
-        l = eval("[" + "2," * REPS + "]")
-        self.assertEqual(len(l), REPS)
-
-if __name__ == "__main__":
-    unittest.main()
+version https://git-lfs.github.com/spec/v1
+oid sha256:a96e466d38c6287a7ae90526ffe8eda0949f4bca67f4673bd35d11f15e64527e
+size 233

@@ -1,22 +1,3 @@
-#ifndef Py_INTERNAL_SLICEOBJECT_H
-#define Py_INTERNAL_SLICEOBJECT_H
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifndef Py_BUILD_CORE
-#  error "this header requires Py_BUILD_CORE define"
-#endif
-
-
-/* runtime lifecycle */
-
-extern void _PySlice_Fini(PyInterpreterState *);
-
-extern PyObject *
-_PyBuildSlice_ConsumeRefs(PyObject *start, PyObject *stop);
-
-#ifdef __cplusplus
-}
-#endif
-#endif /* !Py_INTERNAL_SLICEOBJECT_H */
+version https://git-lfs.github.com/spec/v1
+oid sha256:e8b9ba794081a75bf73f0eb64089a766b5bd04b076d4368a14a83ff43ce909be
+size 414

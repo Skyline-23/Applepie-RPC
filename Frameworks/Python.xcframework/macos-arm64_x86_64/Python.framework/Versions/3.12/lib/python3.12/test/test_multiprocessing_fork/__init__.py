@@ -1,16 +1,3 @@
-import os.path
-import sys
-import unittest
-from test import support
-
-if support.PGO:
-    raise unittest.SkipTest("test is not helpful for PGO")
-
-if sys.platform == "win32":
-    raise unittest.SkipTest("fork is not available on Windows")
-
-if sys.platform == 'darwin':
-    raise unittest.SkipTest("test may crash on macOS (bpo-33725)")
-
-def load_tests(*args):
-    return support.load_package_tests(os.path.dirname(__file__), *args)
+version https://git-lfs.github.com/spec/v1
+oid sha256:0c365e4fbac114b2613059f9f8a535218c85da9ab9ca9b7e873a1a164e633495
+size 429

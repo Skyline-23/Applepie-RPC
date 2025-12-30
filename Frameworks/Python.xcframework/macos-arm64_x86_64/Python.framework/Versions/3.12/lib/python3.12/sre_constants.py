@@ -1,7 +1,3 @@
-import warnings
-warnings.warn(f"module {__name__!r} is deprecated",
-              DeprecationWarning,
-              stacklevel=2)
-
-from re import _constants as _
-globals().update({k: v for k, v in vars(_).items() if k[:2] != '__'})
+version https://git-lfs.github.com/spec/v1
+oid sha256:87013dc0b349c2c044100f70a8daa9d713e60a527e26f6ab8ee1fc978a6d3234
+size 232

@@ -1,4 +1,3 @@
-"""This package contains modules that help testing the trace.py module. Note
-that the exact location of functions in these modules is important, as trace.py
-takes the real line numbers into account.
-"""
+version https://git-lfs.github.com/spec/v1
+oid sha256:59b771ca779dd36fbad406d9f8a406c0877bc588d17742df39e5d68daa40f17e
+size 203

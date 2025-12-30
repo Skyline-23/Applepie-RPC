@@ -1,10 +1,3 @@
-import unittest
-
-
-class fake_filesystem_unittest:
-    """
-    Stubbed version of the pyfakefs module
-    """
-    class TestCase(unittest.TestCase):
-        def setUpPyfakefs(self):
-            self.skipTest("pyfakefs not available")
+version https://git-lfs.github.com/spec/v1
+oid sha256:4bdf4d0fb4721b9d99a4012b98aebdcff46c2201a9fe0bbac2fa89d24783a265
+size 233

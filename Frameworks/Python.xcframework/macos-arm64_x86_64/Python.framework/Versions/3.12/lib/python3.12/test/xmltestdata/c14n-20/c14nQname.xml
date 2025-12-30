@@ -1,6 +1,3 @@
-<dsig:CanonicalizationMethod xmlns:dsig="http://www.w3.org/2000/09/xmldsig#" xmlns:c14n2="http://www.w3.org/2010/xml-c14n2" Algorithm="http://www.w3.org/2010/xml-c14n2">
-  <c14n2:QNameAware>
-   <c14n2:QualifiedAttr Name="type" NS="http://www.w3.org/2001/XMLSchema-instance"/>
-  </c14n2:QNameAware>
-</dsig:CanonicalizationMethod>
-
+version https://git-lfs.github.com/spec/v1
+oid sha256:178452ae88d9eeb30c4c396113983a3baf5086bec937e3627678aed60731227d
+size 330

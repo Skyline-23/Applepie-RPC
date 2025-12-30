@@ -1,13 +1,3 @@
-# See: man pkg-config
-prefix=/Library/Frameworks/Python.framework/Versions/3.12
-exec_prefix=${prefix}
-libdir=${exec_prefix}/lib
-includedir=${prefix}/include
-
-Name: Python
-Description: Build a C extension for Python
-Requires:
-Version: 3.12
-Libs.private: -ldl  -framework CoreFoundation
-Libs: -L${libdir} 
-Cflags: -I${includedir}/python3.12
+version https://git-lfs.github.com/spec/v1
+oid sha256:0648f6dc1a50d54ff6b11564642f6169ecfe81d6b425cf2d340ebc266e02870f
+size 339

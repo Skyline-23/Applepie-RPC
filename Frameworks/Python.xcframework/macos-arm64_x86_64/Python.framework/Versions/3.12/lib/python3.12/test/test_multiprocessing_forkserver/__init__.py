@@ -1,13 +1,3 @@
-import os.path
-import sys
-import unittest
-from test import support
-
-if support.PGO:
-    raise unittest.SkipTest("test is not helpful for PGO")
-
-if sys.platform == "win32":
-    raise unittest.SkipTest("forkserver is not available on Windows")
-
-def load_tests(*args):
-    return support.load_package_tests(os.path.dirname(__file__), *args)
+version https://git-lfs.github.com/spec/v1
+oid sha256:0e3cad638826e73a960d0d914deedab8cc38143bd13d8013e2c4e7e00076e382
+size 338

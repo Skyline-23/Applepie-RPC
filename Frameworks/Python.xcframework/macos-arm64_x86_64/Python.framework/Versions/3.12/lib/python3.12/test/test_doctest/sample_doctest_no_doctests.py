@@ -1,15 +1,3 @@
-"""This is a sample module used for testing doctest.
-
-This module is for testing how doctest handles a module with docstrings
-but no doctest examples.
-
-"""
-
-
-class Foo(object):
-    """A docstring with no doctest examples.
-
-    """
-
-    def __init__(self):
-        pass
+version https://git-lfs.github.com/spec/v1
+oid sha256:b220bb27e2a4395dc131ccd7bf9fbad0f3de0bde4138f724042b339fcb05ec51
+size 269

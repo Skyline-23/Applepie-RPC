@@ -1,12 +1,3 @@
-# -*- tcl -*-
-# Tcl package index file, version 1.1
-#
-# Note sqlite*3* init specifically
-#
-if {[package vsatisfies [package provide Tcl] 9.0-]} {
-    package ifneeded sqlite3 3.45.3 \
-	    [list load [file join $dir libtcl9sqlite3.45.3.dylib] Sqlite3]
-} else {
-    package ifneeded sqlite3 3.45.3 \
-	    [list load [file join $dir libsqlite3.45.3.dylib] Sqlite3]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:77542b98ffda43389171addd900bcf222483ede869d73857c4716df2cb69cacb
+size 365

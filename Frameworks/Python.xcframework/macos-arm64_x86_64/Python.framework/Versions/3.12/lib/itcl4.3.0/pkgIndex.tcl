@@ -1,14 +1,3 @@
-# -*- tcl -*-
-# Tcl package index file, version 1.1
-#
-
-if {![package vsatisfies [package provide Tcl] 8.6-]} {return}
-
-if {[package vsatisfies [package provide Tcl] 9.0-]} {
-    package ifneeded itcl 4.3.0 \
-	    [list load [file join $dir libtcl9itcl4.3.0.dylib] Itcl]
-} else {
-    package ifneeded itcl 4.3.0 \
-	    [list load [file join $dir libitcl4.3.0.dylib] Itcl]
-}
-package ifneeded Itcl 4.3.0 [list package require -exact itcl 4.3.0]
+version https://git-lfs.github.com/spec/v1
+oid sha256:14afbcd5394716baae5adace7be85776c592a5fbb9533d2bc6b6f17f9f32e77a
+size 442

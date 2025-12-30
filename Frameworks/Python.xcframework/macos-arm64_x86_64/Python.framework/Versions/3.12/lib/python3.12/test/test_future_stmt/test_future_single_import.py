@@ -1,26 +1,3 @@
-from __future__ import nested_scopes
-from __future__ import division
-
-import unittest
-
-x = 2
-def nester():
-    x = 3
-    def inner():
-        return x
-    return inner()
-
-
-class TestFuture(unittest.TestCase):
-
-    def test_floor_div_operator(self):
-        self.assertEqual(7 // 2, 3)
-
-    def test_true_div_as_default(self):
-        self.assertAlmostEqual(7 / 2, 3.5)
-
-    def test_nested_scopes(self):
-        self.assertEqual(nester(), 3)
-
-if __name__ == "__main__":
-    unittest.main()
+version https://git-lfs.github.com/spec/v1
+oid sha256:e466dfb8acead4756b3790e903fa7b432727ea9cb34d93d679443003563a14a2
+size 490

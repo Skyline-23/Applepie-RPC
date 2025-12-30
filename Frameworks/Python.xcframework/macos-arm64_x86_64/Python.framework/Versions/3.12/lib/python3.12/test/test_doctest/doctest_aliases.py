@@ -1,13 +1,3 @@
-# Used by test_doctest.py.
-
-class TwoNames:
-    '''f() and g() are two names for the same method'''
-
-    def f(self):
-        '''
-        >>> print(TwoNames().f())
-        f
-        '''
-        return 'f'
-
-    g = f # define an alias for f
+version https://git-lfs.github.com/spec/v1
+oid sha256:e9738f6396d6e73d8fa259dc01a349718c6291d41dddcc93ece56c863353aab2
+size 240

@@ -1,11 +1,3 @@
-x = 1
-
-def __dir__():
-    return ['a', 'b', 'c']
-
-def __getattr__(name):
-    if name == "yolo":
-        raise AttributeError("Deprecated, use whatever instead")
-    return f"There is {name}"
-
-y = 2
+version https://git-lfs.github.com/spec/v1
+oid sha256:5bcf1fbf4606c5ea0ab13bd0a95271ebc6bb30e8dcdd44592c575efff7ab819b
+size 198

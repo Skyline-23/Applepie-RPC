@@ -1,23 +1,3 @@
-#ifndef Py_INTERNAL_UNIONOBJECT_H
-#define Py_INTERNAL_UNIONOBJECT_H
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifndef Py_BUILD_CORE
-#  error "this header requires Py_BUILD_CORE define"
-#endif
-
-extern PyTypeObject _PyUnion_Type;
-#define _PyUnion_Check(op) Py_IS_TYPE((op), &_PyUnion_Type)
-extern PyObject *_Py_union_type_or(PyObject *, PyObject *);
-
-#define _PyGenericAlias_Check(op) PyObject_TypeCheck((op), &Py_GenericAliasType)
-extern PyObject *_Py_subs_parameters(PyObject *, PyObject *, PyObject *, PyObject *);
-extern PyObject *_Py_make_parameters(PyObject *);
-extern PyObject *_Py_union_args(PyObject *self);
-
-#ifdef __cplusplus
-}
-#endif
-#endif /* !Py_INTERNAL_UNIONOBJECT_H */
+version https://git-lfs.github.com/spec/v1
+oid sha256:f1c5bbdf5660e54872ff1555c179cf6c80f8e04cac41e974b7964e21f82be18c
+size 682

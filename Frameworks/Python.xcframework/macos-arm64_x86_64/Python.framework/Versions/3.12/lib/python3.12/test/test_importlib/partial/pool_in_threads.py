@@ -1,27 +1,3 @@
-import multiprocessing
-import os
-import threading
-import traceback
-
-
-def t():
-    try:
-        with multiprocessing.Pool(1):
-            pass
-    except Exception:
-        traceback.print_exc()
-        os._exit(1)
-
-
-def main():
-    threads = []
-    for i in range(20):
-        threads.append(threading.Thread(target=t))
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
-
-
-if __name__ == "__main__":
-    main()
+version https://git-lfs.github.com/spec/v1
+oid sha256:87c14d213e12410a641c4bda62ab54e274aef3c31bc5e9b061aec5cea0feee9e
+size 459

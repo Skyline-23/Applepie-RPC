@@ -1,24 +1,3 @@
-#ifndef Py_INTERNAL_TYPEVAROBJECT_H
-#define Py_INTERNAL_TYPEVAROBJECT_H
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifndef Py_BUILD_CORE
-#  error "this header requires Py_BUILD_CORE define"
-#endif
-
-extern PyObject *_Py_make_typevar(PyObject *, PyObject *, PyObject *);
-extern PyObject *_Py_make_paramspec(PyThreadState *, PyObject *);
-extern PyObject *_Py_make_typevartuple(PyThreadState *, PyObject *);
-extern PyObject *_Py_make_typealias(PyThreadState *, PyObject *);
-extern PyObject *_Py_subscript_generic(PyThreadState *, PyObject *);
-extern int _Py_initialize_generic(PyInterpreterState *);
-extern void _Py_clear_generic_types(PyInterpreterState *);
-
-extern PyTypeObject _PyTypeAlias_Type;
-
-#ifdef __cplusplus
-}
-#endif
-#endif /* !Py_INTERNAL_TYPEVAROBJECT_H */
+version https://git-lfs.github.com/spec/v1
+oid sha256:b925204918e577bfb667a64f5f56e410cba0bc518207ed8535d1fcf1bdd6ab00
+size 763

@@ -1,20 +1,3 @@
-/* Frame object interface */
-
-#ifndef Py_FRAMEOBJECT_H
-#define Py_FRAMEOBJECT_H
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "pyframe.h"
-
-#ifndef Py_LIMITED_API
-#  define Py_CPYTHON_FRAMEOBJECT_H
-#  include "cpython/frameobject.h"
-#  undef Py_CPYTHON_FRAMEOBJECT_H
-#endif
-
-#ifdef __cplusplus
-}
-#endif
-#endif /* !Py_FRAMEOBJECT_H */
+version https://git-lfs.github.com/spec/v1
+oid sha256:969cd93065ce79b81bbc67a65d31b742e23f30bf79d6e44a306963d552ed0c35
+size 336

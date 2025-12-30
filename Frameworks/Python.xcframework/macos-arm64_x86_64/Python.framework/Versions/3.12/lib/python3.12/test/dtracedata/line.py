@@ -1,17 +1,3 @@
-def test_line():
-    a = 1
-    print('# Preamble', a)
-    for i in range(2):
-        a = i
-        b = i+2
-        c = i+3
-        if c < 4:
-            a = c
-        d = a + b +c
-        print('#', a, b, c, d)
-    a = 1
-    print('# Epilogue', a)
-
-
-if __name__ == '__main__':
-    test_line()
+version https://git-lfs.github.com/spec/v1
+oid sha256:1619e39a392aaa84f796d035423569cbdb25f0610646d89322a84d0f4d26b3a3
+size 293

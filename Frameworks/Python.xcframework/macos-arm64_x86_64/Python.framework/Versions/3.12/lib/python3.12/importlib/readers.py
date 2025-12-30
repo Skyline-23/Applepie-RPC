@@ -1,12 +1,3 @@
-"""
-Compatibility shim for .resources.readers as found on Python 3.10.
-
-Consumers that can rely on Python 3.11 should use the other
-module directly.
-"""
-
-from .resources.readers import (
-    FileReader, ZipReader, MultiplexedPath, NamespaceReader,
-)
-
-__all__ = ['FileReader', 'ZipReader', 'MultiplexedPath', 'NamespaceReader']
+version https://git-lfs.github.com/spec/v1
+oid sha256:d0d57d118d64916f7e6edb04f8bd1a760a1abb879125899ef50a36d09ef54df4
+size 327

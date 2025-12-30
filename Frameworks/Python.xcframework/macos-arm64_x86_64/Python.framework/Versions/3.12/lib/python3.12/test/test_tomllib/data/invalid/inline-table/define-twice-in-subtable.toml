@@ -1,1 +1,3 @@
-table1 = { table2.dupe = 1, table2.dupe = 2 }
+version https://git-lfs.github.com/spec/v1
+oid sha256:513e2cc02f5609254299358e4c826e445e1b802cb5120c7902994b5fe65771ea
+size 45

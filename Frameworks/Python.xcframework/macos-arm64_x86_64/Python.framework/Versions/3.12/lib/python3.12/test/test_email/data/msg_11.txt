@@ -1,7 +1,3 @@
-Content-Type: message/rfc822
-MIME-Version: 1.0
-Subject: The enclosing message
-
-Subject: An enclosed message
-
-Here is the body of the message.
+version https://git-lfs.github.com/spec/v1
+oid sha256:7ac917c8e4309742c3571b8c3c8d97361ab6b838f7cd5bda498a410d9d6d9fc7
+size 142

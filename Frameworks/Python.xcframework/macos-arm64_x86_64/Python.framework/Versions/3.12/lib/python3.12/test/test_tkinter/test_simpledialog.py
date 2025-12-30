@@ -1,35 +1,3 @@
-import unittest
-import tkinter
-from test.support import requires, swap_attr
-from test.test_tkinter.support import AbstractDefaultRootTest
-from tkinter.simpledialog import Dialog, askinteger
-
-requires('gui')
-
-
-class DefaultRootTest(AbstractDefaultRootTest, unittest.TestCase):
-
-    def test_askinteger(self):
-        @staticmethod
-        def mock_wait_window(w):
-            nonlocal ismapped
-            ismapped = w.master.winfo_ismapped()
-            w.destroy()
-
-        with swap_attr(Dialog, 'wait_window', mock_wait_window):
-            ismapped = None
-            askinteger("Go To Line", "Line number")
-            self.assertEqual(ismapped, False)
-
-            root = tkinter.Tk()
-            ismapped = None
-            askinteger("Go To Line", "Line number")
-            self.assertEqual(ismapped, True)
-            root.destroy()
-
-            tkinter.NoDefaultRoot()
-            self.assertRaises(RuntimeError, askinteger, "Go To Line", "Line number")
-
-
-if __name__ == "__main__":
-    unittest.main()
+version https://git-lfs.github.com/spec/v1
+oid sha256:92607d3e207c0b50d8a4177e907648234d1e6b7dbcd7fbe5005893a2f26fb045
+size 1014

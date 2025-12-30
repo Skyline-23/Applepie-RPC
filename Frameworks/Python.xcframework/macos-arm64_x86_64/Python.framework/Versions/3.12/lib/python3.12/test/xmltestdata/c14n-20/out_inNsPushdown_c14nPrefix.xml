@@ -1,6 +1,3 @@
-<n0:foo xmlns:n0="http://a">
- <n1:bar xmlns:n1="http://b"></n1:bar>
- <n1:bar xmlns:n1="http://b"></n1:bar>
- <n1:bar xmlns:n1="http://b"></n1:bar>
- <n0:bar xmlns:n1="http://b" n1:att1="val"></n0:bar>
-</n0:foo>
+version https://git-lfs.github.com/spec/v1
+oid sha256:d90cffd7860587eafa537963bfe7417e610756462eef65bd99acdea9a072b28a
+size 208

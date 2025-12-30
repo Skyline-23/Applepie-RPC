@@ -1,9 +1,3 @@
-import functools
-
-
-# from jaraco.functools 3.5.2
-def compose(*funcs):
-    def compose_two(f1, f2):
-        return lambda *args, **kwargs: f1(f2(*args, **kwargs))
-
-    return functools.reduce(compose_two, funcs)
+version https://git-lfs.github.com/spec/v1
+oid sha256:db7aebcc8175c154f39dda7a0bc3ad4898b4bfb445fab919b44f3678f03f22f5
+size 211

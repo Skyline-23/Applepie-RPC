@@ -1,12 +1,3 @@
-import sys
-
-class MyMod(object):
-    __slots__ = ['__builtins__', '__cached__', '__doc__',
-                 '__file__', '__loader__', '__name__',
-                 '__package__', '__path__', '__spec__']
-    def __init__(self):
-        for attr in self.__slots__:
-            setattr(self, attr, globals()[attr])
-
-
-sys.modules[__name__] = MyMod()
+version https://git-lfs.github.com/spec/v1
+oid sha256:512bc438f880139c2de02f09814cf307acecb93c4b0ea2bd134e5b1bc466df8e
+size 345

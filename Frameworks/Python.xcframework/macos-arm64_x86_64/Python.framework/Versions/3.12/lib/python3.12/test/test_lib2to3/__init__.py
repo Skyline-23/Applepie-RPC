@@ -1,11 +1,3 @@
-# Author: Collin Winter
-
-import os
-import warnings
-
-from test.support import load_package_tests
-
-def load_tests(*args):
-    with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', category=DeprecationWarning, message='lib2to3')
-        return load_package_tests(os.path.dirname(__file__), *args)
+version https://git-lfs.github.com/spec/v1
+oid sha256:907aa2d4807474344a54f33f9e933af9c9f2b34f0f1f8a6c98d69df23e6c7519
+size 314

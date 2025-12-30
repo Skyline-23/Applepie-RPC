@@ -1,11 +1,3 @@
-import os
-
-if __name__ == '__main__':
-    while True:
-        buf = os.read(0, 1024)
-        if not buf:
-            break
-        try:
-            os.write(1, b'OUT:'+buf)
-        except OSError as ex:
-            os.write(2, b'ERR:' + ex.__class__.__name__.encode('ascii'))
+version https://git-lfs.github.com/spec/v1
+oid sha256:a1594721860e47e5c57d144a946b1370f717236442aefedabfbd11a42e12aefb
+size 276

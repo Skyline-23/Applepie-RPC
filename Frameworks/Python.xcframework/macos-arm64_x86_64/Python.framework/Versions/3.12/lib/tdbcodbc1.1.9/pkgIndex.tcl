@@ -1,14 +1,3 @@
-# Index file to load the TDBC ODBC package.
-
-if {![package vsatisfies [package provide Tcl] 8.6-]} {
-    return
-}
-if {[package vsatisfies [package provide Tcl] 9.0-]} {
-    package ifneeded tdbc::odbc 1.1.9 \
-	    "[list source -encoding utf-8 [file join $dir tdbcodbc.tcl]]\;\
-	    [list load [file join $dir libtcl9tdbcodbc1.1.9.dylib] [string totitle tdbcodbc]]"
-} else {
-    package ifneeded tdbc::odbc 1.1.9 \
-	    "[list source -encoding utf-8 [file join $dir tdbcodbc.tcl]]\;\
-	    [list load [file join $dir libtdbcodbc1.1.9.dylib] [string totitle tdbcodbc]]"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:164d06600b67ebf37aa6c3e86718c3a6dc4502bdc897b852b91da1445ee3f673
+size 570

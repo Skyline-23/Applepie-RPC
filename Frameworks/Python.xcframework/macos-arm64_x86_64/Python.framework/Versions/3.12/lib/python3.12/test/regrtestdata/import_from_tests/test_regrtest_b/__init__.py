@@ -1,9 +1,3 @@
-import sys
-import unittest
-
-class Test(unittest.TestCase):
-    def test(self):
-        self.assertNotIn('test_regrtest_a', sys.modules)
-        self.assertIn('test_regrtest_b', sys.modules)
-        self.assertNotIn('test_regrtest_b.util', sys.modules)
-        self.assertNotIn('test_regrtest_c', sys.modules)
+version https://git-lfs.github.com/spec/v1
+oid sha256:b65a0eb59c825f8453289396208a827896270ff5f7fa5d88959845c3448c771c
+size 309

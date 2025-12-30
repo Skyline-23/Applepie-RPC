@@ -1,8 +1,3 @@
-import os
-
-if __name__ == '__main__':
-    while True:
-        buf = os.read(0, 1024)
-        if not buf:
-            break
-        os.write(1, buf)
+version https://git-lfs.github.com/spec/v1
+oid sha256:a516b1584bde0c31e5ec82c5fe9aaa6fcfd9f6551964e3f87f0d92e04ec7692b
+size 148

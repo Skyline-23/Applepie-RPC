@@ -1,17 +1,3 @@
-#ifndef Py_INTERPRETERIDOBJECT_H
-#define Py_INTERPRETERIDOBJECT_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifndef Py_LIMITED_API
-#  define Py_CPYTHON_INTERPRETERIDOBJECT_H
-#  include "cpython/interpreteridobject.h"
-#  undef Py_CPYTHON_INTERPRETERIDOBJECT_H
-#endif
-
-#ifdef __cplusplus
-}
-#endif
-#endif /* !Py_INTERPRETERIDOBJECT_H */
+version https://git-lfs.github.com/spec/v1
+oid sha256:b497c869333bdf1f79a580a36e9a0ed64fee226daa1d2d45bdfe16c01e52d73c
+size 333

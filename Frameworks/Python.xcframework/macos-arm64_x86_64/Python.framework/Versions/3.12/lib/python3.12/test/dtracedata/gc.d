@@ -1,18 +1,3 @@
-python$target:::function-entry
-/copyinstr(arg1) == "start"/
-{
-    self->trace = 1;
-}
-
-python$target:::gc-start,
-python$target:::gc-done
-/self->trace/
-{
-    printf("%d\t%s:%ld\n", timestamp, probename, arg0);
-}
-
-python$target:::function-return
-/copyinstr(arg1) == "start"/
-{
-    self->trace = 0;
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8e8c9f3f9cb2e5f8437d71de433d6d4591ed3798efad7179160fc7c55364e9a6
+size 297

@@ -1,14 +1,3 @@
-# Index file to load the TDBC Postgres package.
-
-if {![package vsatisfies [package provide Tcl] 8.6-]} {
-    return
-}
-if {[package vsatisfies [package provide Tcl] 9.0-]} {
-    package ifneeded tdbc::postgres 1.1.9 \
-	    "[list source -encoding utf-8 [file join $dir tdbcpostgres.tcl]]\;\
-	    [list load [file join $dir libtcl9tdbcpostgres1.1.9.dylib] [string totitle tdbcpostgres]]"
-} else {
-    package ifneeded tdbc::postgres 1.1.9 \
-	    "[list source -encoding utf-8 [file join $dir tdbcpostgres.tcl]]\;\
-	    [list load [file join $dir libtdbcpostgres1.1.9.dylib] [string totitle tdbcpostgres]]"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:183b361d74aed12c5a9d7f4d85f5cb96f591c99875146d565c9427a07265a33c
+size 606

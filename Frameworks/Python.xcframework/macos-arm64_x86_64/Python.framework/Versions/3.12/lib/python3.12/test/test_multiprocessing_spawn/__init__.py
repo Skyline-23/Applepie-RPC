@@ -1,9 +1,3 @@
-import os.path
-import unittest
-from test import support
-
-if support.PGO:
-    raise unittest.SkipTest("test is not helpful for PGO")
-
-def load_tests(*args):
-    return support.load_package_tests(os.path.dirname(__file__), *args)
+version https://git-lfs.github.com/spec/v1
+oid sha256:9760de61d00cc3ca9c9e3c47e505e66d211491f8100ca3c3c10997b5e247c408
+size 228

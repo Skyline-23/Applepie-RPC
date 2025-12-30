@@ -1,9 +1,3 @@
-try:
-    from _datetime import *
-    from _datetime import __doc__
-except ImportError:
-    from _pydatetime import *
-    from _pydatetime import __doc__
-
-__all__ = ("date", "datetime", "time", "timedelta", "timezone", "tzinfo",
-           "MINYEAR", "MAXYEAR", "UTC")
+version https://git-lfs.github.com/spec/v1
+oid sha256:ef20dc6b3554cd585dddffdc573f1f9a7a54c522f2a3fb4576c44edbb1e14238
+size 268

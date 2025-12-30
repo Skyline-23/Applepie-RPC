@@ -1,23 +1,3 @@
-import re
-import time
-
-def main():
-    s = "\13hello\14 \13world\14 " * 1000
-    p = re.compile(r"([\13\14])")
-    timefunc(10, p.sub, "", s)
-    timefunc(10, p.split, s)
-    timefunc(10, p.findall, s)
-
-def timefunc(n, func, *args, **kw):
-    t0 = time.perf_counter()
-    try:
-        for i in range(n):
-            result = func(*args, **kw)
-        return result
-    finally:
-        t1 = time.perf_counter()
-        if n > 1:
-            print(n, "times", end=' ')
-        print(func.__name__, "%.3f" % (t1-t0), "CPU seconds")
-
-main()
+version https://git-lfs.github.com/spec/v1
+oid sha256:5dc42597f8398476b33e3d8bc4987659e356d67ddbef94f5847c73f8277e110b
+size 538

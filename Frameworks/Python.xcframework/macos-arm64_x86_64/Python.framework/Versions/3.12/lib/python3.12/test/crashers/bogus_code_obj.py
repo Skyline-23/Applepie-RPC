@@ -1,19 +1,3 @@
-"""
-Broken bytecode objects can easily crash the interpreter.
-
-This is not going to be fixed.  It is generally agreed that there is no
-point in writing a bytecode verifier and putting it in CPython just for
-this.  Moreover, a verifier is bound to accept only a subset of all safe
-bytecodes, so it could lead to unnecessary breakage.
-
-For security purposes, "restricted" interpreters are not going to let
-the user build or load random bytecodes anyway.  Otherwise, this is a
-"won't fix" case.
-
-"""
-
-import types
-
-co = types.CodeType(0, 0, 0, 0, 0, 0, b'\x04\x00\x71\x00',
-                    (), (), (), '', '', 1, b'')
-exec(co)
+version https://git-lfs.github.com/spec/v1
+oid sha256:6789d612d6481efada00c05f1ad7dc5a2872ddfe5d7d523d72449cbf7cf93fc4
+size 628

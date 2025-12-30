@@ -1,5 +1,3 @@
-# This ann_module isn't for test_typing,
-# it's for test_module
-
-a:int=3
-b:str=4
+version https://git-lfs.github.com/spec/v1
+oid sha256:084149ce7f90a847acf09ab5d6295f770f5078d0c696a06c0019842583ebc6f0
+size 81

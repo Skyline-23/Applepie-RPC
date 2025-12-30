@@ -1,10 +1,3 @@
-"""This is a test"""
-
-from __future__ import *
-
-def f(x):
-    def g(y):
-        return x + y
-    return g
-
-print(f(2)(4))
+version https://git-lfs.github.com/spec/v1
+oid sha256:a4dc8f1f947d52cd86d4d830ef677a2f04d337a29ddff32b53edaeca152e21c1
+size 122

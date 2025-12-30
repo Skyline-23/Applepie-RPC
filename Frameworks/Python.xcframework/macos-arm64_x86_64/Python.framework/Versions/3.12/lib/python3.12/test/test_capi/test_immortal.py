@@ -1,16 +1,3 @@
-import unittest
-from test.support import import_helper
-
-_testcapi = import_helper.import_module('_testcapi')
-
-
-class TestCAPI(unittest.TestCase):
-    def test_immortal_builtins(self):
-        _testcapi.test_immortal_builtins()
-
-    def test_immortal_small_ints(self):
-        _testcapi.test_immortal_small_ints()
-
-
-if __name__ == "__main__":
-    unittest.main()
+version https://git-lfs.github.com/spec/v1
+oid sha256:f28c9eb3b2776eefc4ff6710297e12cd096e9ac6982cbcab6e2c60c839dcda7f
+size 362

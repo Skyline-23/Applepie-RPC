@@ -1,27 +1,3 @@
-target = {'foo': 'FOO'}
-
-
-def is_instance(obj, klass):
-    """Version of is_instance that doesn't access __class__"""
-    return issubclass(type(obj), klass)
-
-
-class SomeClass(object):
-    class_attribute = None
-
-    def wibble(self): pass
-
-
-class X(object):
-    pass
-
-# A standin for weurkzeug.local.LocalProxy - issue 119600
-def _inaccessible(*args, **kwargs):
-    raise AttributeError
-
-
-class OpaqueProxy:
-    __getattribute__ = _inaccessible
-
-
-g = OpaqueProxy()
+version https://git-lfs.github.com/spec/v1
+oid sha256:0fe59e2c3196a746973f3fba7b65ef434f94b7f9632ba0f13a9693abcaeba140
+size 466

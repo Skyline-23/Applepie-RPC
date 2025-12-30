@@ -1,15 +1,3 @@
-# Helper module for testing stacklevel and skip_file_prefixes arguments
-# of warnings.warn()
-
-import warnings
-from test.test_warnings.data import package_helper
-
-def outer(message, stacklevel=1):
-    inner(message, stacklevel)
-
-def inner(message, stacklevel=1):
-    warnings.warn(message, stacklevel=stacklevel)
-
-def package(message, *, stacklevel):
-    package_helper.inner_api(message, stacklevel=stacklevel,
-                             warnings_module=warnings)
+version https://git-lfs.github.com/spec/v1
+oid sha256:7f5d47ab37c2a4f6e3e1fc11a4196346f96603e0c0366c22fc14b7573a7ce06c
+size 466

@@ -1,26 +1,3 @@
-#ifndef Py_INTERNAL_DESCROBJECT_H
-#define Py_INTERNAL_DESCROBJECT_H
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifndef Py_BUILD_CORE
-#  error "this header requires Py_BUILD_CORE define"
-#endif
-
-typedef struct {
-    PyObject_HEAD
-    PyObject *prop_get;
-    PyObject *prop_set;
-    PyObject *prop_del;
-    PyObject *prop_doc;
-    PyObject *prop_name;
-    int getter_doc;
-} propertyobject;
-
-typedef propertyobject _PyPropertyObject;
-
-#ifdef __cplusplus
-}
-#endif
-#endif   /* !Py_INTERNAL_DESCROBJECT_H */
+version https://git-lfs.github.com/spec/v1
+oid sha256:d9be424b5c2d109b51338016acab6132f299c0640fc069fb0e1d48575089574e
+size 499

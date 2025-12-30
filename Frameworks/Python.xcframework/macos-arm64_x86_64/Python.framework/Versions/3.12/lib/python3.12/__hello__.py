@@ -1,16 +1,3 @@
-initialized = True
-
-class TestFrozenUtf8_1:
-    """\u00b6"""
-
-class TestFrozenUtf8_2:
-    """\u03c0"""
-
-class TestFrozenUtf8_4:
-    """\U0001f600"""
-
-def main():
-    print("Hello world!")
-
-if __name__ == '__main__':
-    main()
+version https://git-lfs.github.com/spec/v1
+oid sha256:a8ce70b199497950f0f06def93115a6814daf1f961934457f59046909901487f
+size 227

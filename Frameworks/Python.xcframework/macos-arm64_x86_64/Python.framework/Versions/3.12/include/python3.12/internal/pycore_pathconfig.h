@@ -1,24 +1,3 @@
-#ifndef Py_INTERNAL_PATHCONFIG_H
-#define Py_INTERNAL_PATHCONFIG_H
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifndef Py_BUILD_CORE
-#  error "this header requires Py_BUILD_CORE define"
-#endif
-
-PyAPI_FUNC(void) _PyPathConfig_ClearGlobal(void);
-extern PyStatus _PyPathConfig_ReadGlobal(PyConfig *config);
-extern PyStatus _PyPathConfig_UpdateGlobal(const PyConfig *config);
-extern const wchar_t * _PyPathConfig_GetGlobalModuleSearchPath(void);
-
-extern int _PyPathConfig_ComputeSysPath0(
-    const PyWideStringList *argv,
-    PyObject **path0);
-
-
-#ifdef __cplusplus
-}
-#endif
-#endif /* !Py_INTERNAL_PATHCONFIG_H */
+version https://git-lfs.github.com/spec/v1
+oid sha256:ff96c74aae60eba62bec8c6d52f34471caf07792186bc16d76e7a783f61aa0ed
+size 606

@@ -1,14 +1,3 @@
-# Index file to load the TDBC MySQL package.
-
-if {![package vsatisfies [package provide Tcl] 8.6-]} {
-    return
-}
-if {[package vsatisfies [package provide Tcl] 9.0-]} {
-    package ifneeded tdbc::mysql 1.1.9 \
-	    "[list source -encoding utf-8 [file join $dir tdbcmysql.tcl]]\;\
-	    [list load [file join $dir libtcl9tdbcmysql1.1.9.dylib] [string totitle tdbcmysql]]"
-} else {
-    package ifneeded tdbc::mysql 1.1.9 \
-	    "[list source -encoding utf-8 [file join $dir tdbcmysql.tcl]]\;\
-	    [list load [file join $dir libtdbcmysql1.1.9.dylib] [string totitle tdbcmysql]]"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9f5fb58b2f65bd2c14bd61da38b18e67c6394e4aca966bc99c0d03eda5786979
+size 579

@@ -1,18 +1,3 @@
-#ifndef Py_INTERNAL_MEMORYOBJECT_H
-#define Py_INTERNAL_MEMORYOBJECT_H
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifndef Py_BUILD_CORE
-#  error "this header requires Py_BUILD_CORE define"
-#endif
-
-PyObject *
-_PyMemoryView_FromBufferProc(PyObject *v, int flags,
-                             getbufferproc bufferproc);
-
-#ifdef __cplusplus
-}
-#endif
-#endif /* !Py_INTERNAL_MEMORYOBJECT_H */
+version https://git-lfs.github.com/spec/v1
+oid sha256:c845bb546019ed9999403018740ee5b26f83f8d888c5288895897cb2bd1b5eec
+size 383

@@ -1,21 +1,3 @@
-# Convenience test module to run all of the XML-related tests in the
-# standard library.
-
-import sys
-import test.support
-
-test.support.verbose = 0
-
-def runtest(name):
-    __import__(name)
-    module = sys.modules[name]
-    if hasattr(module, "test_main"):
-        module.test_main()
-
-runtest("test.test_minidom")
-runtest("test.test_pyexpat")
-runtest("test.test_sax")
-runtest("test.test_xml_dom_minicompat")
-runtest("test.test_xml_etree")
-runtest("test.test_xml_etree_c")
-runtest("test.test_xmlrpc")
+version https://git-lfs.github.com/spec/v1
+oid sha256:e4fd1bdd72a5dec30063b092aa8eb243eda3b95eb4b47ff95a50897ccbacc4c3
+size 499

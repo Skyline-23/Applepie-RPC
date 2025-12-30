@@ -1,5 +1,3 @@
-# test iso-8859-1 encoding
-# -*- encoding: iso-8859-1 -*-
-test = ("Les hommes ont oublié cette vérité, "
-        "dit le renard. Mais tu ne dois pas l'oublier. Tu deviens "
-        "responsable pour toujours de ce que tu as apprivoisé.")
+version https://git-lfs.github.com/spec/v1
+oid sha256:7879299a86de5e7bda68136e07221d3aabecd775a7545911bc676a2bd106479a
+size 238

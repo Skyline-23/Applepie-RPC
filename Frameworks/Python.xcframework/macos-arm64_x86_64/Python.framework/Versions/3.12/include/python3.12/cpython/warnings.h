@@ -1,20 +1,3 @@
-#ifndef Py_CPYTHON_WARNINGS_H
-#  error "this header file must not be included directly"
-#endif
-
-PyAPI_FUNC(int) PyErr_WarnExplicitObject(
-    PyObject *category,
-    PyObject *message,
-    PyObject *filename,
-    int lineno,
-    PyObject *module,
-    PyObject *registry);
-
-PyAPI_FUNC(int) PyErr_WarnExplicitFormat(
-    PyObject *category,
-    const char *filename, int lineno,
-    const char *module, PyObject *registry,
-    const char *format, ...);
-
-// DEPRECATED: Use PyErr_WarnEx() instead.
-#define PyErr_Warn(category, msg) PyErr_WarnEx((category), (msg), 1)
+version https://git-lfs.github.com/spec/v1
+oid sha256:b758a2e42b0c497ea811464f579603d14fc30b50bd6ebe064d8d2a7df7e2bd76
+size 564

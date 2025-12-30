@@ -1,2 +1,3 @@
-This sentence is in ASCII.
-The next sentence is in GB.己所不欲，勿施於人。Bye.
+version https://git-lfs.github.com/spec/v1
+oid sha256:1fe0a36192ef7643adb06b14979e006c17834874e7df605d915e549e3025e8ae
+size 89

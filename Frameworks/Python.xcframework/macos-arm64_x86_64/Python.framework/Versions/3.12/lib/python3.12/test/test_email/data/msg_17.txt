@@ -1,12 +1,3 @@
-MIME-Version: 1.0
-From: Barry <barry@digicool.com>
-To: Dingus Lovers <cravindogs@cravindogs.com>
-Subject: Here is your dingus fish
-Date: Fri, 20 Apr 2001 19:35:02 -0400
-Content-Type: multipart/mixed; boundary="BOUNDARY"
-
-Hi there,
-
-This is the dingus fish.
-
-[Non-text (image/gif) part of message omitted, filename dingusfish.gif]
+version https://git-lfs.github.com/spec/v1
+oid sha256:f647152e43fe5e381c71ccd9da9bbd843a854761f8fe60bc6c17b7c0e24e0106
+size 330

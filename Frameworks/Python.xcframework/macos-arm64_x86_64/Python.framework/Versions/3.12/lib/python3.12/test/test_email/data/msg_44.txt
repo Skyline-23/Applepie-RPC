@@ -1,33 +1,3 @@
-Return-Path: <barry@python.org>
-Delivered-To: barry@python.org
-Received: by mail.python.org (Postfix, from userid 889)
-	id C2BF0D37C6; Tue, 11 Sep 2001 00:05:05 -0400 (EDT)
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="h90VIIIKmx"
-Content-Transfer-Encoding: 7bit
-Message-ID: <15261.36209.358846.118674@anthem.python.org>
-From: barry@python.org (Barry A. Warsaw)
-To: barry@python.org
-Subject: a simple multipart
-Date: Tue, 11 Sep 2001 00:05:05 -0400
-X-Mailer: VM 6.95 under 21.4 (patch 4) "Artificial Intelligence" XEmacs Lucid
-X-Attribution: BAW
-X-Oblique-Strategy: Make a door into a window
-
-
---h90VIIIKmx
-Content-Type: text/plain; name="msg.txt"
-Content-Transfer-Encoding: 7bit
-
-a simple kind of mirror
-to reflect upon our own
-
---h90VIIIKmx
-Content-Type: text/plain; name="msg.txt"
-Content-Transfer-Encoding: 7bit
-
-a simple kind of mirror
-to reflect upon our own
-
---h90VIIIKmx--
-
+version https://git-lfs.github.com/spec/v1
+oid sha256:67f41bd0b0ac605c5431ad8c658c0c8e3c5d766eac8fbb81d51132f9fb818bfc
+size 895

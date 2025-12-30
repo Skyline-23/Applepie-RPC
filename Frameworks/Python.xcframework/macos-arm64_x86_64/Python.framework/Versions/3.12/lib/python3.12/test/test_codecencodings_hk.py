@@ -1,22 +1,3 @@
-#
-# test_codecencodings_hk.py
-#   Codec encoding tests for HongKong encodings.
-#
-
-from test import multibytecodec_support
-import unittest
-
-class Test_Big5HKSCS(multibytecodec_support.TestBase, unittest.TestCase):
-    encoding = 'big5hkscs'
-    tstring = multibytecodec_support.load_teststring('big5hkscs')
-    codectests = (
-        # invalid bytes
-        (b"abc\x80\x80\xc1\xc4", "strict",  None),
-        (b"abc\xc8", "strict",  None),
-        (b"abc\x80\x80\xc1\xc4", "replace", "abc\ufffd\ufffd\u8b10"),
-        (b"abc\x80\x80\xc1\xc4\xc8", "replace", "abc\ufffd\ufffd\u8b10\ufffd"),
-        (b"abc\x80\x80\xc1\xc4", "ignore",  "abc\u8b10"),
-    )
-
-if __name__ == "__main__":
-    unittest.main()
+version https://git-lfs.github.com/spec/v1
+oid sha256:66bf4b4208edcfdae2d17512adff3a37ae43b033ba903a2fd4acc2affd05d9a0
+size 701
