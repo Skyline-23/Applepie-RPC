@@ -14,6 +14,7 @@ class DiscordService {
     private let clientID: String
     private let executor: PythonExecutor
     private var rpcLoop: AsyncioLoop?
+    private var buttonsEnabled = true
     private let musicService = AppleMusicService()
 
     /// Factory to create and initialize a DiscordService.
@@ -86,7 +87,7 @@ class DiscordService {
             largeText = nil
         }
 
-        var buttonsPayload: [[String: Any]] = []
+        var buttonsPayload: [Any] = []
         if let iTunesUrl, !iTunesUrl.isEmpty {
             buttonsPayload.append([
                 "label": "Play on Apple Music",
@@ -121,12 +122,13 @@ class DiscordService {
                 end: end,
                 large_image: artworkUrl ?? "appicon",
                 large_text: largeText,
-                buttons: buttonsPayload.isEmpty ? nil : buttonsPayload,
+                buttons: (buttonsEnabled && !buttonsPayload.isEmpty) ? buttonsPayload : nil,
                 instance: false
             )
         } catch {
             let message = String(describing: error)
             if message.localizedCaseInsensitiveContains("buttons") {
+                buttonsEnabled = false
                 do {
                     _ = try await rpc.set_activity(
                         activity_type: .lISTENING,
@@ -191,6 +193,7 @@ class DiscordService {
         }
         self.rpc = nil
         self.rpcLoop = nil
+        self.buttonsEnabled = true
         print("[DiscordService] RPC stopped and cleared")
     }
 }
