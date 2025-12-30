@@ -13,6 +13,7 @@ class DiscordService {
     private var rpc: Pypresence.Client.ClientInstance?
     private let clientID: String
     private let executor: PythonExecutor
+    private var rpcLoop: AsyncioLoop?
     private let musicService = AppleMusicService()
 
     /// Factory to create and initialize a DiscordService.
@@ -29,6 +30,15 @@ class DiscordService {
         self.clientID = clientID
         self.executor = executor
         self.musicService.clearCache()
+    }
+
+    private func ensureRpcLoop() async -> AsyncioLoop {
+        if let rpcLoop {
+            return rpcLoop
+        }
+        let loop = await executor.createAsyncioLoop()
+        rpcLoop = loop
+        return loop
     }
 
     /// Calls the pypresence set_activity on the Python thread.
@@ -76,9 +86,9 @@ class DiscordService {
             largeText = nil
         }
 
-        var buttons: [[String: String]] = []
+        var buttonsPayload: [[String: Any]] = []
         if let iTunesUrl, !iTunesUrl.isEmpty {
-            buttons.append([
+            buttonsPayload.append([
                 "label": "Play on Apple Music",
                 "url": iTunesUrl
             ])
@@ -88,7 +98,7 @@ class DiscordService {
                 let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
                 let countryCode = Locale.current.region?.identifier.lowercased() ?? "us"
                 let searchUrl = "https://music.apple.com/\(countryCode)/search?term=\(encoded)"
-                buttons.append([
+                buttonsPayload.append([
                     "label": "Search on Apple Music",
                     "url": searchUrl
                 ])
@@ -111,11 +121,30 @@ class DiscordService {
                 end: end,
                 large_image: artworkUrl ?? "appicon",
                 large_text: largeText,
-                buttons: buttons.isEmpty ? nil : buttons,
+                buttons: buttonsPayload.isEmpty ? nil : buttonsPayload,
                 instance: false
             )
         } catch {
-            print("[DiscordService] Failed to set activity: \(error)")
+            let message = String(describing: error)
+            if message.localizedCaseInsensitiveContains("buttons") {
+                do {
+                    _ = try await rpc.set_activity(
+                        activity_type: .lISTENING,
+                        state: state,
+                        details: details,
+                        start: start,
+                        end: end,
+                        large_image: artworkUrl ?? "appicon",
+                        large_text: largeText,
+                        buttons: nil,
+                        instance: false
+                    )
+                } catch {
+                    print("[DiscordService] Failed to set activity: \(error)")
+                }
+            } else {
+                print("[DiscordService] Failed to set activity: \(error)")
+            }
         }
     }
 
@@ -133,7 +162,9 @@ class DiscordService {
                 executor: executor,
                 client_id: clientID
             )
-            _ = try await client.handshake()
+            let loop = await ensureRpcLoop()
+            _ = try await client.update_event_loop(loop: loop)
+            _ = try await client.start()
             rpc = client
             print("[DiscordService] RPC start result: true")
         } catch {
@@ -159,6 +190,7 @@ class DiscordService {
             print("[DiscordService] Failed to close RPC: \(error)")
         }
         self.rpc = nil
+        self.rpcLoop = nil
         print("[DiscordService] RPC stopped and cleared")
     }
 }
