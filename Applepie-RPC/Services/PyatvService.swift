@@ -29,9 +29,21 @@ class PyatvService {
 
         var storage: Pyatv.Interface.StorageInstance? = nil
         do {
-            let created = try await Pyatv.Interface.StorageInstance.create(executor: executor)
-            try await created.load()
-            storage = created
+            let baseDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            let appDir = (baseDir ?? URL(fileURLWithPath: NSTemporaryDirectory()))
+                .appendingPathComponent("Applepie-RPC", isDirectory: true)
+            try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
+            let storageURL = appDir.appendingPathComponent("pyatv_storage.json")
+
+            let fileStorage = try await Pyatv.Storage.FileStorage.FilestorageInstance.create(
+                executor: executor,
+                filename: storageURL.path,
+                loop: loop
+            )
+            try await fileStorage.load()
+            if let ref = await fileStorage.objectRef() {
+                storage = await Pyatv.Interface.StorageInstance.attach(executor: executor, ref: ref)
+            }
         } catch {
             print("[PyatvService] Failed to initialize storage: \(error)")
         }
