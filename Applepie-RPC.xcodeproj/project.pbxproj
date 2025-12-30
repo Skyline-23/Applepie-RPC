@@ -8,14 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		620F1E492DB397F400898A8D /* ModernSlider in Frameworks */ = {isa = PBXBuildFile; productRef = 620F1E482DB397F400898A8D /* ModernSlider */; };
-		627E6A222DC0A1990001015C /* xcstrings-tool in Frameworks */ = {isa = PBXBuildFile; productRef = 627E6A212DC0A1990001015C /* xcstrings-tool */; };
-		628618872DB60C290076E49F /* PythonKit in Frameworks */ = {isa = PBXBuildFile; productRef = 628618862DB60C290076E49F /* PythonKit */; };
-		62B562B32DB79DF70094DC22 /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B12DB79DF70094DC22 /* Python.xcframework */; };
-		62B562B72DB79E270094DC22 /* libcrypto.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B42DB79E270094DC22 /* libcrypto.3.dylib */; };
-		62B562B82DB79E270094DC22 /* libssl.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B52DB79E270094DC22 /* libssl.3.dylib */; };
-		62B562BA2DB79EDA0094DC22 /* Python.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B12DB79DF70094DC22 /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		62B562BD2DB7A4570094DC22 /* libcrypto.3.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B42DB79E270094DC22 /* libcrypto.3.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		62B562BE2DB7A4570094DC22 /* libssl.3.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 62B562B52DB79E270094DC22 /* libssl.3.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		D0F1E2FD2F03A1CE002FB86E /* PylibKit-macos.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0F1E2FC2F03A1CE002FB86E /* PylibKit-macos.xcframework */; };
+		D0F1E2FE2F03A1CE002FB86E /* PylibKit-macos.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = D0F1E2FC2F03A1CE002FB86E /* PylibKit-macos.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -42,9 +36,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				62B562BD2DB7A4570094DC22 /* libcrypto.3.dylib in Embed Frameworks */,
-				62B562BE2DB7A4570094DC22 /* libssl.3.dylib in Embed Frameworks */,
-				62B562BA2DB79EDA0094DC22 /* Python.xcframework in Embed Frameworks */,
+				D0F1E2FE2F03A1CE002FB86E /* PylibKit-macos.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -56,9 +48,7 @@
 		623815632DB2B12300AD874E /* Applepie-RPCTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Applepie-RPCTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6238156D2DB2B12300AD874E /* Applepie-RPCUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Applepie-RPCUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		625BD3E62DBA24D0009567E7 /* MusicKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MusicKit.framework; path = System/Library/Frameworks/MusicKit.framework; sourceTree = SDKROOT; };
-		62B562B12DB79DF70094DC22 /* Python.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Python.xcframework; sourceTree = "<group>"; };
-		62B562B42DB79E270094DC22 /* libcrypto.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libcrypto.3.dylib; sourceTree = "<group>"; };
-		62B562B52DB79E270094DC22 /* libssl.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libssl.3.dylib; sourceTree = "<group>"; };
+		D0F1E2FC2F03A1CE002FB86E /* PylibKit-macos.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = "PylibKit-macos.xcframework"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -97,12 +87,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				627E6A222DC0A1990001015C /* xcstrings-tool in Frameworks */,
+				D0F1E2FD2F03A1CE002FB86E /* PylibKit-macos.xcframework in Frameworks */,
 				620F1E492DB397F400898A8D /* ModernSlider in Frameworks */,
-				62B562B32DB79DF70094DC22 /* Python.xcframework in Frameworks */,
-				62B562B72DB79E270094DC22 /* libcrypto.3.dylib in Frameworks */,
-				62B562B82DB79E270094DC22 /* libssl.3.dylib in Frameworks */,
-				628618872DB60C290076E49F /* PythonKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -147,20 +133,10 @@
 		62B562B22DB79DF70094DC22 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				D0F1E2FC2F03A1CE002FB86E /* PylibKit-macos.xcframework */,
 				625BD3E62DBA24D0009567E7 /* MusicKit.framework */,
-				62B562B12DB79DF70094DC22 /* Python.xcframework */,
-				62B562B62DB79E270094DC22 /* OpenSSL */,
 			);
 			path = Frameworks;
-			sourceTree = "<group>";
-		};
-		62B562B62DB79E270094DC22 /* OpenSSL */ = {
-			isa = PBXGroup;
-			children = (
-				62B562B42DB79E270094DC22 /* libcrypto.3.dylib */,
-				62B562B52DB79E270094DC22 /* libssl.3.dylib */,
-			);
-			path = OpenSSL;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -178,7 +154,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				627E6A242DC0A1BF0001015C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				623815542DB2B12100AD874E /* Applepie-RPC */,
@@ -186,8 +161,6 @@
 			name = "Applepie-RPC";
 			packageProductDependencies = (
 				620F1E482DB397F400898A8D /* ModernSlider */,
-				628618862DB60C290076E49F /* PythonKit */,
-				627E6A212DC0A1990001015C /* xcstrings-tool */,
 			);
 			productName = "Applepie-RPC";
 			productReference = 623815522DB2B12100AD874E /* Applepie-RPC.app */;
@@ -274,8 +247,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				620F1E472DB397F400898A8D /* XCRemoteSwiftPackageReference "ModernSlider" */,
-				628618852DB60C290076E49F /* XCRemoteSwiftPackageReference "PythonKit" */,
-				627E6A202DC0A1990001015C /* XCRemoteSwiftPackageReference "xcstrings-tool" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 623815532DB2B12100AD874E /* Products */;
@@ -347,10 +318,6 @@
 			isa = PBXTargetDependency;
 			target = 623815512DB2B12100AD874E /* Applepie-RPC */;
 			targetProxy = 6238156E2DB2B12300AD874E /* PBXContainerItemProxy */;
-		};
-		627E6A242DC0A1BF0001015C /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = 627E6A232DC0A1BF0001015C /* XCStringsToolPlugin */;
 		};
 /* End PBXTargetDependency section */
 
@@ -512,7 +479,6 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 					"@executable_path/../Frameworks/OpenSSL",
-					"@executable_path/../Frameworks/Python.framework/Versions/3.12/lib/python3.12/lib-dynload",
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -521,10 +487,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				OTHER_CODE_SIGN_FLAGS = "--timestamp";
-				OTHER_LDFLAGS = (
-					"-Wl,-rpath,@executable_path/../Frameworks/OpenSSL",
-					"-Wl,-rpath,@executable_path/../Frameworks/Python.framework/Versions/3.12/lib/python3.12",
-				);
+				OTHER_LDFLAGS = "-Wl,-rpath,@executable_path/../Frameworks/OpenSSL";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -566,7 +529,6 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 					"@executable_path/../Frameworks/OpenSSL",
-					"@executable_path/../Frameworks/Python.framework/Versions/3.12/lib/python3.12/lib-dynload",
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -575,10 +537,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				OTHER_CODE_SIGN_FLAGS = "--timestamp";
-				OTHER_LDFLAGS = (
-					"-Wl,-rpath,@executable_path/../Frameworks/OpenSSL",
-					"-Wl,-rpath,@executable_path/../Frameworks/Python.framework/Versions/3.12/lib/python3.12",
-				);
+				OTHER_LDFLAGS = "-Wl,-rpath,@executable_path/../Frameworks/OpenSSL";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -705,22 +664,6 @@
 				kind = branch;
 			};
 		};
-		627E6A202DC0A1990001015C /* XCRemoteSwiftPackageReference "xcstrings-tool" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/liamnichols/xcstrings-tool.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.1.0;
-			};
-		};
-		628618852DB60C290076E49F /* XCRemoteSwiftPackageReference "PythonKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/pvieito/PythonKit.git";
-			requirement = {
-				branch = master;
-				kind = branch;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -728,21 +671,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 620F1E472DB397F400898A8D /* XCRemoteSwiftPackageReference "ModernSlider" */;
 			productName = ModernSlider;
-		};
-		627E6A212DC0A1990001015C /* xcstrings-tool */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 627E6A202DC0A1990001015C /* XCRemoteSwiftPackageReference "xcstrings-tool" */;
-			productName = "xcstrings-tool";
-		};
-		627E6A232DC0A1BF0001015C /* XCStringsToolPlugin */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 627E6A202DC0A1990001015C /* XCRemoteSwiftPackageReference "xcstrings-tool" */;
-			productName = "plugin:XCStringsToolPlugin";
-		};
-		628618862DB60C290076E49F /* PythonKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 628618852DB60C290076E49F /* XCRemoteSwiftPackageReference "PythonKit" */;
-			productName = PythonKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
