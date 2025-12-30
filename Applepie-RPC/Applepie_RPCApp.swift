@@ -225,8 +225,16 @@ struct MainMenuView: View {
         nowPlayingService.stop()
         Task {
             let newHostIP = browser.serviceIPs[newHost] ?? ""
-            
-            if await nowPlayingService.isPairingNeeded(host: newHostIP) {
+            print("[UI] Device selection: \(oldHost) -> \(newHost) (ip=\(newHostIP))")
+            guard !newHostIP.isEmpty else {
+                print("[UI] Device switch aborted: no IP resolved for \(newHost)")
+                selectedHost = oldHost
+                return
+            }
+
+            let needsPairing = await nowPlayingService.isPairingNeeded(host: newHostIP)
+            print("[UI] Pairing needed: \(needsPairing) (host=\(newHostIP))")
+            if needsPairing {
                 let began = await nowPlayingService.pairDeviceBegin(host: newHostIP)
                 guard began else {
                     showAlert(message: .localizable(.pairingFailed))
@@ -251,6 +259,7 @@ struct MainMenuView: View {
                 return
             }
             nowPlayingService.updateTimer(setting.updateInterval, newHostIP)
+            print("[UI] Switched device to \(newHost) (ip=\(newHostIP))")
             previousHost = newHost
         }
     }

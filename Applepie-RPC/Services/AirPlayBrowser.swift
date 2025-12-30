@@ -30,7 +30,8 @@ class AirPlayBrowser: NSObject, ObservableObject, NetServiceBrowserDelegate, Net
     func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
         print("[AirPlayBrowser] didFind service:", service.name, "type:", service.type)
         // Update UI immediately with discovered service name
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
             if !self.hosts.contains(service.name) {
                 self.hosts.append(service.name)
             }
@@ -46,7 +47,8 @@ class AirPlayBrowser: NSObject, ObservableObject, NetServiceBrowserDelegate, Net
     }
 
     func netServiceBrowser(_ browser: NetServiceBrowser, didRemove service: NetService, moreComing: Bool) {
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
             // Remove from hosts list
             self.hosts.removeAll { $0 == service.name }
             // Remove stored IP
@@ -85,7 +87,8 @@ class AirPlayBrowser: NSObject, ObservableObject, NetServiceBrowserDelegate, Net
             }
         }
         let ipAddress = String(cString: hostname)
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
             self.serviceIPs[sender.name] = ipAddress
             print("[AirPlayBrowser] Resolved IP for \(sender.name): \(ipAddress)")
         }
