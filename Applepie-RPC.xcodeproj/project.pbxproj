@@ -48,6 +48,7 @@
 		623815632DB2B12300AD874E /* Applepie-RPCTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Applepie-RPCTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6238156D2DB2B12300AD874E /* Applepie-RPCUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Applepie-RPCUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		625BD3E62DBA24D0009567E7 /* MusicKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MusicKit.framework; path = System/Library/Frameworks/MusicKit.framework; sourceTree = SDKROOT; };
+		A1B2C3D4E5F60718293A4B5C /* Applepie-RPC.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "xcconfigs/Applepie-RPC.xcconfig"; sourceTree = "<group>"; };
 		D0F1E2FC2F03A1CE002FB86E /* PylibKit-macos.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = "PylibKit-macos.xcframework"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -113,6 +114,7 @@
 			isa = PBXGroup;
 			children = (
 				62B562B22DB79DF70094DC22 /* Frameworks */,
+				A1B2C3D4E5F60718293A4B5C /* Applepie-RPC.xcconfig */,
 				623815542DB2B12100AD874E /* Applepie-RPC */,
 				623815662DB2B12300AD874E /* Applepie-RPCTests */,
 				623815702DB2B12300AD874E /* Applepie-RPCUITests */,
@@ -448,6 +450,7 @@
 		};
 		623815782DB2B12300AD874E /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A1B2C3D4E5F60718293A4B5C /* Applepie-RPC.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -498,6 +501,7 @@
 		};
 		623815792DB2B12300AD874E /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A1B2C3D4E5F60718293A4B5C /* Applepie-RPC.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
