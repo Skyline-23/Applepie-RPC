@@ -85,7 +85,7 @@ struct MainMenuView: View {
                         do {
                             try modelContext.save()
                         } catch {
-                            print("Failed to save isPaused:", error)
+                            debugLog("Failed to save isPaused:", error)
                         }
                         if self.setting.isPaused {
                             nowPlayingService.stop()
@@ -225,15 +225,15 @@ struct MainMenuView: View {
         nowPlayingService.stop()
         Task {
             let newHostIP = browser.serviceIPs[newHost] ?? ""
-            print("[UI] Device selection: \(oldHost) -> \(newHost) (ip=\(newHostIP))")
+            debugLog("[UI] Device selection: \(oldHost) -> \(newHost) (ip=\(newHostIP))")
             guard !newHostIP.isEmpty else {
-                print("[UI] Device switch aborted: no IP resolved for \(newHost)")
+                debugLog("[UI] Device switch aborted: no IP resolved for \(newHost)")
                 selectedHost = oldHost
                 return
             }
 
             let needsPairing = await nowPlayingService.isPairingNeeded(host: newHostIP)
-            print("[UI] Pairing needed: \(needsPairing) (host=\(newHostIP))")
+            debugLog("[UI] Pairing needed: \(needsPairing) (host=\(newHostIP))")
             if needsPairing {
                 let began = await nowPlayingService.pairDeviceBegin(host: newHostIP)
                 guard began else {
@@ -244,11 +244,11 @@ struct MainMenuView: View {
                 // Await PIN input
                 if let pin = await showPINWindow() {
                     if let creds = await nowPlayingService.pairDeviceFinish(host: newHostIP, pin: pin) {
-                        print("[PyatvService] Pairing finished with credentials:", creds)
+                        debugLog("[PyatvService] Pairing finished with credentials:", creds)
                         nowPlayingService.updateTimer(setting.updateInterval, newHostIP)
                         previousHost = newHost
                     } else {
-                        print("[PyatvService] Pairing failed")
+                        debugLog("[PyatvService] Pairing failed")
                         showAlert(message: .localizable(.pairingFailed))
                         selectedHost = oldHost
                     }
@@ -259,7 +259,7 @@ struct MainMenuView: View {
                 return
             }
             nowPlayingService.updateTimer(setting.updateInterval, newHostIP)
-            print("[UI] Switched device to \(newHost) (ip=\(newHostIP))")
+            debugLog("[UI] Switched device to \(newHost) (ip=\(newHostIP))")
             previousHost = newHost
         }
     }

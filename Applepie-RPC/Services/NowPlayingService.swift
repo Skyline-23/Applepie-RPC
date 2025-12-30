@@ -32,7 +32,7 @@ class NowPlayingService: ObservableObject {
     func start(interval: TimeInterval, host: String) {
         self.interval = interval
         self.host = host
-        print("[NowPlayingService] start interval=\(interval)s host=\(host)")
+        debugLog("[NowPlayingService] start interval=\(interval)s host=\(host)")
         timerCancellable?.cancel()
         timerCancellable = Timer
             .publish(every: interval, on: .main, in: .common)
@@ -62,7 +62,7 @@ class NowPlayingService: ObservableObject {
 
     /// Update the fetch interval & host.
     func updateTimer(_ newInterval: TimeInterval, _ newHost: String) {
-        print("[NowPlayingService] updateTimer interval=\(newInterval)s host=\(newHost)")
+        debugLog("[NowPlayingService] updateTimer interval=\(newInterval)s host=\(newHost)")
         start(interval: newInterval, host: newHost)
     }
 

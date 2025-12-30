@@ -23,12 +23,12 @@ class AirPlayBrowser: NSObject, ObservableObject, NetServiceBrowserDelegate, Net
         browser.delegate = self
         // Ensure delegate callbacks fire on the main run loop
         browser.schedule(in: RunLoop.main, forMode: .common)
-        print("[AirPlayBrowser] start searching for _airplay._tcp. in local.")
+        debugLog("[AirPlayBrowser] start searching for _airplay._tcp. in local.")
         browser.searchForServices(ofType: "_airplay._tcp.", inDomain: "local.")
     }
 
     func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
-        print("[AirPlayBrowser] didFind service:", service.name, "type:", service.type)
+        debugLog("[AirPlayBrowser] didFind service:", service.name, "type:", service.type)
         // Update UI immediately with discovered service name
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -38,12 +38,12 @@ class AirPlayBrowser: NSObject, ObservableObject, NetServiceBrowserDelegate, Net
         }
         // Configure delegate and schedule before resolving
         service.delegate = self
-        print("[AirPlayBrowser] Configuring service: \(service.name), delegate set: \(service.delegate != nil)")
+        debugLog("[AirPlayBrowser] Configuring service: \(service.name), delegate set: \(service.delegate != nil)")
         // Schedule resolution callbacks on multiple run loop modes
         service.schedule(in: RunLoop.main, forMode: .common)
         resolvingServices.append(service)
         service.resolve(withTimeout: 5)
-        print("[AirPlayBrowser] Started resolve for \(service.name)")
+        debugLog("[AirPlayBrowser] Started resolve for \(service.name)")
     }
 
     func netServiceBrowser(_ browser: NetServiceBrowser, didRemove service: NetService, moreComing: Bool) {
@@ -58,7 +58,7 @@ class AirPlayBrowser: NSObject, ObservableObject, NetServiceBrowserDelegate, Net
 
     // Log failures to resolve service addresses
     func netService(_ service: NetService, didNotResolve errorDict: [String : NSNumber]) {
-        print("[AirPlayBrowser] didNotResolveAddress for \(service.name), error: \(errorDict)")
+        debugLog("[AirPlayBrowser] didNotResolveAddress for \(service.name), error: \(errorDict)")
         if let index = resolvingServices.firstIndex(where: { $0 === service }) {
             resolvingServices.remove(at: index)
         }
@@ -67,7 +67,7 @@ class AirPlayBrowser: NSObject, ObservableObject, NetServiceBrowserDelegate, Net
     // Called when the service addresses have been resolved
     func netServiceDidResolveAddress(_ sender: NetService) {
         guard let addresses = sender.addresses, let addressData = addresses.first else {
-            print("[AirPlayBrowser] No addresses to resolve for \(sender.name)")
+            debugLog("[AirPlayBrowser] No addresses to resolve for \(sender.name)")
             return
         }
         // Extract IPv4 address
@@ -82,7 +82,7 @@ class AirPlayBrowser: NSObject, ObservableObject, NetServiceBrowserDelegate, Net
                                      0,
                                      NI_NUMERICHOST)
             guard result == 0 else {
-                print("[AirPlayBrowser] getnameinfo failed with \(result) for \(sender.name)")
+                debugLog("[AirPlayBrowser] getnameinfo failed with \(result) for \(sender.name)")
                 return
             }
         }
@@ -90,7 +90,7 @@ class AirPlayBrowser: NSObject, ObservableObject, NetServiceBrowserDelegate, Net
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.serviceIPs[sender.name] = ipAddress
-            print("[AirPlayBrowser] Resolved IP for \(sender.name): \(ipAddress)")
+            debugLog("[AirPlayBrowser] Resolved IP for \(sender.name): \(ipAddress)")
         }
         // Release service after resolution
         if let index = resolvingServices.firstIndex(where: { $0 === sender }) {

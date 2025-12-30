@@ -52,7 +52,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 interval = setting.updateInterval
             }
         } catch {
-            print("Failed to fetch AppSettings:", error)
+            debugLog("Failed to fetch AppSettings:", error)
         }
         
         // Observe SwiftData save notifications to refresh AppSettings
@@ -71,7 +71,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Request Apple Music authorization once at startup
             let authStatus = await MusicAuthorization.request()
             guard authStatus == .authorized else {
-                print("⚠️ Apple Music authorization denied: \(authStatus)")
+                debugLog("⚠️ Apple Music authorization denied: \(authStatus)")
                 return
             }
             // Create and initialize the DiscordService using the async factory

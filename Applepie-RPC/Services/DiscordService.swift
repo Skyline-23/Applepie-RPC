@@ -65,7 +65,7 @@ class DiscordService {
         }
 
         guard let rpc else {
-            print("[DiscordService] RPC is not initialized")
+            debugLog("[DiscordService] RPC is not initialized")
             return
         }
 
@@ -122,7 +122,7 @@ class DiscordService {
         let activityName = "Apple Music"
         let timingLogKey = "\(title)|\(artist ?? "")|\(album ?? "")"
         if now - lastTimingLogAt >= 5 || timingLogKey != lastTimingLogKey {
-            print("[DiscordService] timing raw pos=\(position) dur=\(duration) normalized=\(String(describing: timing)) now=\(now) start=\(String(describing: start)) end=\(String(describing: end))")
+            debugLog("[DiscordService] timing raw pos=\(position) dur=\(duration) normalized=\(String(describing: timing)) now=\(now) start=\(String(describing: start)) end=\(String(describing: end))")
             lastTimingLogAt = now
             lastTimingLogKey = timingLogKey
         }
@@ -172,10 +172,10 @@ class DiscordService {
                         instance: false
                     )
                 } catch {
-                    print("[DiscordService] Failed to set activity: \(error)")
+                    debugLog("[DiscordService] Failed to set activity: \(error)")
                 }
             } else {
-                print("[DiscordService] Failed to set activity: \(error)")
+                debugLog("[DiscordService] Failed to set activity: \(error)")
             }
         }
     }
@@ -208,7 +208,7 @@ class DiscordService {
     /// Manually start/restart the Discord RPC connection.
     private func start() async {
         guard rpc == nil else { return }
-        print("[DiscordService] start() called")
+        debugLog("[DiscordService] start() called")
         do {
             let client = try await Pypresence.Client.ClientInstance.create(
                 executor: executor,
@@ -218,33 +218,33 @@ class DiscordService {
             _ = try await client.update_event_loop(loop: loop)
             _ = try await client.start()
             rpc = client
-            print("[DiscordService] RPC start result: true")
+            debugLog("[DiscordService] RPC start result: true")
         } catch {
-            print("[DiscordService] RPC start failed: \(error)")
+            debugLog("[DiscordService] RPC start failed: \(error)")
         }
     }
 
     /// Manually stop the Discord RPC connection and clear activity.
     private func stop() async {
         guard let rpc else {
-            print("[DiscordService] RPC is nil")
+            debugLog("[DiscordService] RPC is nil")
             return
         }
-        print("[DiscordService] stop() called")
+        debugLog("[DiscordService] stop() called")
         do {
             _ = try await rpc.clear_activity()
         } catch {
-            print("[DiscordService] Failed to clear activity: \(error)")
+            debugLog("[DiscordService] Failed to clear activity: \(error)")
         }
         do {
             _ = try await rpc.close()
         } catch {
-            print("[DiscordService] Failed to close RPC: \(error)")
+            debugLog("[DiscordService] Failed to close RPC: \(error)")
         }
         self.rpc = nil
         self.rpcLoop = nil
         self.buttonsEnabled = true
-        print("[DiscordService] RPC stopped and cleared")
+        debugLog("[DiscordService] RPC stopped and cleared")
     }
 
     private func makeButtonsRef(_ buttons: [[String: String]]) async -> ObjectRef? {
@@ -254,7 +254,7 @@ class DiscordService {
             try await namespace.buttons.setValue(buttons)
             return try await namespace.buttons.objectRef()
         } catch {
-            print("[DiscordService] Failed to build buttons payload: \(error)")
+            debugLog("[DiscordService] Failed to build buttons payload: \(error)")
             return nil
         }
     }
@@ -322,7 +322,7 @@ class AppleMusicService {
                     info = ["artworkUrl": artURL, "iTunesUrl": trackUrl]
                 }
             } catch {
-                print("AppleMusicService (MusicKit) lookup error:", error)
+                debugLog("AppleMusicService (MusicKit) lookup error:", error)
             }
         } else {
             do {
@@ -335,7 +335,7 @@ class AppleMusicService {
                     info = ["artworkUrl": artURL, "iTunesUrl": trackUrl]
                 }
             } catch {
-                print("AppleMusicService MusicKit search error:", error)
+                debugLog("AppleMusicService MusicKit search error:", error)
             }
         }
 

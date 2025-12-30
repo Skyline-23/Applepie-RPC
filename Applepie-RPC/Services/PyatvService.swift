@@ -45,7 +45,7 @@ class PyatvService {
                 storage = await Pyatv.Interface.StorageInstance.attach(executor: executor, ref: ref)
             }
         } catch {
-            print("[PyatvService] Failed to initialize storage: \(error)")
+            debugLog("[PyatvService] Failed to initialize storage: \(error)")
         }
 
         return PyatvService(executor: executor, pyatv: pyatv, loop: loop, storage: storage)
@@ -68,7 +68,7 @@ class PyatvService {
         do {
             try await storage.load()
         } catch {
-            print("[PyatvService] Storage load failed: \(error)")
+            debugLog("[PyatvService] Storage load failed: \(error)")
         }
     }
 
@@ -144,7 +144,7 @@ class PyatvService {
                 }
             }
         } catch {
-            print("[PyatvService] Failed to read credentials: \(error)")
+            debugLog("[PyatvService] Failed to read credentials: \(error)")
         }
         return nil
     }
@@ -164,7 +164,7 @@ class PyatvService {
             }
             if !collected.isEmpty {
                 let protos = collected.map { String(describing: $0) }
-                print("[PyatvService] Available protocols:", protos.joined(separator: ", "))
+                debugLog("[PyatvService] Available protocols:", protos.joined(separator: ", "))
             }
             return collected
         }
@@ -174,7 +174,7 @@ class PyatvService {
             config: Pyatv.Interface.BaseconfigInstance
         ) async -> (trackID: String?, title: String, artist: String?, album: String?, position: Double, duration: Double)? {
             do {
-                print("[PyatvService] connecting (host=\(host), proto=\(proto))")
+                debugLog("[PyatvService] connecting (host=\(host), proto=\(proto))")
                 let atv = try await withTimeout(seconds: 4, operation: "connect") {
                     try await self.pyatv.connect(
                         config: config,
@@ -184,7 +184,7 @@ class PyatvService {
                     )
                 }
                 guard let atv else {
-                    print("[PyatvService] connect returned nil (host=\(host), proto=\(proto))")
+                    debugLog("[PyatvService] connect returned nil (host=\(host), proto=\(proto))")
                     _ = await availableProtocols(config: config)
                     return nil
                 }
@@ -192,33 +192,33 @@ class PyatvService {
                     Task { try? await atv.close() }
                 }
 
-                print("[PyatvService] fetching metadata (host=\(host), proto=\(proto))")
+                debugLog("[PyatvService] fetching metadata (host=\(host), proto=\(proto))")
                 let metadata = try await withTimeout(seconds: 3, operation: "metadata") {
                     try await atv.metadata()
                 }
                 guard let metadata else {
-                    print("[PyatvService] metadata is nil (host=\(host), proto=\(proto))")
+                    debugLog("[PyatvService] metadata is nil (host=\(host), proto=\(proto))")
                     return nil
                 }
                 let playing = try await withTimeout(seconds: 3, operation: "playing") {
                     try await metadata.playing()
                 }
                 guard let playing else {
-                    print("[PyatvService] playing is nil (host=\(host), proto=\(proto))")
+                    debugLog("[PyatvService] playing is nil (host=\(host), proto=\(proto))")
                     return nil
                 }
 
                 if let state = try await playing.device_state() {
                     if state == .idle {
-                        print("[PyatvService] device_state=idle (host=\(host), proto=\(proto))")
+                        debugLog("[PyatvService] device_state=idle (host=\(host), proto=\(proto))")
                         return nil
                     }
-                    print("[PyatvService] device_state=\(state) (host=\(host), proto=\(proto))")
+                    debugLog("[PyatvService] device_state=\(state) (host=\(host), proto=\(proto))")
                 }
 
                 let title = (try await playing.title()) ?? ""
                 if title.isEmpty {
-                    print("[PyatvService] title is empty (host=\(host), proto=\(proto))")
+                    debugLog("[PyatvService] title is empty (host=\(host), proto=\(proto))")
                     return nil
                 }
 
@@ -240,7 +240,7 @@ class PyatvService {
                 let trackID = itunesId.flatMap { $0 > 0 ? String($0) : nil }
 
                 if duration <= 0 {
-                    print("[PyatvService] duration unavailable (host=\(host), proto=\(proto))")
+                    debugLog("[PyatvService] duration unavailable (host=\(host), proto=\(proto))")
                     return nil
                 }
 
@@ -253,10 +253,10 @@ class PyatvService {
                     duration: duration
                 )
             } catch let timeout as TimeoutError {
-                print("[PyatvService] \(timeout.operation) timed out after \(timeout.seconds)s (host=\(host), proto=\(proto))")
+                debugLog("[PyatvService] \(timeout.operation) timed out after \(timeout.seconds)s (host=\(host), proto=\(proto))")
                 return nil
             } catch {
-                print("[PyatvService] fetch failed (host=\(host), proto=\(proto)): \(error)")
+                debugLog("[PyatvService] fetch failed (host=\(host), proto=\(proto)): \(error)")
                 return nil
             }
         }
@@ -266,13 +266,13 @@ class PyatvService {
                 try await self.scanConfig(host: host)
             }
             guard let config else {
-                print("[PyatvService] scan returned no config (host=\(host))")
+                debugLog("[PyatvService] scan returned no config (host=\(host))")
                 return nil
             }
 
             let name = (try? await config.name()) ?? "unknown"
             let identifier = (try? await config.identifier()) ?? "unknown"
-            print("[PyatvService] scan result host=\(host) name=\(name) id=\(identifier)")
+            debugLog("[PyatvService] scan result host=\(host) name=\(name) id=\(identifier)")
             let available = await availableProtocols(config: config)
             let desiredOrder: [Pyatv.Const.PyatvProtocol_] = [.mRP, .companion, .airPlay]
             let protocolsToTry = desiredOrder.filter { available.contains($0) }
@@ -284,10 +284,10 @@ class PyatvService {
             }
             return nil
         } catch let timeout as TimeoutError {
-            print("[PyatvService] \(timeout.operation) timed out after \(timeout.seconds)s (host=\(host))")
+            debugLog("[PyatvService] \(timeout.operation) timed out after \(timeout.seconds)s (host=\(host))")
             return nil
         } catch {
-            print("[PyatvService] Failed to fetch ATV props: \(error)")
+            debugLog("[PyatvService] Failed to fetch ATV props: \(error)")
             return nil
         }
     }
@@ -316,14 +316,14 @@ class PyatvService {
                 try await handler.begin()
             } catch {
                 try? await handler.close()
-                print("[PyatvService] Pairing begin failed: \(error)")
+                debugLog("[PyatvService] Pairing begin failed: \(error)")
                 return false
             }
 
             pairings[host] = PairingSession(handler: handler, config: config, proto: proto)
             return true
         } catch {
-            print("[PyatvService] Pairing begin error: \(error)")
+            debugLog("[PyatvService] Pairing begin error: \(error)")
             return false
         }
     }
@@ -336,7 +336,7 @@ class PyatvService {
     /// Synchronous finish pairing.
     func pairDeviceFinishSync(host: String, pin: Int) async -> String? {
         guard let session = pairings.removeValue(forKey: host) else {
-            print("[PyatvService] No pairing session for host \(host)")
+            debugLog("[PyatvService] No pairing session for host \(host)")
             return nil
         }
         defer {
@@ -356,7 +356,7 @@ class PyatvService {
 
             return await credentialsFromSettings(config: session.config, proto: session.proto)
         } catch {
-            print("[PyatvService] Pairing finish failed: \(error)")
+            debugLog("[PyatvService] Pairing finish failed: \(error)")
             return nil
         }
     }
@@ -380,7 +380,7 @@ class PyatvService {
             }
             return pairingRequirement == .mandatory
         } catch {
-            print("[PyatvService] Pairing check failed: \(error)")
+            debugLog("[PyatvService] Pairing check failed: \(error)")
             return false
         }
     }
@@ -399,7 +399,7 @@ class PyatvService {
             try await storage.save()
             return removedAny || !settings.isEmpty
         } catch {
-            print("[PyatvService] Failed to remove pairing: \(error)")
+            debugLog("[PyatvService] Failed to remove pairing: \(error)")
             return false
         }
     }
@@ -414,7 +414,7 @@ class PyatvService {
             _ = await removePairing()
             return true
         } catch {
-            print("[PyatvService] Failed to cancel pairing: \(error)")
+            debugLog("[PyatvService] Failed to cancel pairing: \(error)")
             return false
         }
     }
