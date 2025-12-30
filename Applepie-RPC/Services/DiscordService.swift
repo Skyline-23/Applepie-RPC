@@ -16,6 +16,9 @@ class DiscordService {
     private var rpcLoop: AsyncioLoop?
     private var buttonsEnabled = true
     private let musicService = AppleMusicService()
+    private let maxSecondsThreshold = 10_000.0
+    private var lastTimingLogAt: Int = 0
+    private var lastTimingLogKey: String = ""
 
     /// Factory to create and initialize a DiscordService.
     static func create(
@@ -66,11 +69,17 @@ class DiscordService {
             return
         }
 
+        let lookupKey = (title + " " + (artist ?? "") + " " + (album ?? ""))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         let extras: [String: String]
-        if let trackID = trackID {
-            extras = await musicService.fetchTrackExtras(lookupKey: trackID, isStoreID: true)
+        if let trackID = trackID, let storeID = Int(trackID), storeID > 0 {
+            let storeExtras = await musicService.fetchTrackExtras(lookupKey: trackID, isStoreID: true)
+            if storeExtras.isEmpty {
+                extras = await musicService.fetchTrackExtras(lookupKey: lookupKey, isStoreID: false)
+            } else {
+                extras = storeExtras
+            }
         } else {
-            let lookupKey = title + " " + (artist ?? "") + " " + (album ?? "")
             extras = await musicService.fetchTrackExtras(lookupKey: lookupKey, isStoreID: false)
         }
 
@@ -87,7 +96,7 @@ class DiscordService {
             largeText = nil
         }
 
-        var buttonsPayload: [Any] = []
+        var buttonsPayload: [[String: String]] = []
         if let iTunesUrl, !iTunesUrl.isEmpty {
             buttonsPayload.append([
                 "label": "Play on Apple Music",
@@ -107,24 +116,45 @@ class DiscordService {
         }
 
         let now = Int(Date().timeIntervalSince1970)
-        let pos = max(0, Int(position))
-        let dur = max(0, Int(duration))
-        let remaining = max(0, dur - pos)
-        let start = dur > 0 ? now - pos : nil
-        let end = dur > 0 ? now + remaining : nil
+        let timing = normalizedPlayback(position: position, duration: duration)
+        let start = timing.map { now - $0.pos }
+        let end = timing.map { (now - $0.pos) + $0.dur }
+        let activityName = "Apple Music"
+        let timingLogKey = "\(title)|\(artist ?? "")|\(album ?? "")"
+        if now - lastTimingLogAt >= 5 || timingLogKey != lastTimingLogKey {
+            print("[DiscordService] timing raw pos=\(position) dur=\(duration) normalized=\(String(describing: timing)) now=\(now) start=\(String(describing: start)) end=\(String(describing: end))")
+            lastTimingLogAt = now
+            lastTimingLogKey = timingLogKey
+        }
 
+        let buttonsRef = await makeButtonsRef(buttonsPayload)
         do {
-            _ = try await rpc.set_activity(
-                activity_type: .lISTENING,
-                state: state,
-                details: details,
-                start: start,
-                end: end,
-                large_image: artworkUrl ?? "appicon",
-                large_text: largeText,
-                buttons: (buttonsEnabled && !buttonsPayload.isEmpty) ? buttonsPayload : nil,
-                instance: false
-            )
+            if let buttonsRef {
+                _ = try await rpc.set_activity(
+                    activity_type: .lISTENING,
+                    state: state,
+                    details: details,
+                    name: activityName,
+                    start: start,
+                    end: end,
+                    large_image: artworkUrl ?? "appicon",
+                    large_text: largeText,
+                    buttons: buttonsRef,
+                    instance: false
+                )
+            } else {
+                _ = try await rpc.set_activity(
+                    activity_type: .lISTENING,
+                    state: state,
+                    details: details,
+                    name: activityName,
+                    start: start,
+                    end: end,
+                    large_image: artworkUrl ?? "appicon",
+                    large_text: largeText,
+                    instance: false
+                )
+            }
         } catch {
             let message = String(describing: error)
             if message.localizedCaseInsensitiveContains("buttons") {
@@ -134,11 +164,11 @@ class DiscordService {
                         activity_type: .lISTENING,
                         state: state,
                         details: details,
+                        name: activityName,
                         start: start,
                         end: end,
                         large_image: artworkUrl ?? "appicon",
                         large_text: largeText,
-                        buttons: nil,
                         instance: false
                     )
                 } catch {
@@ -148,6 +178,26 @@ class DiscordService {
                 print("[DiscordService] Failed to set activity: \(error)")
             }
         }
+    }
+
+    private func normalizedPlayback(
+        position: Double,
+        duration: Double
+    ) -> (pos: Int, dur: Int)? {
+        var pos = position
+        var dur = duration
+        if dur > maxSecondsThreshold, pos > maxSecondsThreshold {
+            dur /= 1000.0
+            pos /= 1000.0
+        } else if dur > maxSecondsThreshold, pos <= maxSecondsThreshold {
+            dur /= 1000.0
+        } else if pos > maxSecondsThreshold, dur <= maxSecondsThreshold {
+            pos /= 1000.0
+        }
+        guard dur > 0 else { return nil }
+        if pos < 0 { pos = 0 }
+        if pos >= dur { pos = max(0, dur - 1) }
+        return (pos: max(0, Int(pos)), dur: max(1, Int(dur)))
     }
 
     /// Clears the activity on the Discord RPC connection.
@@ -196,6 +246,18 @@ class DiscordService {
         self.buttonsEnabled = true
         print("[DiscordService] RPC stopped and cleared")
     }
+
+    private func makeButtonsRef(_ buttons: [[String: String]]) async -> ObjectRef? {
+        guard buttonsEnabled, !buttons.isEmpty else { return nil }
+        do {
+            let namespace = await executor.makeNamespace(callables: [:])
+            try await namespace.buttons.setValue(buttons)
+            return try await namespace.buttons.objectRef()
+        } catch {
+            print("[DiscordService] Failed to build buttons payload: \(error)")
+            return nil
+        }
+    }
 }
 
 // MARK: - Track Extras Caching and Lookup
@@ -240,9 +302,17 @@ class AppleMusicService {
 
         // 2) If storeID is numeric, try MusicKit lookup
         if isStoreID {
+            guard let storeID = Int(key), storeID > 0 else {
+                let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty {
+                    cache.set(info, for: key)
+                    return info
+                }
+                return await fetchTrackExtras(lookupKey: trimmed, isStoreID: false)
+            }
             let request = MusicCatalogResourceRequest<Song>(
                 matching: \.id,
-                equalTo: MusicItemID(key)
+                equalTo: MusicItemID(String(storeID))
             )
             do {
                 let response = try await request.response()
