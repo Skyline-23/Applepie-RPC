@@ -9,7 +9,7 @@ permissions:
   
 jobs:
   build-and-release:
-    runs-on: macos-latest
+    runs-on: macos-26
     env:
       # 앱 스킴(타겟 이름)
       APP_SCHEME: Applepie-RPC
