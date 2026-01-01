@@ -9,8 +9,8 @@
 		<string>_airplay._tcp.</string>
 	</array>
 	<key>SUFeedURL</key>
-	<string>https://example.com/applepie-rpc/appcast.xml</string>
+	<string>https://github.com/Skyline-23/Applepie-RPC/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>REPLACE_WITH_ED25519_PUBLIC_KEY</string>
+	<string>MblEDMHbxI4NfBFw1rDRyFQm44AkF5O4JKf+b2d0BFY=</string>
 </dict>
 </plist>
