@@ -117,7 +117,7 @@ class PyatvService {
         await ensureStorageLoaded()
         let configs = try await pyatv.scan(
             loop: loop,
-            timeout: 5,
+            timeout: 8,
             protocol_: proto,
             hosts: [host],
             storage: storage
@@ -197,7 +197,7 @@ class PyatvService {
             var didConnect = false
             do {
                 debugLog("[PyatvService] connecting (host=\(host), proto=\(proto))")
-                let atv = try await withTimeout(seconds: 4, operation: "connect") {
+                let atv = try await withTimeout(seconds: 8, operation: "connect") {
                     try await self.pyatv.connect(
                         config: config,
                         loop: self.loop,
@@ -216,14 +216,14 @@ class PyatvService {
                 }
 
                 debugLog("[PyatvService] fetching metadata (host=\(host), proto=\(proto))")
-                let metadata = try await withTimeout(seconds: 3, operation: "metadata") {
+                let metadata = try await withTimeout(seconds: 6, operation: "metadata") {
                     try await atv.metadata()
                 }
                 guard let metadata else {
                     debugLog("[PyatvService] metadata is nil (host=\(host), proto=\(proto))")
                     return .connected(nil)
                 }
-                let playing = try await withTimeout(seconds: 3, operation: "playing") {
+                let playing = try await withTimeout(seconds: 6, operation: "playing") {
                     try await metadata.playing()
                 }
                 guard let playing else {
@@ -285,7 +285,7 @@ class PyatvService {
         }
 
         do {
-            let config = try await withTimeout(seconds: 3, operation: "scan") {
+            let config = try await withTimeout(seconds: 8, operation: "scan") {
                 try await self.scanConfig(host: host)
             }
             guard let config else {

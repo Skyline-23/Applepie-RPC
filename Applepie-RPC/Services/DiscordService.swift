@@ -209,7 +209,16 @@ class DiscordService {
 
     /// Clears the activity on the Discord RPC connection.
     func clearActivity() async {
-        await stop()
+        guard let rpc else {
+            debugLog("[DiscordService] RPC is nil")
+            return
+        }
+        do {
+            _ = try await rpc.clear_activity()
+        } catch {
+            debugLog("[DiscordService] Failed to clear activity: \(error)")
+            handleRpcFailure()
+        }
     }
 
     /// Manually start/restart the Discord RPC connection.

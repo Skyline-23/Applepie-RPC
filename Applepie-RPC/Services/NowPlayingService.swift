@@ -27,6 +27,7 @@ class NowPlayingService: ObservableObject {
     private var timerCancellable: AnyCancellable?
     private var interval: TimeInterval = 5.0
     private var host: String = "localhost"
+    private var isFetching = false
 
     private var atvService: PyatvService?
 
@@ -51,6 +52,8 @@ class NowPlayingService: ObservableObject {
             .autoconnect()
             .sink { [weak self] _ in
                 guard let self = self else { return }
+                guard !self.isFetching else { return }
+                self.isFetching = true
                 Task {
                     let result = await self.fetch(host: host)
                     await MainActor.run {
@@ -63,6 +66,7 @@ class NowPlayingService: ObservableObject {
                             position: result.position,
                             duration: result.duration
                         )
+                        self.isFetching = false
                     }
                 }
             }
