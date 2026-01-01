@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>NSAppleEventsUsageDescription</key>
-	<string></string>
+	<string>Allows Apple Events access to read now playing info from Music.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_airplay._tcp.</string>

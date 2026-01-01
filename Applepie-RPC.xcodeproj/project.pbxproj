@@ -481,16 +481,13 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
-					"@executable_path/../Frameworks/OpenSSL",
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/Frameworks/OpenSSL",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				OTHER_CODE_SIGN_FLAGS = "--timestamp";
-				OTHER_LDFLAGS = "-Wl,-rpath,@executable_path/../Frameworks/OpenSSL";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -532,16 +529,13 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
-					"@executable_path/../Frameworks/OpenSSL",
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/Frameworks/OpenSSL",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				OTHER_CODE_SIGN_FLAGS = "--timestamp";
-				OTHER_LDFLAGS = "-Wl,-rpath,@executable_path/../Frameworks/OpenSSL";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.skyline23.Applepie-RPC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
