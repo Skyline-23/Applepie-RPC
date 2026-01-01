@@ -49,10 +49,6 @@ This project ships updates via Sparkle using the appcast at:
 2. GitHub Actions builds the app, creates a DMG, generates `appcast.xml`, and publishes a release.
 3. Clients will see the update once the tag and appcast are live.
 
-You can use the helper script:
-```
-./scripts/release.sh 1.2.3
-```
 
 ### Required GitHub secrets
 - `CERT_P12_BASE64`, `CERT_PASSWORD`, `KEYCHAIN_PASSWORD`
