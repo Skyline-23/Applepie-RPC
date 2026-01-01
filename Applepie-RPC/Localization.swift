@@ -23,6 +23,7 @@ enum LocalizableKey {
     case enterThe4PINNumbersOnTheScreen
     case status
     case discord
+    case checkForUpdates
 }
 
 extension LocalizableKey {
@@ -70,6 +71,8 @@ extension LocalizableKey {
             return "Status"
         case .discord:
             return "Discord"
+        case .checkForUpdates:
+            return "Check for Updates"
         }
     }
 

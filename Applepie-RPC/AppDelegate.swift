@@ -11,8 +11,8 @@ import MusicKit
 import Combine
 import ApplicationServices
 import PylibKit_Mac
-import Sparkle
 
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     var discordService: DiscordService?
     var pyatvService: PyatvService?
@@ -21,7 +21,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables = Set<AnyCancellable>()
     private var appSettings: AppSettings?
     var container: ModelContainer?
-    private var updaterController: SPUStandardUpdaterController?
+    let updaterService = UpdaterService()
     
     override init() {
         super.init()
@@ -39,15 +39,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
         }
         
-        updaterController = SPUStandardUpdaterController(
-            startingUpdater: true,
-            updaterDelegate: nil,
-            userDriverDelegate: nil
-        )
-        if let updater = updaterController?.updater {
-            updater.automaticallyChecksForUpdates = true
-            updater.automaticallyDownloadsUpdates = true
-        }
         // Load saved update interval from AppSettings
         var interval: Double = 1.0
         do {

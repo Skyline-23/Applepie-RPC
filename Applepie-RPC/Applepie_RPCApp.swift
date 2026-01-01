@@ -29,6 +29,7 @@ struct ApplepieRPCApp: App {
             MainMenuView()
                 .environment(\.modelContext, delegate.container?.mainContext ?? defaultContainer.mainContext)
                 .environmentObject(delegate.nowPlayingService)
+                .environmentObject(delegate.updaterService)
         }
         .menuBarExtraStyle(.window)
     }
@@ -80,10 +81,12 @@ struct MainMenuView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var isHoveringQuit = false
     @State private var isHoveringClearCache = false
+    @State private var isHoveringCheckUpdates = false
     @State private var selectedHost: String = .localizable(.localhostName)
     @State private var previousHost: String = .localizable(.localhostName)
     @StateObject private var browser = AirPlayBrowser()
     @EnvironmentObject var nowPlayingService: NowPlayingService
+    @EnvironmentObject var updaterService: UpdaterService
     
     /// Current AppSettings instance, creating one if missing
     private var setting: AppSettings {
@@ -236,6 +239,28 @@ struct MainMenuView: View {
             .padding(.vertical, 2)
             .onHover { hovering in isHoveringClearCache = hovering }
             .background(isHoveringClearCache ? Color(NSColor.selectedControlColor).opacity(0.2) : Color.clear)
+            .cornerRadius(4)
+            
+            Button {
+                updaterService.checkForUpdates()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 8, height: 8)
+                        .padding(6)
+                        .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
+                    Text(localizable: .checkForUpdates)
+                    Spacer()
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 2)
+            .onHover { hovering in isHoveringCheckUpdates = hovering }
+            .background(isHoveringCheckUpdates ? Color(NSColor.selectedControlColor).opacity(0.2) : Color.clear)
             .cornerRadius(4)
             
             // Quit application

@@ -138,11 +138,39 @@ jobs:
           staple: true
           xcode_path: '/Applications/Xcode.app'
 
+      - name: Download Sparkle tools
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/sparkle"
+          curl -L \
+            -o "$GITHUB_WORKSPACE/sparkle/Sparkle-2.8.1.tar.xz" \
+            https://github.com/sparkle-project/Sparkle/releases/download/2.8.1/Sparkle-2.8.1.tar.xz
+          tar -xf "$GITHUB_WORKSPACE/sparkle/Sparkle-2.8.1.tar.xz" -C "$GITHUB_WORKSPACE/sparkle"
+
+      - name: Generate Sparkle appcast
+        env:
+          SPARKLE_ED25519_PRIVATE_KEY: ${{ secrets.SPARKLE_ED25519_PRIVATE_KEY }}
+        run: |
+          DIST_DIR="${{ github.workspace }}/dist"
+          APPCAST_URL_PREFIX="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/"
+
+          if [ -z "$SPARKLE_ED25519_PRIVATE_KEY" ]; then
+            echo "❌ SPARKLE_ED25519_PRIVATE_KEY is not set. Aborting."
+            exit 1
+          fi
+
+          echo "$SPARKLE_ED25519_PRIVATE_KEY" | \
+            "$GITHUB_WORKSPACE/sparkle/bin/generate_appcast" \
+              --ed-key-file - \
+              --download-url-prefix "$APPCAST_URL_PREFIX" \
+              "$DIST_DIR"
+
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-          files: ${{ github.workspace }}/dist/${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg
+          files: |
+            ${{ github.workspace }}/dist/${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg
+            ${{ github.workspace }}/dist/appcast.xml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
