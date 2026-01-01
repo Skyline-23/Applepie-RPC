@@ -29,6 +29,7 @@ class NowPlayingService: ObservableObject {
     private var host: String = "localhost"
     private var isFetching = false
     private var lastDeviceConnectedAt: Date?
+    private var fetchTask: Task<Void, Never>?
 
     private var atvService: PyatvService?
 
@@ -49,6 +50,9 @@ class NowPlayingService: ObservableObject {
         self.lastDeviceConnectedAt = nil
         debugLog("[NowPlayingService] start interval=\(interval)s host=\(host)")
         timerCancellable?.cancel()
+        fetchTask?.cancel()
+        fetchTask = nil
+        isFetching = false
         timerCancellable = Timer
             .publish(every: interval, on: .main, in: .common)
             .autoconnect()
@@ -56,8 +60,11 @@ class NowPlayingService: ObservableObject {
                 guard let self = self else { return }
                 guard !self.isFetching else { return }
                 self.isFetching = true
-                Task {
+                self.fetchTask = Task { [weak self] in
+                    guard let self = self else { return }
+                    defer { self.isFetching = false }
                     let result = await self.fetch(host: host)
+                    if Task.isCancelled { return }
                     let now = Date()
                     let disconnectGrace = min(max(5.0, self.interval * 1.5), 20.0)
                     let resolvedConnection: ConnectionState
@@ -80,7 +87,6 @@ class NowPlayingService: ObservableObject {
                             position: result.position,
                             duration: result.duration
                         )
-                        self.isFetching = false
                     }
                 }
             }
@@ -89,6 +95,9 @@ class NowPlayingService: ObservableObject {
     func stop() {
         timerCancellable?.cancel()
         timerCancellable = nil
+        fetchTask?.cancel()
+        fetchTask = nil
+        isFetching = false
         deviceConnection = .disconnected
         lastDeviceConnectedAt = nil
     }
@@ -98,6 +107,9 @@ class NowPlayingService: ObservableObject {
         debugLog("[NowPlayingService] updateTimer interval=\(newInterval)s host=\(newHost)")
         deviceConnection = .unknown
         lastDeviceConnectedAt = nil
+        fetchTask?.cancel()
+        fetchTask = nil
+        isFetching = false
         start(interval: newInterval, host: newHost)
     }
 

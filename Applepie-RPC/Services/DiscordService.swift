@@ -19,6 +19,9 @@ class DiscordService {
     private let maxSecondsThreshold = 10_000.0
     private var lastTimingLogAt: Int = 0
     private var lastTimingLogKey: String = ""
+    private var lastActivityKey: String?
+    private var lastActivitySentAt: Date?
+    private let minActivityUpdateInterval: TimeInterval = 15.0
     private(set) var connectionState: ConnectionState = .disconnected
     var onConnectionStateChange: ((ConnectionState) -> Void)?
     private var reconnectTask: Task<Void, Never>?
@@ -40,6 +43,10 @@ class DiscordService {
         self.executor = executor
         self.musicService.clearCache()
         setConnectionState(.disconnected)
+    }
+
+    func setMusicKitEnabled(_ enabled: Bool) {
+        musicService.setMusicKitEnabled(enabled)
     }
 
     private func ensureRpcLoop() async -> AsyncioLoop {
@@ -72,6 +79,14 @@ class DiscordService {
 
         guard let rpc else {
             debugLog("[DiscordService] RPC is not initialized")
+            return
+        }
+
+        let activityKey = "\(trackID ?? "")|\(title)|\(artist ?? "")|\(album ?? "")"
+        let nowDate = Date()
+        if activityKey == lastActivityKey,
+           let lastSentAt = lastActivitySentAt,
+           nowDate.timeIntervalSince(lastSentAt) < minActivityUpdateInterval {
             return
         }
 
@@ -134,6 +149,7 @@ class DiscordService {
         }
 
         let buttonsRef = await makeButtonsRef(buttonsPayload)
+        var didSend = false
         do {
             if let buttonsRef {
                 _ = try await rpc.set_activity(
@@ -148,6 +164,7 @@ class DiscordService {
                     buttons: buttonsRef,
                     instance: false
                 )
+                didSend = true
             } else {
                 _ = try await rpc.set_activity(
                     activity_type: .lISTENING,
@@ -160,6 +177,7 @@ class DiscordService {
                     large_text: largeText,
                     instance: false
                 )
+                didSend = true
             }
         } catch {
             let message = String(describing: error)
@@ -177,6 +195,7 @@ class DiscordService {
                         large_text: largeText,
                         instance: false
                     )
+                    didSend = true
                 } catch {
                     debugLog("[DiscordService] Failed to set activity: \(error)")
                 }
@@ -184,6 +203,10 @@ class DiscordService {
                 debugLog("[DiscordService] Failed to set activity: \(error)")
                 handleRpcFailure()
             }
+        }
+        if didSend {
+            lastActivityKey = activityKey
+            lastActivitySentAt = nowDate
         }
     }
 
@@ -215,6 +238,8 @@ class DiscordService {
         }
         do {
             _ = try await rpc.clear_activity()
+            lastActivityKey = nil
+            lastActivitySentAt = nil
         } catch {
             debugLog("[DiscordService] Failed to clear activity: \(error)")
             handleRpcFailure()
@@ -265,6 +290,8 @@ class DiscordService {
         self.rpc = nil
         self.rpcLoop = nil
         self.buttonsEnabled = true
+        self.lastActivityKey = nil
+        self.lastActivitySentAt = nil
         setConnectionState(.disconnected)
         debugLog("[DiscordService] RPC stopped and cleared")
     }
@@ -272,6 +299,8 @@ class DiscordService {
     private func handleRpcFailure() {
         rpc = nil
         rpcLoop = nil
+        lastActivityKey = nil
+        lastActivitySentAt = nil
         setConnectionState(.disconnected)
         scheduleReconnect()
     }
@@ -329,20 +358,46 @@ class DiscordService {
 
 /// Simple in-memory and UserDefaults-backed cache for track extras.
 class TrackExtrasCache {
+    private struct CacheEntry: Codable {
+        let info: [String: String]
+        let timestamp: TimeInterval
+    }
+
     private let userDefaultsKey = "TrackExtrasCache"
-    private var cache: [String: [String: String]]
+    private let maxEntries = 200
+    private let ttl: TimeInterval = 7 * 24 * 60 * 60
+    private var cache: [String: CacheEntry]
 
     init() {
-        cache = UserDefaults.standard.dictionary(forKey: userDefaultsKey) as? [String: [String: String]] ?? [:]
+        if let data = UserDefaults.standard.data(forKey: userDefaultsKey),
+           let decoded = try? JSONDecoder().decode([String: CacheEntry].self, from: data) {
+            cache = decoded
+        } else if let legacy = UserDefaults.standard.dictionary(forKey: userDefaultsKey) as? [String: [String: String]] {
+            let now = Date().timeIntervalSince1970
+            cache = legacy.mapValues { CacheEntry(info: $0, timestamp: now) }
+            persist()
+        } else {
+            cache = [:]
+        }
+        pruneExpired()
     }
 
     func get(trackID: String) -> [String: String]? {
-        return cache[trackID]
+        guard let entry = cache[trackID] else { return nil }
+        if isExpired(entry) {
+            cache.removeValue(forKey: trackID)
+            persist()
+            return nil
+        }
+        return entry.info
     }
 
     func set(_ info: [String: String], for trackID: String) {
-        cache[trackID] = info
-        UserDefaults.standard.set(cache, forKey: userDefaultsKey)
+        let now = Date().timeIntervalSince1970
+        cache[trackID] = CacheEntry(info: info, timestamp: now)
+        pruneExpired()
+        pruneToLimit()
+        persist()
     }
 
     /// Clears all cached track extras from memory and UserDefaults.
@@ -350,11 +405,41 @@ class TrackExtrasCache {
         cache.removeAll()
         UserDefaults.standard.removeObject(forKey: userDefaultsKey)
     }
+
+    private func isExpired(_ entry: CacheEntry) -> Bool {
+        let now = Date().timeIntervalSince1970
+        return now - entry.timestamp > ttl
+    }
+
+    private func pruneExpired() {
+        let now = Date().timeIntervalSince1970
+        cache = cache.filter { now - $0.value.timestamp <= ttl }
+    }
+
+    private func pruneToLimit() {
+        guard cache.count > maxEntries else { return }
+        let sortedKeys = cache.sorted { $0.value.timestamp < $1.value.timestamp }
+        let excess = cache.count - maxEntries
+        for (index, pair) in sortedKeys.enumerated() where index < excess {
+            cache.removeValue(forKey: pair.key)
+        }
+    }
+
+    private func persist() {
+        if let data = try? JSONEncoder().encode(cache) {
+            UserDefaults.standard.set(data, forKey: userDefaultsKey)
+        }
+    }
 }
 
 /// Service to fetch artwork and iTunes URL from Apple Music catalog via MusicKit.
 class AppleMusicService {
     private let cache = TrackExtrasCache()
+    private var musicKitEnabled = true
+
+    func setMusicKitEnabled(_ enabled: Bool) {
+        musicKitEnabled = enabled
+    }
 
     /// Fetch artworkUrl (512x512) and track URL using MusicKit lookup or HTTP search fallback, with caching.
     func fetchTrackExtras(lookupKey key: String, isStoreID: Bool) async -> [String: String] {
@@ -375,32 +460,42 @@ class AppleMusicService {
                 }
                 return await fetchTrackExtras(lookupKey: trimmed, isStoreID: false)
             }
-            let request = MusicCatalogResourceRequest<Song>(
-                matching: \.id,
-                equalTo: MusicItemID(String(storeID))
-            )
-            do {
-                let response = try await request.response()
-                if let song = response.items.first, let artwork = song.artwork,
-                   let artURL = artwork.url(width: 512, height: 512)?.absoluteString {
-                    let trackUrl = song.url?.absoluteString ?? ""
-                    info = ["artworkUrl": artURL, "iTunesUrl": trackUrl]
+            if musicKitEnabled {
+                let request = MusicCatalogResourceRequest<Song>(
+                    matching: \.id,
+                    equalTo: MusicItemID(String(storeID))
+                )
+                do {
+                    let response = try await request.response()
+                    if let song = response.items.first, let artwork = song.artwork,
+                       let artURL = artwork.url(width: 512, height: 512)?.absoluteString {
+                        let trackUrl = song.url?.absoluteString ?? ""
+                        info = ["artworkUrl": artURL, "iTunesUrl": trackUrl]
+                    }
+                } catch {
+                    debugLog("AppleMusicService (MusicKit) lookup error:", error)
                 }
-            } catch {
-                debugLog("AppleMusicService (MusicKit) lookup error:", error)
+            }
+            if info.isEmpty {
+                info = await fetchITunesLookup(storeID: storeID)
             }
         } else {
-            do {
-                var searchRequest = MusicCatalogSearchRequest(term: key, types: [Song.self])
-                searchRequest.limit = 1
-                let searchResponse = try await searchRequest.response()
-                if let song = searchResponse.songs.first, let artwork = song.artwork,
-                   let artURL = artwork.url(width: 512, height: 512)?.absoluteString {
-                    let trackUrl = song.url?.absoluteString ?? ""
-                    info = ["artworkUrl": artURL, "iTunesUrl": trackUrl]
+            if musicKitEnabled {
+                do {
+                    var searchRequest = MusicCatalogSearchRequest(term: key, types: [Song.self])
+                    searchRequest.limit = 1
+                    let searchResponse = try await searchRequest.response()
+                    if let song = searchResponse.songs.first, let artwork = song.artwork,
+                       let artURL = artwork.url(width: 512, height: 512)?.absoluteString {
+                        let trackUrl = song.url?.absoluteString ?? ""
+                        info = ["artworkUrl": artURL, "iTunesUrl": trackUrl]
+                    }
+                } catch {
+                    debugLog("AppleMusicService MusicKit search error:", error)
                 }
-            } catch {
-                debugLog("AppleMusicService MusicKit search error:", error)
+            }
+            if info.isEmpty {
+                info = await fetchITunesSearch(term: key)
             }
         }
 
@@ -412,6 +507,44 @@ class AppleMusicService {
     /// Clear the cache for track extras.
     func clearCache() {
         cache.clear()
+    }
+
+    private func fetchITunesLookup(storeID: Int) async -> [String: String] {
+        guard let url = URL(string: "https://itunes.apple.com/lookup?id=\(storeID)&entity=song") else {
+            return [:]
+        }
+        return await fetchITunesInfo(url: url)
+    }
+
+    private func fetchITunesSearch(term: String) async -> [String: String] {
+        let trimmed = term.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [:] }
+        let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed
+        guard let url = URL(string: "https://itunes.apple.com/search?term=\(encoded)&media=music&entity=song&limit=1") else {
+            return [:]
+        }
+        return await fetchITunesInfo(url: url)
+    }
+
+    private func fetchITunesInfo(url: URL) async -> [String: String] {
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let response = try JSONDecoder().decode(LookupResponse.self, from: data)
+            guard let result = response.results.first else { return [:] }
+            let artwork = result.artworkUrl100?.replacingOccurrences(of: "100x100", with: "512x512")
+            let trackUrl = result.trackViewUrl ?? ""
+            var info: [String: String] = [:]
+            if let artwork, !artwork.isEmpty {
+                info["artworkUrl"] = artwork
+            }
+            if !trackUrl.isEmpty {
+                info["iTunesUrl"] = trackUrl
+            }
+            return info
+        } catch {
+            debugLog("AppleMusicService iTunes fallback error:", error)
+            return [:]
+        }
     }
 }
 

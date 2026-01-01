@@ -30,11 +30,26 @@ class PyatvService {
         let proto: Pyatv.Const.PyatvProtocol_
     }
 
+    private struct CachedConfig {
+        let config: Pyatv.Interface.BaseconfigInstance
+        let fetchedAt: Date
+    }
+
+    private struct CachedConnection {
+        let atv: Pyatv.Interface.AppletvInstance
+        var lastUsed: Date
+    }
+
     private let executor: PythonExecutor
     private let pyatv: Pyatv.PyatvService
     private let loop: AsyncioLoop
     private let storage: Pyatv.Interface.StorageInstance?
     private var pairings: [String: PairingSession] = [:]
+    private var configCache: [String: CachedConfig] = [:]
+    private var connectionCache: [String: CachedConnection] = [:]
+    private var lastSuccessfulProtocol: [String: Pyatv.Const.PyatvProtocol_] = [:]
+    private let configTTL: TimeInterval = 60
+    private let connectionTTL: TimeInterval = 30
 
     /// Factory to create and set up PyatvService.
     static func create(executor: PythonExecutor) async -> PyatvService {
@@ -110,11 +125,56 @@ class PyatvService {
         }
     }
 
+    private func cachedConfig(for host: String) -> Pyatv.Interface.BaseconfigInstance? {
+        if let cached = configCache[host] {
+            if Date().timeIntervalSince(cached.fetchedAt) <= configTTL {
+                return cached.config
+            }
+            configCache.removeValue(forKey: host)
+        }
+        return nil
+    }
+
+    private func storeConfig(_ config: Pyatv.Interface.BaseconfigInstance, host: String) {
+        configCache[host] = CachedConfig(config: config, fetchedAt: Date())
+    }
+
+    private func connectionKey(host: String, proto: Pyatv.Const.PyatvProtocol_) -> String {
+        return "\(host)|\(proto.rawValue)"
+    }
+
+    private func cachedConnection(host: String, proto: Pyatv.Const.PyatvProtocol_) async -> Pyatv.Interface.AppletvInstance? {
+        let key = connectionKey(host: host, proto: proto)
+        if var cached = connectionCache[key] {
+            if Date().timeIntervalSince(cached.lastUsed) <= connectionTTL {
+                cached.lastUsed = Date()
+                connectionCache[key] = cached
+                return cached.atv
+            }
+            await closeConnection(forKey: key)
+        }
+        return nil
+    }
+
+    private func storeConnection(_ atv: Pyatv.Interface.AppletvInstance, host: String, proto: Pyatv.Const.PyatvProtocol_) {
+        let key = connectionKey(host: host, proto: proto)
+        connectionCache[key] = CachedConnection(atv: atv, lastUsed: Date())
+    }
+
+    private func closeConnection(forKey key: String) async {
+        if let cached = connectionCache.removeValue(forKey: key) {
+            try? await cached.atv.close()
+        }
+    }
+
     private func scanConfig(
         host: String,
         protocolType proto: Pyatv.Const.PyatvProtocol_? = nil
     ) async throws -> Pyatv.Interface.BaseconfigInstance? {
         await ensureStorageLoaded()
+        if let cached = cachedConfig(for: host) {
+            return cached
+        }
         let configs = try await pyatv.scan(
             loop: loop,
             timeout: 8,
@@ -122,7 +182,11 @@ class PyatvService {
             hosts: [host],
             storage: storage
         )
-        return configs?.first
+        if let config = configs?.first {
+            storeConfig(config, host: host)
+            return config
+        }
+        return nil
     }
 
     private func preferredProtocol(
@@ -195,25 +259,33 @@ class PyatvService {
             config: Pyatv.Interface.BaseconfigInstance
         ) async -> FetchOutcome {
             var didConnect = false
+            let connKey = connectionKey(host: host, proto: proto)
             do {
-                debugLog("[PyatvService] connecting (host=\(host), proto=\(proto))")
-                let atv = try await withTimeout(seconds: 8, operation: "connect") {
-                    try await self.pyatv.connect(
-                        config: config,
-                        loop: self.loop,
-                        protocol_: proto,
-                        storage: self.storage
-                    )
+                let atv: Pyatv.Interface.AppletvInstance
+                if let cached = await cachedConnection(host: host, proto: proto) {
+                    atv = cached
+                    didConnect = true
+                    debugLog("[PyatvService] reusing connection (host=\(host), proto=\(proto))")
+                } else {
+                    debugLog("[PyatvService] connecting (host=\(host), proto=\(proto))")
+                    let connected = try await withTimeout(seconds: 8, operation: "connect") {
+                        try await self.pyatv.connect(
+                            config: config,
+                            loop: self.loop,
+                            protocol_: proto,
+                            storage: self.storage
+                        )
+                    }
+                    guard let connected else {
+                        debugLog("[PyatvService] connect returned nil (host=\(host), proto=\(proto))")
+                        _ = await availableProtocols(config: config)
+                        return .failed
+                    }
+                    atv = connected
+                    didConnect = true
+                    storeConnection(atv, host: host, proto: proto)
                 }
-                guard let atv else {
-                    debugLog("[PyatvService] connect returned nil (host=\(host), proto=\(proto))")
-                    _ = await availableProtocols(config: config)
-                    return .failed
-                }
-                didConnect = true
-                defer {
-                    Task { try? await atv.close() }
-                }
+                lastSuccessfulProtocol[host] = proto
 
                 debugLog("[PyatvService] fetching metadata (host=\(host), proto=\(proto))")
                 let metadata = try await withTimeout(seconds: 6, operation: "metadata") {
@@ -277,9 +349,11 @@ class PyatvService {
                 ))
             } catch let timeout as TimeoutError {
                 debugLog("[PyatvService] \(timeout.operation) timed out after \(timeout.seconds)s (host=\(host), proto=\(proto))")
+                await closeConnection(forKey: connKey)
                 return didConnect ? .connected(nil) : .failed
             } catch {
                 debugLog("[PyatvService] fetch failed (host=\(host), proto=\(proto)): \(error)")
+                await closeConnection(forKey: connKey)
                 return didConnect ? .connected(nil) : .failed
             }
         }
@@ -297,9 +371,20 @@ class PyatvService {
             let identifier = (try? await config.identifier()) ?? "unknown"
             debugLog("[PyatvService] scan result host=\(host) name=\(name) id=\(identifier)")
             let available = await availableProtocols(config: config)
-            let desiredOrder: [Pyatv.Const.PyatvProtocol_] = [.mRP, .companion, .airPlay]
-            let protocolsToTry = desiredOrder.filter { available.contains($0) }
-            let fallbackProtocols = protocolsToTry.isEmpty ? desiredOrder : protocolsToTry
+            var desiredOrder: [Pyatv.Const.PyatvProtocol_] = []
+            if let lastProto = lastSuccessfulProtocol[host] {
+                desiredOrder.append(lastProto)
+            }
+            desiredOrder.append(contentsOf: [.mRP, .companion, .airPlay])
+            var seen = Set<String>()
+            let ordered = desiredOrder.filter { proto in
+                let key = proto.rawValue
+                if seen.contains(key) { return false }
+                seen.insert(key)
+                return true
+            }
+            let protocolsToTry = ordered.filter { available.contains($0) }
+            let fallbackProtocols = protocolsToTry.isEmpty ? ordered : protocolsToTry
             var connected = false
             for proto in fallbackProtocols {
                 let outcome = await fetchWithProtocol(proto, config: config)

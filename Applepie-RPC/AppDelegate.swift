@@ -73,9 +73,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             // Request Apple Music authorization once at startup
             let authStatus = await MusicAuthorization.request()
-            guard authStatus == .authorized else {
+            let musicAuthorized = authStatus == .authorized
+            if !musicAuthorized {
                 debugLog("⚠️ Apple Music authorization denied: \(authStatus)")
-                return
             }
             // Create and initialize the DiscordService using the async factory
             let discordService = await DiscordService.create(
@@ -89,6 +89,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.discordService = discordService
             self.pyatvService = pyatvService
             nowPlayingService.setATVService(pyatvService)
+            discordService.setMusicKitEnabled(musicAuthorized)
             discordService.onConnectionStateChange = { [weak self] state in
                 Task { @MainActor in
                     self?.nowPlayingService.setDiscordConnection(state)
