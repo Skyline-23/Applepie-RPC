@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		620F1E492DB397F400898A8D /* ModernSlider in Frameworks */ = {isa = PBXBuildFile; productRef = 620F1E482DB397F400898A8D /* ModernSlider */; };
+		62A1D7C22F1234567890ABCD /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 62A1D7C12F1234567890ABCD /* Sparkle */; };
 		D0F1E2FD2F03A1CE002FB86E /* PylibKit-macos.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0F1E2FC2F03A1CE002FB86E /* PylibKit-macos.xcframework */; };
 		D0F1E2FE2F03A1CE002FB86E /* PylibKit-macos.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = D0F1E2FC2F03A1CE002FB86E /* PylibKit-macos.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -90,6 +91,7 @@
 			files = (
 				D0F1E2FD2F03A1CE002FB86E /* PylibKit-macos.xcframework in Frameworks */,
 				620F1E492DB397F400898A8D /* ModernSlider in Frameworks */,
+				62A1D7C22F1234567890ABCD /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -163,6 +165,7 @@
 			name = "Applepie-RPC";
 			packageProductDependencies = (
 				620F1E482DB397F400898A8D /* ModernSlider */,
+				62A1D7C12F1234567890ABCD /* Sparkle */,
 			);
 			productName = "Applepie-RPC";
 			productReference = 623815522DB2B12100AD874E /* Applepie-RPC.app */;
@@ -249,6 +252,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				620F1E472DB397F400898A8D /* XCRemoteSwiftPackageReference "ModernSlider" */,
+				62A1D7C02F1234567890ABCD /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 623815532DB2B12100AD874E /* Products */;
@@ -662,6 +666,14 @@
 				kind = branch;
 			};
 		};
+		62A1D7C02F1234567890ABCD /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.8.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -669,6 +681,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 620F1E472DB397F400898A8D /* XCRemoteSwiftPackageReference "ModernSlider" */;
 			productName = ModernSlider;
+		};
+		62A1D7C12F1234567890ABCD /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 62A1D7C02F1234567890ABCD /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
