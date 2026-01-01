@@ -21,12 +21,24 @@ struct PlayingData: Equatable {
 /// Encapsulates now-playing fetch logic via AppleScript.
 class NowPlayingService: ObservableObject {
     @Published var playingData: PlayingData?
+    @Published var deviceConnection: ConnectionState = .unknown
+    @Published var discordConnection: ConnectionState = .unknown
 
     private var timerCancellable: AnyCancellable?
     private var interval: TimeInterval = 5.0
     private var host: String = "localhost"
 
     private var atvService: PyatvService?
+
+    private struct FetchResult {
+        let connection: ConnectionState
+        let trackID: String?
+        let title: String
+        let artist: String?
+        let album: String?
+        let position: Double
+        let duration: Double
+    }
 
     /// Start fetching now-playing data periodically.
     func start(interval: TimeInterval, host: String) {
@@ -42,6 +54,7 @@ class NowPlayingService: ObservableObject {
                 Task {
                     let result = await self.fetch(host: host)
                     await MainActor.run {
+                        self.deviceConnection = result.connection
                         self.playingData = PlayingData(
                             trackID: result.trackID,
                             title: result.title,
@@ -58,12 +71,19 @@ class NowPlayingService: ObservableObject {
     func stop() {
         timerCancellable?.cancel()
         timerCancellable = nil
+        deviceConnection = .disconnected
     }
 
     /// Update the fetch interval & host.
     func updateTimer(_ newInterval: TimeInterval, _ newHost: String) {
         debugLog("[NowPlayingService] updateTimer interval=\(newInterval)s host=\(newHost)")
+        deviceConnection = .unknown
         start(interval: newInterval, host: newHost)
+    }
+
+    func setDiscordConnection(_ state: ConnectionState) {
+        guard discordConnection != state else { return }
+        discordConnection = state
     }
 
     /// Inject a PyatvService for Apple TV/HomePod hosts.
@@ -72,7 +92,7 @@ class NowPlayingService: ObservableObject {
     }
 
     /// Synchronously fetch now playing info with fulld metadata, including artist.
-    private func fetchLocal() -> (trackID: String?, title: String, artist: String?, album: String?, position: Double, duration: Double) {
+    private func fetchLocal() -> FetchResult {
         let script = """
         tell application "Music"
             if player state is playing then
@@ -95,6 +115,7 @@ class NowPlayingService: ObservableObject {
         do {
             try process.run()
             process.waitUntilExit()
+            let connected: ConnectionState = process.terminationStatus == 0 ? .connected : .disconnected
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             let raw = String(data: data, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -104,22 +125,64 @@ class NowPlayingService: ObservableObject {
             let album    = parts.count > 2 ? parts[2] : ""
             let position = parts.count > 3 ? Double(parts[3]) ?? 0.0 : 0.0
             let duration = parts.count > 4 ? Double(parts[4]) ?? 0.0 : 0.0
-            return (trackID: nil, title: title, artist: artist, album: album, position: position, duration: duration)
+            return FetchResult(
+                connection: connected,
+                trackID: nil,
+                title: title,
+                artist: artist,
+                album: album,
+                position: position,
+                duration: duration
+            )
         } catch {
-            return (trackID: nil, title: "", artist: nil, album: nil, position: 0.0, duration: 0.0)
+            return FetchResult(
+                connection: .disconnected,
+                trackID: nil,
+                title: "",
+                artist: nil,
+                album: nil,
+                position: 0.0,
+                duration: 0.0
+            )
         }
     }
 
     /// Fetch now playing info, using AppleScript for local or PyatvService for remote hosts.
-    func fetch(host: String) async -> (trackID: String?, title: String, artist: String?, album: String?, position: Double, duration: Double) {
+    private func fetch(host: String) async -> FetchResult {
         if host == "localhost" {
             return fetchLocal()
         } else if let service = atvService {
-            if let props = await service.getATVProps(host: host) {
-                return props
+            let result = await service.getATVProps(host: host)
+            if let props = result.data {
+                return FetchResult(
+                    connection: result.connection,
+                    trackID: props.trackID,
+                    title: props.title,
+                    artist: props.artist,
+                    album: props.album,
+                    position: props.position,
+                    duration: props.duration
+                )
             }
+            return FetchResult(
+                connection: result.connection,
+                trackID: nil,
+                title: "",
+                artist: nil,
+                album: nil,
+                position: 0.0,
+                duration: 0.0
+            )
         }
-        return (nil, "", nil, nil, 0.0, 0.0)
+        return FetchResult(
+            connection: .disconnected,
+            trackID: nil,
+            title: "",
+            artist: nil,
+            album: nil,
+            position: 0.0,
+            duration: 0.0
+        )
     }
     
     /// Begin pairing: shows PIN on Apple TV.

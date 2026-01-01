@@ -40,6 +40,41 @@ struct ApplepieRPCApp: App {
     }
 }
 
+struct StatusDot: View {
+    let state: ConnectionState
+
+    private var color: Color {
+        state == .connected ? Color(NSColor.systemGreen) : Color(NSColor.systemRed)
+    }
+
+    var body: some View {
+        Circle()
+            .fill(color)
+            .frame(width: 6, height: 6)
+    }
+}
+
+struct StatusRow: View {
+    let title: LocalizedStringKey
+    let state: ConnectionState
+
+    private var statusKey: LocalizableKey {
+        state == .connected ? .connected : .disconnected
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            StatusDot(state: state)
+            Text(title)
+                .font(.caption)
+            Text(localizable: statusKey)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Spacer()
+        }
+    }
+}
+
 struct MainMenuView: View {
     @Query private var settings: [AppSettings]
     @Environment(\.modelContext) private var modelContext
@@ -66,6 +101,14 @@ struct MainMenuView: View {
         browser.serviceIPs[selectedHost] ?? ""
     }
     
+    private var effectiveDeviceConnection: ConnectionState {
+        setting.isPaused ? .disconnected : nowPlayingService.deviceConnection
+    }
+    
+    private func statusKey(for state: ConnectionState) -> LocalizableKey {
+        state == .connected ? .connected : .disconnected
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             // App title with toggle switch and connection status
@@ -73,7 +116,7 @@ struct MainMenuView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(localizable: .appName)
                         .font(.headline)
-                    Text(localizable: !setting.isPaused ? .connected : .disconnected)
+                    Text(localizable: statusKey(for: effectiveDeviceConnection))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -98,6 +141,15 @@ struct MainMenuView: View {
                 .labelsHidden()
             }
             .padding(.bottom, 8)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(localizable: .status)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                StatusRow(title: .localizable(.device), state: effectiveDeviceConnection)
+                StatusRow(title: .localizable(.discord), state: nowPlayingService.discordConnection)
+            }
+            .padding(.vertical, 4)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(localizable: .updateInterval)

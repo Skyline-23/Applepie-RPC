@@ -86,6 +86,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.discordService = discordService
             self.pyatvService = pyatvService
             nowPlayingService.setATVService(pyatvService)
+            discordService.onConnectionStateChange = { [weak self] state in
+                Task { @MainActor in
+                    self?.nowPlayingService.setDiscordConnection(state)
+                }
+            }
+            nowPlayingService.setDiscordConnection(discordService.connectionState)
             
             // Start periodic fetching in NowPlayingService
             nowPlayingService.start(interval: interval, host: "localhost")

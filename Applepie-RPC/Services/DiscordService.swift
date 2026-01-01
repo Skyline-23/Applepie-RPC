@@ -19,6 +19,11 @@ class DiscordService {
     private let maxSecondsThreshold = 10_000.0
     private var lastTimingLogAt: Int = 0
     private var lastTimingLogKey: String = ""
+    private(set) var connectionState: ConnectionState = .disconnected
+    var onConnectionStateChange: ((ConnectionState) -> Void)?
+    private var reconnectTask: Task<Void, Never>?
+    private var reconnectAttempt: Int = 0
+    private let reconnectDelays: [Double] = [2, 4, 8, 15, 30]
 
     /// Factory to create and initialize a DiscordService.
     static func create(
@@ -34,6 +39,7 @@ class DiscordService {
         self.clientID = clientID
         self.executor = executor
         self.musicService.clearCache()
+        setConnectionState(.disconnected)
     }
 
     private func ensureRpcLoop() async -> AsyncioLoop {
@@ -176,6 +182,7 @@ class DiscordService {
                 }
             } else {
                 debugLog("[DiscordService] Failed to set activity: \(error)")
+                handleRpcFailure()
             }
         }
     }
@@ -218,9 +225,12 @@ class DiscordService {
             _ = try await client.update_event_loop(loop: loop)
             _ = try await client.start()
             rpc = client
+            setConnectionState(.connected)
             debugLog("[DiscordService] RPC start result: true")
         } catch {
             debugLog("[DiscordService] RPC start failed: \(error)")
+            setConnectionState(.disconnected)
+            scheduleReconnect()
         }
     }
 
@@ -228,8 +238,10 @@ class DiscordService {
     private func stop() async {
         guard let rpc else {
             debugLog("[DiscordService] RPC is nil")
+            setConnectionState(.disconnected)
             return
         }
+        cancelReconnect()
         debugLog("[DiscordService] stop() called")
         do {
             _ = try await rpc.clear_activity()
@@ -244,7 +256,51 @@ class DiscordService {
         self.rpc = nil
         self.rpcLoop = nil
         self.buttonsEnabled = true
+        setConnectionState(.disconnected)
         debugLog("[DiscordService] RPC stopped and cleared")
+    }
+
+    private func handleRpcFailure() {
+        rpc = nil
+        rpcLoop = nil
+        setConnectionState(.disconnected)
+        scheduleReconnect()
+    }
+
+    private func setConnectionState(_ state: ConnectionState) {
+        guard connectionState != state else { return }
+        connectionState = state
+        if state == .connected {
+            reconnectAttempt = 0
+            cancelReconnect()
+        }
+        onConnectionStateChange?(state)
+    }
+
+    private func scheduleReconnect() {
+        guard reconnectTask == nil else { return }
+        reconnectTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                if self.rpc != nil {
+                    break
+                }
+                let index = min(self.reconnectAttempt, self.reconnectDelays.count - 1)
+                let delay = self.reconnectDelays[index]
+                self.reconnectAttempt += 1
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                if Task.isCancelled {
+                    break
+                }
+                await self.start()
+            }
+            self.reconnectTask = nil
+        }
+    }
+
+    private func cancelReconnect() {
+        reconnectTask?.cancel()
+        reconnectTask = nil
     }
 
     private func makeButtonsRef(_ buttons: [[String: String]]) async -> ObjectRef? {

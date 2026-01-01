@@ -10,6 +10,20 @@ import PylibKit_Mac
 
 /// Service to fetch Apple TV now-playing info using PylibKit's pyatv bindings.
 class PyatvService {
+    struct ATVProps {
+        let trackID: String?
+        let title: String
+        let artist: String?
+        let album: String?
+        let position: Double
+        let duration: Double
+    }
+
+    struct ATVFetchResult {
+        let connection: ConnectionState
+        let data: ATVProps?
+    }
+
     private struct PairingSession {
         let handler: Pyatv.Interface.PairinghandlerInstance
         let config: Pyatv.Interface.BaseconfigInstance
@@ -152,10 +166,15 @@ class PyatvService {
     }
 
     /// Fetch now-playing metadata for the given Apple TV host.
-    /// Returns (trackID, title, artist, album, position, duration) or nil if unavailable.
+    /// Returns connection state and optional metadata.
     func getATVProps(
         host: String
-    ) async -> (trackID: String?, title: String, artist: String?, album: String?, position: Double, duration: Double)? {
+    ) async -> ATVFetchResult {
+        enum FetchOutcome {
+            case connected(ATVProps?)
+            case failed
+        }
+
         func availableProtocols(config: Pyatv.Interface.BaseconfigInstance) async -> [Pyatv.Const.PyatvProtocol_] {
             guard let services = try? await config.services(), !services.isEmpty else { return [] }
             var collected: [Pyatv.Const.PyatvProtocol_] = []
@@ -174,7 +193,8 @@ class PyatvService {
         func fetchWithProtocol(
             _ proto: Pyatv.Const.PyatvProtocol_,
             config: Pyatv.Interface.BaseconfigInstance
-        ) async -> (trackID: String?, title: String, artist: String?, album: String?, position: Double, duration: Double)? {
+        ) async -> FetchOutcome {
+            var didConnect = false
             do {
                 debugLog("[PyatvService] connecting (host=\(host), proto=\(proto))")
                 let atv = try await withTimeout(seconds: 4, operation: "connect") {
@@ -188,8 +208,9 @@ class PyatvService {
                 guard let atv else {
                     debugLog("[PyatvService] connect returned nil (host=\(host), proto=\(proto))")
                     _ = await availableProtocols(config: config)
-                    return nil
+                    return .failed
                 }
+                didConnect = true
                 defer {
                     Task { try? await atv.close() }
                 }
@@ -200,20 +221,20 @@ class PyatvService {
                 }
                 guard let metadata else {
                     debugLog("[PyatvService] metadata is nil (host=\(host), proto=\(proto))")
-                    return nil
+                    return .connected(nil)
                 }
                 let playing = try await withTimeout(seconds: 3, operation: "playing") {
                     try await metadata.playing()
                 }
                 guard let playing else {
                     debugLog("[PyatvService] playing is nil (host=\(host), proto=\(proto))")
-                    return nil
+                    return .connected(nil)
                 }
 
                 if let state = try await playing.device_state() {
                     if state == .idle {
                         debugLog("[PyatvService] device_state=idle (host=\(host), proto=\(proto))")
-                        return nil
+                        return .connected(nil)
                     }
                     debugLog("[PyatvService] device_state=\(state) (host=\(host), proto=\(proto))")
                 }
@@ -221,7 +242,7 @@ class PyatvService {
                 let title = (try await playing.title()) ?? ""
                 if title.isEmpty {
                     debugLog("[PyatvService] title is empty (host=\(host), proto=\(proto))")
-                    return nil
+                    return .connected(nil)
                 }
 
                 let artist = try await playing.artist()
@@ -243,23 +264,23 @@ class PyatvService {
 
                 if duration <= 0 {
                     debugLog("[PyatvService] duration unavailable (host=\(host), proto=\(proto))")
-                    return nil
+                    return .connected(nil)
                 }
 
-                return (
+                return .connected(ATVProps(
                     trackID: trackID,
                     title: title,
                     artist: artist,
                     album: album,
                     position: position,
                     duration: duration
-                )
+                ))
             } catch let timeout as TimeoutError {
                 debugLog("[PyatvService] \(timeout.operation) timed out after \(timeout.seconds)s (host=\(host), proto=\(proto))")
-                return nil
+                return didConnect ? .connected(nil) : .failed
             } catch {
                 debugLog("[PyatvService] fetch failed (host=\(host), proto=\(proto)): \(error)")
-                return nil
+                return didConnect ? .connected(nil) : .failed
             }
         }
 
@@ -269,7 +290,7 @@ class PyatvService {
             }
             guard let config else {
                 debugLog("[PyatvService] scan returned no config (host=\(host))")
-                return nil
+                return ATVFetchResult(connection: .disconnected, data: nil)
             }
 
             let name = (try? await config.name()) ?? "unknown"
@@ -279,18 +300,29 @@ class PyatvService {
             let desiredOrder: [Pyatv.Const.PyatvProtocol_] = [.mRP, .companion, .airPlay]
             let protocolsToTry = desiredOrder.filter { available.contains($0) }
             let fallbackProtocols = protocolsToTry.isEmpty ? desiredOrder : protocolsToTry
+            var connected = false
             for proto in fallbackProtocols {
-                if let result = await fetchWithProtocol(proto, config: config) {
-                    return result
+                let outcome = await fetchWithProtocol(proto, config: config)
+                switch outcome {
+                case .connected(let data):
+                    connected = true
+                    if let data {
+                        return ATVFetchResult(connection: .connected, data: data)
+                    }
+                case .failed:
+                    continue
                 }
             }
-            return nil
+            return ATVFetchResult(
+                connection: connected ? .connected : .disconnected,
+                data: nil
+            )
         } catch let timeout as TimeoutError {
             debugLog("[PyatvService] \(timeout.operation) timed out after \(timeout.seconds)s (host=\(host))")
-            return nil
+            return ATVFetchResult(connection: .disconnected, data: nil)
         } catch {
             debugLog("[PyatvService] Failed to fetch ATV props: \(error)")
-            return nil
+            return ATVFetchResult(connection: .disconnected, data: nil)
         }
     }
 

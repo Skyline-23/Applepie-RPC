@@ -205,6 +205,23 @@
         }
       }
     },
+    "Discord" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discord"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "디스코드"
+          }
+        }
+      }
+    },
     "Enter pairing PIN Number" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -218,6 +235,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "페어링 PIN 숫자를 입력하세요"
+          }
+        }
+      }
+    },
+    "Status" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "상태"
           }
         }
       }

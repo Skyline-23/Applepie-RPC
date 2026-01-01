@@ -21,6 +21,8 @@ enum LocalizableKey {
     case pairingFailed
     case enterPairingPINNumber
     case enterThe4PINNumbersOnTheScreen
+    case status
+    case discord
 }
 
 extension LocalizableKey {
@@ -64,6 +66,10 @@ extension LocalizableKey {
             return "Enter pairing PIN Number"
         case .enterThe4PINNumbersOnTheScreen:
             return "Enter the 4 PIN numbers on the screen"
+        case .status:
+            return "Status"
+        case .discord:
+            return "Discord"
         }
     }
 
