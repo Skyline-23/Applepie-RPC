@@ -59,7 +59,7 @@ class NowPlayingService: ObservableObject {
                 Task {
                     let result = await self.fetch(host: host)
                     let now = Date()
-                    let disconnectGrace = min(max(10.0, self.interval * 2.0), 60.0)
+                    let disconnectGrace = min(max(5.0, self.interval * 1.5), 20.0)
                     let resolvedConnection: ConnectionState
                     if result.connection == .connected {
                         self.lastDeviceConnectedAt = now
