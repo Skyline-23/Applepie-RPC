@@ -23,7 +23,7 @@ class DiscordService {
     var onConnectionStateChange: ((ConnectionState) -> Void)?
     private var reconnectTask: Task<Void, Never>?
     private var reconnectAttempt: Int = 0
-    private let reconnectDelays: [Double] = [2, 4, 8, 15, 30]
+    private let reconnectDelays: [Double] = [2, 4, 8, 15, 30, 60]
 
     /// Factory to create and initialize a DiscordService.
     static func create(

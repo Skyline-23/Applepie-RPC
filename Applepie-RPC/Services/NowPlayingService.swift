@@ -28,6 +28,7 @@ class NowPlayingService: ObservableObject {
     private var interval: TimeInterval = 5.0
     private var host: String = "localhost"
     private var isFetching = false
+    private var lastDeviceConnectedAt: Date?
 
     private var atvService: PyatvService?
 
@@ -45,6 +46,7 @@ class NowPlayingService: ObservableObject {
     func start(interval: TimeInterval, host: String) {
         self.interval = interval
         self.host = host
+        self.lastDeviceConnectedAt = nil
         debugLog("[NowPlayingService] start interval=\(interval)s host=\(host)")
         timerCancellable?.cancel()
         timerCancellable = Timer
@@ -56,8 +58,20 @@ class NowPlayingService: ObservableObject {
                 self.isFetching = true
                 Task {
                     let result = await self.fetch(host: host)
+                    let now = Date()
+                    let disconnectGrace = min(max(10.0, self.interval * 2.0), 60.0)
+                    let resolvedConnection: ConnectionState
+                    if result.connection == .connected {
+                        self.lastDeviceConnectedAt = now
+                        resolvedConnection = .connected
+                    } else if let last = self.lastDeviceConnectedAt,
+                              now.timeIntervalSince(last) <= disconnectGrace {
+                        resolvedConnection = .connected
+                    } else {
+                        resolvedConnection = result.connection
+                    }
                     await MainActor.run {
-                        self.deviceConnection = result.connection
+                        self.deviceConnection = resolvedConnection
                         self.playingData = PlayingData(
                             trackID: result.trackID,
                             title: result.title,
@@ -76,12 +90,14 @@ class NowPlayingService: ObservableObject {
         timerCancellable?.cancel()
         timerCancellable = nil
         deviceConnection = .disconnected
+        lastDeviceConnectedAt = nil
     }
 
     /// Update the fetch interval & host.
     func updateTimer(_ newInterval: TimeInterval, _ newHost: String) {
         debugLog("[NowPlayingService] updateTimer interval=\(newInterval)s host=\(newHost)")
         deviceConnection = .unknown
+        lastDeviceConnectedAt = nil
         start(interval: newInterval, host: newHost)
     }
 
