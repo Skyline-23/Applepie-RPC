@@ -19,6 +19,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true
+          fetch-depth: 0
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v4
@@ -149,6 +150,7 @@ jobs:
           SPARKLE_ED25519_PRIVATE_KEY: ${{ secrets.SPARKLE_ED25519_PRIVATE_KEY }}
         run: |
           DIST_DIR="${{ github.workspace }}/dist"
+          APPCAST_DIR="${DIST_DIR}/appcast"
           APPCAST_URL_PREFIX="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/"
 
           if [ -z "$SPARKLE_ED25519_PRIVATE_KEY" ]; then
@@ -156,11 +158,16 @@ jobs:
             exit 1
           fi
 
+          mkdir -p "$APPCAST_DIR"
+          cp -f "$DIST_DIR/${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg" "$APPCAST_DIR/"
+
           echo "$SPARKLE_ED25519_PRIVATE_KEY" | \
             "$GITHUB_WORKSPACE/sparkle/bin/generate_appcast" \
               --ed-key-file - \
               --download-url-prefix "$APPCAST_URL_PREFIX" \
-              "$DIST_DIR"
+              "$APPCAST_DIR"
+
+          mv "$APPCAST_DIR/appcast.xml" "$DIST_DIR/appcast.xml"
 
       - name: Create GitHub Release
         id: create_release

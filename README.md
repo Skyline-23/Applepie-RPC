@@ -39,3 +39,18 @@ Applepie-RPC is a macOS menu bar app that publishes now-playing info to Discord 
 ## Notes
 - Pairing credentials are stored in the app support directory as `pyatv_storage.json`.
 - The Python runtime is bundled via PylibKit; no system Python setup is required.
+
+## Releases & Updates (Sparkle)
+This project ships updates via Sparkle using the appcast at:
+`https://github.com/Skyline-23/Applepie-RPC/releases/latest/download/appcast.xml`
+
+### Release flow
+1. Create a tag like `v1.2.3` and push it.
+2. GitHub Actions builds the app, creates a DMG, generates `appcast.xml`, and publishes a release.
+3. Clients will see the update once the tag and appcast are live.
+
+### Required GitHub secrets
+- `CERT_P12_BASE64`, `CERT_PASSWORD`, `KEYCHAIN_PASSWORD`
+- `APPLE_ID`, `APPLE_PASSWORD`, `TEAM_ID`
+- `APPSTORE_PRIVATE_KEY_P8`, `APPSTORE_KEY_ID`
+- `SPARKLE_ED25519_PRIVATE_KEY` (matches `SUPublicEDKey` in Info.plist)
