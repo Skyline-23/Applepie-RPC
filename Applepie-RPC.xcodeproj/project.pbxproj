@@ -150,7 +150,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 623815772DB2B12300AD874E /* Build configuration list for PBXNativeTarget "Applepie-RPC" */;
 			buildPhases = (
-				2152FD139EC342119AF3A776 /* Set Version From Tag */,
 				623815502DB2B12100AD874E /* Resources */,
 				6238154E2DB2B12100AD874E /* Sources */,
 				6238154F2DB2B12100AD874E /* Frameworks */,
@@ -316,19 +315,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		2152FD139EC342119AF3A776 /* Set Version From Tag */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "set -e\nTAG=$(git describe --tags --abbrev=0 2>/dev/null || true)\nif [ -z \"$TAG\" ]; then\n  echo \"No git tag found; skipping bundle version update.\"\n  exit 0\nfi\nVERSION=${TAG#v}\nINFO_PLIST=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString ${VERSION}\" \"${INFO_PLIST}\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :CFBundleShortVersionString string ${VERSION}\" \"${INFO_PLIST}\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion ${VERSION}\" \"${INFO_PLIST}\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :CFBundleVersion string ${VERSION}\" \"${INFO_PLIST}\"\necho \"Set bundle version to ${VERSION} from tag ${TAG}\"";
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXTargetDependency section */

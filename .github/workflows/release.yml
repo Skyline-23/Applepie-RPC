@@ -74,6 +74,7 @@ jobs:
       - name: Build & Archive .app
         run: |
           echo "🔍 CODE_SIGN_IDENTITY is: [$CODE_SIGN_IDENTITY]"
+          VERSION="${GITHUB_REF_NAME#v}"
           xcodebuild archive \
             -scheme "${{ env.APP_SCHEME }}" \
             -skipPackagePluginValidation \
@@ -84,6 +85,8 @@ jobs:
             CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
             PROVISIONING_PROFILE_SPECIFIER="" \
             DEVELOPMENT_TEAM="Q23JLSJCCV" \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$VERSION" \
             SWIFT_UPCOMING_FEATURES="AsyncExecutionBehaviorAttributes NonescapableTypes" \
             OTHER_SWIFT_FLAGS="-no-verify-emitted-module-interface"
 
