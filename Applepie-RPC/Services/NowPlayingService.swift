@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import AppKit
 
 /// Simple struct to represent now-playing data.
 struct PlayingData: Equatable {
@@ -125,6 +126,20 @@ class NowPlayingService: ObservableObject {
 
     /// Synchronously fetch now playing info with fulld metadata, including artist.
     private func fetchLocal() -> FetchResult {
+        let musicRunning = !NSRunningApplication
+            .runningApplications(withBundleIdentifier: "com.apple.Music")
+            .isEmpty
+        guard musicRunning else {
+            return FetchResult(
+                connection: .disconnected,
+                trackID: nil,
+                title: "",
+                artist: nil,
+                album: nil,
+                position: 0.0,
+                duration: 0.0
+            )
+        }
         let script = """
         tell application "Music"
             if player state is playing then
