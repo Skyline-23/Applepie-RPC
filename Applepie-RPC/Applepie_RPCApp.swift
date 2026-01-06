@@ -20,7 +20,15 @@ struct ApplepieRPCApp: App {
         do {
             return try ModelContainer(for: AppSettings.self)
         } catch {
-            fatalError("Failed to create fallback ModelContainer: \(error)")
+            debugLog("[SwiftData] Failed to create default ModelContainer:", error)
+            do {
+                let inMemory = ModelConfiguration(isStoredInMemoryOnly: true)
+                return try ModelContainer(for: AppSettings.self, configurations: inMemory)
+            } catch {
+                errorLog("[SwiftData] Failed to create in-memory ModelContainer:", error)
+                fatalError("Failed to create any ModelContainer: \(error)")
+            }
+
         }
     }()
     

@@ -119,7 +119,9 @@ class PyatvService {
                 try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
                 throw TimeoutError(operation: operation, seconds: seconds)
             }
-            let result = try await group.next()!
+            guard let result = try await group.next() else {
+                throw TimeoutError(operation: operation, seconds: seconds)
+            }
             group.cancelAll()
             return result
         }

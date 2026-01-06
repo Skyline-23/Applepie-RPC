@@ -108,8 +108,9 @@ class DiscordService {
         let iTunesUrl = extras["iTunesUrl"]
 
         let details = String(title.prefix(128))
-        let stateSource = (artist?.isEmpty == false) ? artist! : "Music.app"
-        let state = String(stateSource.prefix(128))
+        let stateSource = (artist?.isEmpty == false) ? artist : "Music.app"
+        let state = String((stateSource ?? "Music.app").prefix(128))
+
         let largeText: String?
         if let album, !album.isEmpty {
             largeText = String(album.prefix(128))
@@ -148,37 +149,37 @@ class DiscordService {
             lastTimingLogKey = timingLogKey
         }
 
-        let buttonsRef = await makeButtonsRef(buttonsPayload)
         var didSend = false
         do {
-            if let buttonsRef {
-                _ = try await rpc.set_activity(
-                    activity_type: .lISTENING,
-                    state: state,
-                    details: details,
-                    name: activityName,
-                    start: start,
-                    end: end,
-                    large_image: artworkUrl ?? "appicon",
-                    large_text: largeText,
-                    buttons: buttonsRef,
-                    instance: false
-                )
-                didSend = true
-            } else {
-                _ = try await rpc.set_activity(
-                    activity_type: .lISTENING,
-                    state: state,
-                    details: details,
-                    name: activityName,
-                    start: start,
-                    end: end,
-                    large_image: artworkUrl ?? "appicon",
-                    large_text: largeText,
-                    instance: false
-                )
-                didSend = true
+            try await withButtonsRef(buttonsPayload) { buttonsRef in
+                if let buttonsRef {
+                    _ = try await rpc.set_activity(
+                        activity_type: .lISTENING,
+                        state: state,
+                        details: details,
+                        name: activityName,
+                        start: start,
+                        end: end,
+                        large_image: artworkUrl ?? "appicon",
+                        large_text: largeText,
+                        buttons: buttonsRef,
+                        instance: false
+                    )
+                } else {
+                    _ = try await rpc.set_activity(
+                        activity_type: .lISTENING,
+                        state: state,
+                        details: details,
+                        name: activityName,
+                        start: start,
+                        end: end,
+                        large_image: artworkUrl ?? "appicon",
+                        large_text: largeText,
+                        instance: false
+                    )
+                }
             }
+            didSend = true
         } catch {
             let message = String(describing: error)
             if message.localizedCaseInsensitiveContains("buttons") {
@@ -341,15 +342,21 @@ class DiscordService {
         reconnectTask = nil
     }
 
-    private func makeButtonsRef(_ buttons: [[String: String]]) async -> ObjectRef? {
-        guard buttonsEnabled, !buttons.isEmpty else { return nil }
+    private func withButtonsRef<T>(
+        _ buttons: [[String: String]],
+        _ body: (ObjectRef?) async throws -> T
+    ) async throws -> T {
+        guard buttonsEnabled, !buttons.isEmpty else {
+            return try await body(nil)
+        }
         do {
             let namespace = await executor.makeNamespace(callables: [:])
             try await namespace.buttons.setValue(buttons)
-            return try await namespace.buttons.objectRef()
+            let ref = try await namespace.buttons.objectRef()
+            return try await body(ref)
         } catch {
-            debugLog("[DiscordService] Failed to build buttons payload: \(error)")
-            return nil
+            debugLog("[DiscordService] Failed to build buttons payload:", error)
+            return try await body(nil)
         }
     }
 }

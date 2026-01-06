@@ -10,6 +10,7 @@ import SwiftData
 import MusicKit
 import Combine
 import ApplicationServices
+import Dispatch
 import PylibKit_Mac
 
 @MainActor
@@ -31,14 +32,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Request Accessibility permission if needed
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         if !AXIsProcessTrustedWithOptions(options) {
+            debugLog("[Lifecycle] Accessibility permission not granted")
             let alert = NSAlert()
             alert.messageText = .localizable(.permissionRequired)
             alert.informativeText = .localizable(.permissionRequiredDesc)
             alert.alertStyle = .warning
             alert.runModal()
-            NSApp.terminate(nil)
+            errorLog("[AppDelegate] Accessibility permission not granted; leaving app running.")
+            return
         }
-        
+
         // Load saved update interval from AppSettings
         var interval: Double = 1.0
         do {
@@ -134,9 +137,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationWillTerminate(_ notification: Notification) {
-        // 4) Python 종료
+        debugLog("[AppDelegate] applicationWillTerminate")
+        nowPlayingService.stop()
+
+        let semaphore = DispatchSemaphore(value: 0)
         Task {
             await discordService?.clearActivity()
+            semaphore.signal()
         }
+        _ = semaphore.wait(timeout: .now() + 1.0)
     }
 }
