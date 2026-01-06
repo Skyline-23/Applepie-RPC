@@ -95,6 +95,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.pyatvService = pyatvService
             nowPlayingService.setATVService(pyatvService)
             discordService.setMusicKitEnabled(musicAuthorized)
+            discordService.setClearInterval(interval)
+            nowPlayingService.$updateInterval
+                .removeDuplicates()
+                .sink { [weak self] newInterval in
+                    self?.discordService?.setClearInterval(newInterval)
+                }
+                .store(in: &cancellables)
             discordService.onConnectionStateChange = { [weak self] state in
                 Task { @MainActor in
                     self?.nowPlayingService.setDiscordConnection(state)

@@ -23,7 +23,7 @@ class DiscordService {
     private var lastActivitySentAt: Date?
     private var lastClearAttemptAt: Date?
     private let minActivityUpdateInterval: TimeInterval = 15.0
-    private let minClearInterval: TimeInterval = 3.0
+    private var minClearInterval: TimeInterval = 3.0
     private(set) var connectionState: ConnectionState = .disconnected
     var onConnectionStateChange: ((ConnectionState) -> Void)?
     private var reconnectTask: Task<Void, Never>?
@@ -49,6 +49,10 @@ class DiscordService {
 
     func setMusicKitEnabled(_ enabled: Bool) {
         musicService.setMusicKitEnabled(enabled)
+    }
+
+    func setClearInterval(_ interval: TimeInterval) {
+        minClearInterval = max(0.5, interval)
     }
 
     private func ensureRpcLoop() async -> AsyncioLoop {

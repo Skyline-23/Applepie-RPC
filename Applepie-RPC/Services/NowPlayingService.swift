@@ -26,7 +26,7 @@ class NowPlayingService: ObservableObject {
     @Published var discordConnection: ConnectionState = .unknown
 
     private var timerCancellable: AnyCancellable?
-    private var interval: TimeInterval = 5.0
+    @Published private(set) var updateInterval: TimeInterval = 5.0
     private var host: String = "localhost"
     private var isFetching = false
     private var lastDeviceConnectedAt: Date?
@@ -63,7 +63,7 @@ class NowPlayingService: ObservableObject {
 
     /// Start fetching now-playing data periodically.
     func start(interval: TimeInterval, host: String) {
-        self.interval = interval
+        self.updateInterval = interval
         self.host = host
         self.deviceConnection = .unknown
         self.playingData = nil
@@ -76,7 +76,7 @@ class NowPlayingService: ObservableObject {
         isFetching = false
 
         timerCancellable = Timer
-            .publish(every: interval, on: .main, in: .common)
+            .publish(every: updateInterval, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
                 guard let self else { return }
@@ -91,7 +91,7 @@ class NowPlayingService: ObservableObject {
                     if Task.isCancelled { return }
 
                     let now = Date()
-                    let disconnectGrace = min(max(5.0, self.interval * 1.5), 20.0)
+                    let disconnectGrace = min(max(5.0, self.updateInterval * 1.5), 20.0)
                     let resolvedConnection: ConnectionState
 
                     if result.connection == .connected {
