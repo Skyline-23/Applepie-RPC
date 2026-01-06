@@ -24,7 +24,6 @@ class NowPlayingService: ObservableObject {
     @Published var playingData: PlayingData?
     @Published var deviceConnection: ConnectionState = .unknown
     @Published var discordConnection: ConnectionState = .unknown
-    @Published var presenceClearRequest: Int = 0
 
     private var timerCancellable: AnyCancellable?
     private var interval: TimeInterval = 5.0
@@ -107,7 +106,10 @@ class NowPlayingService: ObservableObject {
 
                     await MainActor.run {
                         self.deviceConnection = resolvedConnection
-                        self.playingData = self.makePlayingData(from: result)
+                        let newData = self.makePlayingData(from: result)
+                        if self.playingData != newData {
+                            self.playingData = newData
+                        }
                     }
                 }
             }

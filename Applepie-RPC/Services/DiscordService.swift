@@ -21,7 +21,9 @@ class DiscordService {
     private var lastTimingLogKey: String = ""
     private var lastActivityKey: String?
     private var lastActivitySentAt: Date?
+    private var lastClearAttemptAt: Date?
     private let minActivityUpdateInterval: TimeInterval = 15.0
+    private let minClearInterval: TimeInterval = 3.0
     private(set) var connectionState: ConnectionState = .disconnected
     var onConnectionStateChange: ((ConnectionState) -> Void)?
     private var reconnectTask: Task<Void, Never>?
@@ -68,7 +70,7 @@ class DiscordService {
         duration: Double
     ) async {
         if title.isEmpty {
-            await clearActivity()
+            await clearActivity(allowStart: false)
             return
         }
 
@@ -231,8 +233,16 @@ class DiscordService {
     }
 
     /// Clears the activity on the Discord RPC connection.
-    func clearActivity() async {
+    func clearActivity(allowStart: Bool = true) async {
+        let nowDate = Date()
+        if let lastClearAttemptAt,
+           nowDate.timeIntervalSince(lastClearAttemptAt) < minClearInterval {
+            return
+        }
+        lastClearAttemptAt = nowDate
+
         if rpc == nil {
+            guard allowStart else { return }
             await start()
         }
         guard let rpc else {
@@ -249,7 +259,7 @@ class DiscordService {
             } catch {
                 if attempt == 2 {
                     debugLog("[DiscordService] Failed to clear activity: \(error)")
-                    handleRpcFailure()
+                    handleRpcFailure(scheduleReconnect: allowStart)
                     return
                 }
                 try? await Task.sleep(nanoseconds: 200_000_000)
@@ -314,13 +324,15 @@ class DiscordService {
         debugLog("[DiscordService] RPC stopped and cleared")
     }
 
-    private func handleRpcFailure() {
+    private func handleRpcFailure(scheduleReconnect: Bool = true) {
         rpc = nil
         rpcLoop = nil
         lastActivityKey = nil
         lastActivitySentAt = nil
         setConnectionState(.disconnected)
-        scheduleReconnect()
+        if scheduleReconnect {
+            scheduleReconnect()
+        }
     }
 
     private func setConnectionState(_ state: ConnectionState) {

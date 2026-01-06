@@ -116,16 +116,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                     Task {
                         if self.appSettings?.isPaused == true {
-                            await discord.clearActivity()
+                            await discord.clearActivity(allowStart: false)
                             return
                         }
                         guard let data else {
-                            await discord.clearActivity()
+                            await discord.clearActivity(allowStart: false)
                             return
                         }
                         let trimmedTitle = data.title.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !trimmedTitle.isEmpty else {
-                            await discord.clearActivity()
+                            await discord.clearActivity(allowStart: false)
                             return
                         }
                         await discord.setActivity(
@@ -154,7 +154,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     if shouldClear {
                         let now = Date()
                         if lastClearedAt == nil || now.timeIntervalSince(lastClearedAt ?? now) >= 15 {
-                            await self.discordService?.clearActivity()
+                            await self.discordService?.clearActivity(allowStart: false)
                             lastClearedAt = now
                         }
                     } else {
@@ -172,7 +172,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let semaphore = DispatchSemaphore(value: 0)
         Task {
-            await discordService?.clearActivity()
+            await discordService?.clearActivity(allowStart: false)
             semaphore.signal()
         }
         _ = semaphore.wait(timeout: .now() + 1.0)
