@@ -263,7 +263,7 @@ class DiscordService {
             } catch {
                 if attempt == 2 {
                     debugLog("[DiscordService] Failed to clear activity: \(error)")
-                    handleRpcFailure(scheduleReconnect: allowStart)
+                    handleRpcFailure(shouldScheduleReconnect: allowStart)
                     return
                 }
                 try? await Task.sleep(nanoseconds: 200_000_000)
@@ -328,13 +328,13 @@ class DiscordService {
         debugLog("[DiscordService] RPC stopped and cleared")
     }
 
-    private func handleRpcFailure(scheduleReconnect: Bool = true) {
+    private func handleRpcFailure(shouldScheduleReconnect: Bool = true) {
         rpc = nil
         rpcLoop = nil
         lastActivityKey = nil
         lastActivitySentAt = nil
         setConnectionState(.disconnected)
-        if scheduleReconnect {
+        if shouldScheduleReconnect {
             scheduleReconnect()
         }
     }
