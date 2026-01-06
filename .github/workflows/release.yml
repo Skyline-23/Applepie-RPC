@@ -118,7 +118,7 @@ jobs:
             "$APP_PATH" \
             "$DIST_DIR" \
             --overwrite \
-            --dmg-title="${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg"
+            --dmg-title="${{ env.APP_SCHEME }}-${{ github.ref_name }}"
 
           GENERATED=$(ls "$DIST_DIR" | grep "${{ env.APP_SCHEME }} ${VERSION}.dmg" || true)
           if [ -z "$GENERATED" ]; then
