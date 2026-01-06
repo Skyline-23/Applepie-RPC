@@ -21,13 +21,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let pythonExecutor = PythonExecutor(threadName: "PylibKitThread")
     private var cancellables = Set<AnyCancellable>()
     private var appSettings: AppSettings?
+    private var presenceUpdateTask: Task<Void, Never>?
+
     var container: ModelContainer?
     let updaterService = UpdaterService()
-    
+
     override init() {
         super.init()
     }
-    
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Request Accessibility permission if needed
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
@@ -60,7 +62,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             debugLog("Failed to fetch AppSettings:", error)
         }
-        
+
         // Observe SwiftData save notifications to refresh AppSettings
         NotificationCenter.default
             .publisher(for: ModelContext.didSave)
@@ -71,7 +73,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             .store(in: &cancellables)
-        
+
         // Async RPC initialization and start updates
         Task { @MainActor in
             // Request Apple Music authorization once at startup
@@ -88,7 +90,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let pyatvService = await PyatvService.create(
                 executor: pythonExecutor
             )
-            
+
             self.discordService = discordService
             self.pyatvService = pyatvService
             nowPlayingService.setATVService(pyatvService)
@@ -99,45 +101,73 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             nowPlayingService.setDiscordConnection(discordService.connectionState)
-            
+
+            await discordService.clearActivity()
+
             // Start periodic fetching in NowPlayingService
             nowPlayingService.start(interval: interval, host: "localhost")
-            
+
             // Subscribe to updates and forward to DiscordService
             nowPlayingService.$playingData
+                .prepend(nowPlayingService.playingData)
                 .sink { [weak self] data in
-                    guard
-                        let self = self,
-                        let discord = self.discordService,
-                        let setting = self.appSettings
-                    else {
+                    guard let self, let discord = self.discordService else {
                         return
                     }
                     Task {
-                        if setting.isPaused {
+                        if self.appSettings?.isPaused == true {
                             await discord.clearActivity()
                             return
                         }
-                        if let data = data {
-                            await discord.setActivity(
-                                trackID: data.trackID,
-                                title: data.title,
-                                artist: data.artist ?? "",
-                                album: data.album,
-                                position: data.position,
-                                duration: data.duration
-                            )
-                        } else {
+                        guard let data else {
                             await discord.clearActivity()
+                            return
                         }
+                        let trimmedTitle = data.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmedTitle.isEmpty else {
+                            await discord.clearActivity()
+                            return
+                        }
+                        await discord.setActivity(
+                            trackID: data.trackID,
+                            title: trimmedTitle,
+                            artist: data.artist ?? "",
+                            album: data.album,
+                            position: data.position,
+                            duration: data.duration
+                        )
                     }
                 }
                 .store(in: &cancellables)
+
+            presenceUpdateTask?.cancel()
+            presenceUpdateTask = Task { [weak self] in
+                var lastClearedAt: Date?
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    guard let self else { return }
+
+                    let shouldClear = await MainActor.run {
+                        self.appSettings?.isPaused == true || self.nowPlayingService.playingData == nil
+                    }
+
+                    if shouldClear {
+                        let now = Date()
+                        if lastClearedAt == nil || now.timeIntervalSince(lastClearedAt ?? now) >= 15 {
+                            await self.discordService?.clearActivity()
+                            lastClearedAt = now
+                        }
+                    } else {
+                        lastClearedAt = nil
+                    }
+                }
+            }
         }
     }
-    
+
     func applicationWillTerminate(_ notification: Notification) {
         debugLog("[AppDelegate] applicationWillTerminate")
+        presenceUpdateTask?.cancel()
         nowPlayingService.stop()
 
         let semaphore = DispatchSemaphore(value: 0)

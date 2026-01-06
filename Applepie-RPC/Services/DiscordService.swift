@@ -67,7 +67,6 @@ class DiscordService {
         position: Double,
         duration: Double
     ) async {
-        // If there's no current track, clear any existing activity and skip update
         if title.isEmpty {
             await clearActivity()
             return
@@ -233,17 +232,28 @@ class DiscordService {
 
     /// Clears the activity on the Discord RPC connection.
     func clearActivity() async {
+        if rpc == nil {
+            await start()
+        }
         guard let rpc else {
             debugLog("[DiscordService] RPC is nil")
             return
         }
-        do {
-            _ = try await rpc.clear_activity()
-            lastActivityKey = nil
-            lastActivitySentAt = nil
-        } catch {
-            debugLog("[DiscordService] Failed to clear activity: \(error)")
-            handleRpcFailure()
+
+        for attempt in 0..<3 {
+            do {
+                _ = try await rpc.clear_activity()
+                lastActivityKey = nil
+                lastActivitySentAt = nil
+                return
+            } catch {
+                if attempt == 2 {
+                    debugLog("[DiscordService] Failed to clear activity: \(error)")
+                    handleRpcFailure()
+                    return
+                }
+                try? await Task.sleep(nanoseconds: 200_000_000)
+            }
         }
     }
 
@@ -261,6 +271,13 @@ class DiscordService {
             _ = try await client.start()
             rpc = client
             setConnectionState(.connected)
+            do {
+                _ = try await client.clear_activity()
+                lastActivityKey = nil
+                lastActivitySentAt = nil
+            } catch {
+                debugLog("[DiscordService] Failed to clear activity after start: \(error)")
+            }
             debugLog("[DiscordService] RPC start result: true")
         } catch {
             debugLog("[DiscordService] RPC start failed: \(error)")

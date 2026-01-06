@@ -24,6 +24,7 @@ class NowPlayingService: ObservableObject {
     @Published var playingData: PlayingData?
     @Published var deviceConnection: ConnectionState = .unknown
     @Published var discordConnection: ConnectionState = .unknown
+    @Published var presenceClearRequest: Int = 0
 
     private var timerCancellable: AnyCancellable?
     private var interval: TimeInterval = 5.0
@@ -44,31 +45,56 @@ class NowPlayingService: ObservableObject {
         let duration: Double
     }
 
+    private func makePlayingData(from result: FetchResult) -> PlayingData? {
+        let trimmedTitle = result.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return nil }
+
+        let trimmedArtist = result.artist?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedAlbum = result.album?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return PlayingData(
+            trackID: result.trackID,
+            title: trimmedTitle,
+            artist: (trimmedArtist?.isEmpty == true) ? nil : trimmedArtist,
+            album: (trimmedAlbum?.isEmpty == true) ? nil : trimmedAlbum,
+            position: result.position,
+            duration: result.duration
+        )
+    }
+
     /// Start fetching now-playing data periodically.
     func start(interval: TimeInterval, host: String) {
         self.interval = interval
         self.host = host
+        self.deviceConnection = .unknown
+        self.playingData = nil
         self.lastDeviceConnectedAt = nil
         debugLog("[NowPlayingService] start interval=\(interval)s host=\(host)")
+
         timerCancellable?.cancel()
         fetchTask?.cancel()
         fetchTask = nil
         isFetching = false
+
         timerCancellable = Timer
             .publish(every: interval, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
-                guard let self = self else { return }
+                guard let self else { return }
                 guard !self.isFetching else { return }
                 self.isFetching = true
+
                 self.fetchTask = Task { [weak self] in
-                    guard let self = self else { return }
+                    guard let self else { return }
                     defer { self.isFetching = false }
+
                     let result = await self.fetch(host: host)
                     if Task.isCancelled { return }
+
                     let now = Date()
                     let disconnectGrace = min(max(5.0, self.interval * 1.5), 20.0)
                     let resolvedConnection: ConnectionState
+
                     if result.connection == .connected {
                         self.lastDeviceConnectedAt = now
                         resolvedConnection = .connected
@@ -78,16 +104,10 @@ class NowPlayingService: ObservableObject {
                     } else {
                         resolvedConnection = result.connection
                     }
+
                     await MainActor.run {
                         self.deviceConnection = resolvedConnection
-                        self.playingData = PlayingData(
-                            trackID: result.trackID,
-                            title: result.title,
-                            artist: result.artist,
-                            album: result.album,
-                            position: result.position,
-                            duration: result.duration
-                        )
+                        self.playingData = self.makePlayingData(from: result)
                     }
                 }
             }
@@ -101,6 +121,7 @@ class NowPlayingService: ObservableObject {
         isFetching = false
         deviceConnection = .disconnected
         lastDeviceConnectedAt = nil
+        playingData = nil
     }
 
     /// Update the fetch interval & host.
@@ -108,6 +129,7 @@ class NowPlayingService: ObservableObject {
         debugLog("[NowPlayingService] updateTimer interval=\(newInterval)s host=\(newHost)")
         deviceConnection = .unknown
         lastDeviceConnectedAt = nil
+        playingData = nil
         fetchTask?.cancel()
         fetchTask = nil
         isFetching = false
