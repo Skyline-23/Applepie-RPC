@@ -208,7 +208,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         SentrySDK.start { options in
             options.dsn = dsn
             options.releaseName = version
-            options.environment = (environmentFromInfo?.isEmpty == false) ? environmentFromInfo : "production"
+            if let env = environmentFromInfo, !env.isEmpty {
+                options.environment = env
+            } else {
+                options.environment = "production"
+            }
             options.enableCrashHandler = true
             options.attachStacktrace = true
         }
