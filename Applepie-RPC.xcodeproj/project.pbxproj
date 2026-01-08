@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		620F1E492DB397F400898A8D /* ModernSlider in Frameworks */ = {isa = PBXBuildFile; productRef = 620F1E482DB397F400898A8D /* ModernSlider */; };
 		62A1D7C22F1234567890ABCD /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 62A1D7C12F1234567890ABCD /* Sparkle */; };
+		7F1A2B3C4D5E6F708192A3B6 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 7F1A2B3C4D5E6F708192A3B5 /* Sentry */; };
 		D0F1E2FD2F03A1CE002FB86E /* PylibKit-macos.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0F1E2FC2F03A1CE002FB86E /* PylibKit-macos.xcframework */; };
 		D0F1E2FE2F03A1CE002FB86E /* PylibKit-macos.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = D0F1E2FC2F03A1CE002FB86E /* PylibKit-macos.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -92,6 +93,7 @@
 				D0F1E2FD2F03A1CE002FB86E /* PylibKit-macos.xcframework in Frameworks */,
 				620F1E492DB397F400898A8D /* ModernSlider in Frameworks */,
 				62A1D7C22F1234567890ABCD /* Sparkle in Frameworks */,
+				7F1A2B3C4D5E6F708192A3B6 /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -166,6 +168,7 @@
 			packageProductDependencies = (
 				620F1E482DB397F400898A8D /* ModernSlider */,
 				62A1D7C12F1234567890ABCD /* Sparkle */,
+				7F1A2B3C4D5E6F708192A3B5 /* Sentry */,
 			);
 			productName = "Applepie-RPC";
 			productReference = 623815522DB2B12100AD874E /* Applepie-RPC.app */;
@@ -253,6 +256,7 @@
 			packageReferences = (
 				620F1E472DB397F400898A8D /* XCRemoteSwiftPackageReference "ModernSlider" */,
 				62A1D7C02F1234567890ABCD /* XCRemoteSwiftPackageReference "Sparkle" */,
+				7F1A2B3C4D5E6F708192A3B4 /* XCRemoteSwiftPackageReference "Sentry" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 623815532DB2B12100AD874E /* Products */;
@@ -673,6 +677,14 @@
 				minimumVersion = 2.8.1;
 			};
 		};
+		7F1A2B3C4D5E6F708192A3B4 /* XCRemoteSwiftPackageReference "Sentry" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -685,6 +697,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 62A1D7C02F1234567890ABCD /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
+		};
+		7F1A2B3C4D5E6F708192A3B5 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7F1A2B3C4D5E6F708192A3B4 /* XCRemoteSwiftPackageReference "Sentry" */;
+			productName = Sentry;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

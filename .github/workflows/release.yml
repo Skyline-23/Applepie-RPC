@@ -87,8 +87,33 @@ jobs:
             DEVELOPMENT_TEAM="Q23JLSJCCV" \
             MARKETING_VERSION="$VERSION" \
             CURRENT_PROJECT_VERSION="$VERSION" \
+            SENTRY_DSN="${{ secrets.SENTRY_DSN }}" \
+            SENTRY_ENVIRONMENT="production" \
             SWIFT_UPCOMING_FEATURES="AsyncExecutionBehaviorAttributes NonescapableTypes" \
             OTHER_SWIFT_FLAGS="-no-verify-emitted-module-interface"
+
+      - name: Install sentry-cli
+        run: curl -sL https://sentry.io/get-cli/ | bash
+
+      - name: Upload dSYMs to Sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          if [ -z "$SENTRY_AUTH_TOKEN" ] || [ -z "$SENTRY_ORG" ] || [ -z "$SENTRY_PROJECT" ]; then
+            echo "ℹ️ Sentry env not set; skipping dSYM upload."
+            exit 0
+          fi
+          VERSION="${GITHUB_REF_NAME#v}"
+          sentry-cli releases new "$VERSION" || true
+          sentry-cli releases set-commits --auto "$VERSION" || true
+          sentry-cli upload-dif \
+            --org "$SENTRY_ORG" \
+            --project "$SENTRY_PROJECT" \
+            "${{ github.workspace }}/build/${{ env.APP_SCHEME }}.xcarchive/dSYMs"
+          sentry-cli releases finalize "$VERSION"
 
       - name: Extract .app from archive
         run: |

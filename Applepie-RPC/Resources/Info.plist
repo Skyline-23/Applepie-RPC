@@ -8,6 +8,10 @@
 	<array>
 		<string>_airplay._tcp.</string>
 	</array>
+	<key>SentryDSN</key>
+	<string>$(SENTRY_DSN)</string>
+	<key>SentryEnvironment</key>
+	<string>$(SENTRY_ENVIRONMENT)</string>
 	<key>SUFeedURL</key>
 	<string>https://github.com/Skyline-23/Applepie-RPC/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>

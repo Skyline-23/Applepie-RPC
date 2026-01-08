@@ -12,6 +12,7 @@ import Combine
 import ApplicationServices
 import Dispatch
 import PylibKit_Mac
+import Sentry
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -31,6 +32,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        Task {
+            await pythonExecutor.installPythonLogForwarders(logLevel: .info)
+        }
+
+        startSentryIfConfigured()
+
         // Request Accessibility permission if needed
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         if !AXIsProcessTrustedWithOptions(options) {
@@ -183,5 +190,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             semaphore.signal()
         }
         _ = semaphore.wait(timeout: .now() + 1.0)
+    }
+
+    private func startSentryIfConfigured() {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let rawDSN = info["SentryDSN"] as? String
+        let dsn = rawDSN?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if dsn.isEmpty || dsn.contains("SENTRY_DSN") || dsn.contains("$(") {
+            debugLog("[Sentry] DSN not configured; skipping Sentry init")
+            return
+        }
+
+        let environmentFromInfo = (info["SentryEnvironment"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let version = (info["CFBundleShortVersionString"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "unknown"
+        let bundleID = Bundle.main.bundleIdentifier ?? "Applepie-RPC"
+
+        SentrySDK.start { options in
+            options.dsn = dsn
+            options.releaseName = version
+            options.environment = (environmentFromInfo?.isEmpty == false) ? environmentFromInfo : "production"
+            options.enableCrashHandler = true
+            options.attachStacktrace = true
+        }
+
+        SentrySDK.configureScope { scope in
+            scope.setTag(value: bundleID, key: "bundle_id")
+            scope.setTag(value: version, key: "app_version")
+        }
     }
 }
