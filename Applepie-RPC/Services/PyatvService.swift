@@ -231,6 +231,29 @@ class PyatvService {
         return nil
     }
 
+    private func canFetchMetadata(
+        from atv: Pyatv.Interface.AppletvInstance,
+        host: String,
+        proto: Pyatv.Const.PyatvProtocol_
+    ) async -> Bool {
+        guard let features = try? await atv.features() else {
+            debugLog("[PyatvService] metadata feature check failed (host=\(host), proto=\(proto))")
+            return false
+        }
+
+        let states: [Pyatv.Const.PyatvFeaturestate] = [.available]
+        let titleAvailable = (try? await features.in_state(
+            states: states,
+            Pyatv.Const.PyatvFeaturename.title
+        )) ?? false
+
+        if !titleAvailable {
+            debugLog("[PyatvService] metadata feature unavailable (host=\(host), proto=\(proto))")
+        }
+
+        return titleAvailable
+    }
+
     /// Fetch now-playing metadata for the given Apple TV host.
     /// Returns connection state and optional metadata.
     func getATVProps(
@@ -288,6 +311,10 @@ class PyatvService {
                     storeConnection(atv, host: host, proto: proto)
                 }
                 lastSuccessfulProtocol[host] = proto
+
+                if !(await canFetchMetadata(from: atv, host: host, proto: proto)) {
+                    return .connected(nil)
+                }
 
                 debugLog("[PyatvService] fetching metadata (host=\(host), proto=\(proto))")
                 let metadata = try await withTimeout(seconds: 6, operation: "metadata") {
