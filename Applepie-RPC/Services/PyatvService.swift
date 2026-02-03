@@ -44,6 +44,7 @@ class PyatvService {
     private let pyatv: Pyatv.PyatvService
     private let loop: AsyncioLoop
     private let storage: Pyatv.Interface.StorageInstance?
+    private let shield: Pyatv.Support.Shield.ShieldService
     private var pairings: [String: PairingSession] = [:]
     private var configCache: [String: CachedConfig] = [:]
     private var connectionCache: [String: CachedConnection] = [:]
@@ -55,6 +56,7 @@ class PyatvService {
     static func create(executor: PythonExecutor) async -> PyatvService {
         let pyatv = await Pyatv.PyatvService.create(executor: executor)
         let loop = await executor.createAsyncioLoop()
+        let shield = await Pyatv.Support.Shield.ShieldService.create(executor: executor)
 
         var storage: Pyatv.Interface.StorageInstance? = nil
         do {
@@ -77,19 +79,27 @@ class PyatvService {
             debugLog("[PyatvService] Failed to initialize storage: \(error)")
         }
 
-        return PyatvService(executor: executor, pyatv: pyatv, loop: loop, storage: storage)
+        return PyatvService(
+            executor: executor,
+            pyatv: pyatv,
+            loop: loop,
+            storage: storage,
+            shield: shield
+        )
     }
 
     private init(
         executor: PythonExecutor,
         pyatv: Pyatv.PyatvService,
         loop: AsyncioLoop,
-        storage: Pyatv.Interface.StorageInstance?
+        storage: Pyatv.Interface.StorageInstance?,
+        shield: Pyatv.Support.Shield.ShieldService
     ) {
         self.executor = executor
         self.pyatv = pyatv
         self.loop = loop
         self.storage = storage
+        self.shield = shield
     }
 
     private func ensureStorageLoaded() async {
@@ -149,6 +159,10 @@ class PyatvService {
         let key = connectionKey(host: host, proto: proto)
         if var cached = connectionCache[key] {
             if Date().timeIntervalSince(cached.lastUsed) <= connectionTTL {
+                if await isBlocking(cached.atv, host: host, proto: proto, context: "cache") {
+                    await closeConnection(forKey: key)
+                    return nil
+                }
                 cached.lastUsed = Date()
                 connectionCache[key] = cached
                 return cached.atv
@@ -156,6 +170,23 @@ class PyatvService {
             await closeConnection(forKey: key)
         }
         return nil
+    }
+
+    private func isBlocking(
+        _ atv: Pyatv.Interface.AppletvInstance,
+        host: String,
+        proto: Pyatv.Const.PyatvProtocol_,
+        context: String
+    ) async -> Bool {
+        do {
+            if let blocking = try await shield.is_blocking(obj: atv), blocking {
+                debugLog("[PyatvService] connection blocked (host=\(host), proto=\(proto), context=\(context))")
+                return true
+            }
+        } catch {
+            debugLog("[PyatvService] shield check failed (host=\(host), proto=\(proto), context=\(context)): \(error)")
+        }
+        return false
     }
 
     private func storeConnection(_ atv: Pyatv.Interface.AppletvInstance, host: String, proto: Pyatv.Const.PyatvProtocol_) {
@@ -236,6 +267,9 @@ class PyatvService {
         host: String,
         proto: Pyatv.Const.PyatvProtocol_
     ) async -> Bool {
+        if await isBlocking(atv, host: host, proto: proto, context: "features") {
+            return false
+        }
         guard let features = try? await atv.features() else {
             debugLog("[PyatvService] metadata feature check failed (host=\(host), proto=\(proto))")
             return false
@@ -312,6 +346,11 @@ class PyatvService {
                 }
                 lastSuccessfulProtocol[host] = proto
 
+                if await isBlocking(atv, host: host, proto: proto, context: "pre-metadata") {
+                    await closeConnection(forKey: connKey)
+                    return .failed
+                }
+
                 if !(await canFetchMetadata(from: atv, host: host, proto: proto)) {
                     return .connected(nil)
                 }
@@ -323,6 +362,10 @@ class PyatvService {
                 guard let metadata else {
                     debugLog("[PyatvService] metadata is nil (host=\(host), proto=\(proto))")
                     return .connected(nil)
+                }
+                if await isBlocking(atv, host: host, proto: proto, context: "playing") {
+                    await closeConnection(forKey: connKey)
+                    return .failed
                 }
                 let playing = try await withTimeout(seconds: 6, operation: "playing") {
                     try await metadata.playing()
