@@ -376,8 +376,8 @@ class PyatvService {
                 }
 
                 if let state = try await playing.device_state() {
-                    if state == .idle {
-                        debugLog("[PyatvService] device_state=idle (host=\(host), proto=\(proto))")
+                    if state == .idle || state == .pauEd || state == .stopped {
+                        debugLog("[PyatvService] device_state=\(state) (host=\(host), proto=\(proto))")
                         return .connected(nil)
                     }
                     debugLog("[PyatvService] device_state=\(state) (host=\(host), proto=\(proto))")
