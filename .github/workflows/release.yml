@@ -202,6 +202,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
           files: |
             ${{ github.workspace }}/dist/${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg
             ${{ github.workspace }}/dist/appcast.xml
