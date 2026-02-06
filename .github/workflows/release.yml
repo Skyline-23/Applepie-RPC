@@ -197,12 +197,17 @@ jobs:
 
           mv "$APPCAST_DIR/appcast.xml" "$DIST_DIR/appcast.xml"
 
+      - name: Generate release notes
+        run: |
+          bash "${{ github.workspace }}/scripts/generate_release_notes.sh" "${{ github.ref_name }}" \
+            > "${{ github.workspace }}/release_notes.md"
+
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-          generate_release_notes: true
+          body_path: ${{ github.workspace }}/release_notes.md
           files: |
             ${{ github.workspace }}/dist/${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg
             ${{ github.workspace }}/dist/appcast.xml
