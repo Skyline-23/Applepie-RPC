@@ -481,7 +481,7 @@ class AppleMusicService {
         musicKitEnabled = enabled
     }
 
-    /// Fetch artworkUrl (512x512) and track URL using MusicKit lookup or HTTP search fallback, with caching.
+    /// Fetch artworkUrl (512x512) and track URL using MusicKit library/catalog lookup or HTTP search fallback, with caching.
     func fetchTrackExtras(lookupKey key: String, isStoreID: Bool) async -> [String: String] {
         // 1) Return cached if present
         if let cached = cache.get(trackID: key) {
@@ -521,6 +521,9 @@ class AppleMusicService {
             }
         } else {
             if musicKitEnabled {
+                info = await fetchLibrarySearch(term: key)
+            }
+            if info.isEmpty, musicKitEnabled {
                 do {
                     var searchRequest = MusicCatalogSearchRequest(term: key, types: [Song.self])
                     searchRequest.limit = 1
@@ -547,6 +550,28 @@ class AppleMusicService {
     /// Clear the cache for track extras.
     func clearCache() {
         cache.clear()
+    }
+
+    private func fetchLibrarySearch(term: String) async -> [String: String] {
+        let trimmed = term.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [:] }
+        do {
+            var searchRequest = MusicLibrarySearchRequest(term: trimmed, types: [Song.self])
+            searchRequest.limit = 1
+            let searchResponse = try await searchRequest.response()
+            if let song = searchResponse.songs.first, let artwork = song.artwork,
+               let artURL = artwork.url(width: 512, height: 512)?.absoluteString {
+                let trackUrl = song.url?.absoluteString ?? ""
+                var info: [String: String] = ["artworkUrl": artURL]
+                if !trackUrl.isEmpty {
+                    info["iTunesUrl"] = trackUrl
+                }
+                return info
+            }
+        } catch {
+            debugLog("AppleMusicService MusicKit library search error:", error)
+        }
+        return [:]
     }
 
     private func fetchITunesLookup(storeID: Int) async -> [String: String] {
