@@ -213,3 +213,70 @@ jobs:
             ${{ github.workspace }}/dist/appcast.xml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew cask
+        if: ${{ success() }}
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          DMG_PATH="${GITHUB_WORKSPACE}/dist/${APP_SCHEME}-${TAG}.dmg"
+          if [ ! -f "$DMG_PATH" ]; then
+            echo "❌ DMG not found: $DMG_PATH"
+            exit 1
+          fi
+
+          VERSION="${TAG#v}"
+          DMG_SHA="$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')"
+          echo "🔖 Cask version: $VERSION"
+          echo "🔐 DMG sha256: $DMG_SHA"
+
+          if [ ! -f "Casks/applepie-rpc.rb" ]; then
+            echo "ℹ️ Casks/applepie-rpc.rb not found; skipping."
+            exit 0
+          fi
+
+          git fetch origin main
+          git checkout -B main origin/main
+
+          VERSION="$VERSION" DMG_SHA="$DMG_SHA" python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          path = Path("Casks/applepie-rpc.rb")
+          content = path.read_text()
+          version = os.environ["VERSION"]
+          sha = os.environ["DMG_SHA"]
+
+          updated = re.sub(
+              r'^(\\s*version\\s+\")[^\"]+(\"\\s*)$',
+              rf'\\1{version}\\2',
+              content,
+              flags=re.M,
+          )
+          updated = re.sub(
+              r'^(\\s*sha256\\s+\")[0-9a-fA-F]+(\"\\s*)$',
+              rf'\\1{sha}\\2',
+              updated,
+              flags=re.M,
+          )
+
+          path.write_text(updated)
+          PY
+
+          git add Casks/applepie-rpc.rb
+          if git diff --cached --quiet; then
+            echo "ℹ️ No cask changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git commit \
+            -m "Bump Homebrew cask to v${VERSION}" \
+            -m "- Update Casks/applepie-rpc.rb version and sha256 to match ${TAG}"
+
+          git push origin main

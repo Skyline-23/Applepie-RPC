@@ -15,7 +15,7 @@ fi
 
 # Exclude commits that only touch CI/automation paths.
 # Override with RELEASE_NOTES_EXCLUDE_REGEX to tweak (bash regex syntax).
-exclude_regex="${RELEASE_NOTES_EXCLUDE_REGEX:-^(\\.github/|scripts/)}"
+exclude_regex="${RELEASE_NOTES_EXCLUDE_REGEX:-^(\\.github/|scripts/|Casks/)}"
 
 should_include_commit() {
   local sha="$1"
