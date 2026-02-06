@@ -1,7 +1,7 @@
 # Applepie
 
 <p align="center">
-  <img src="Applepie-RPC/Resources/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon@2x.png" width="96" height="96" alt="Applepie icon">
+  <img src="AppIcon.png" width="96" height="96" alt="Applepie icon">
 </p>
 
 <p align="center">
