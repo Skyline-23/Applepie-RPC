@@ -33,11 +33,19 @@ struct ApplepieRPCApp: App {
     }()
     
     var body: some Scene {
-        MenuBarExtra(.localizable(.appName), systemImage: "music.note.house") {
+        MenuBarExtra {
             MainMenuView()
                 .environment(\.modelContext, delegate.container?.mainContext ?? defaultContainer.mainContext)
                 .environmentObject(delegate.nowPlayingService)
                 .environmentObject(delegate.updaterService)
+        } label: {
+            Label {
+                Text(localizable: .appName)
+            } icon: {
+                Image("MenuBarIcon")
+                    .renderingMode(.template)
+            }
+            .labelStyle(.iconOnly)
         }
         .menuBarExtraStyle(.window)
     }

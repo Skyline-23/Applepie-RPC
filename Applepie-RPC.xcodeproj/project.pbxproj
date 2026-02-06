@@ -10,6 +10,7 @@
 		620F1E492DB397F400898A8D /* ModernSlider in Frameworks */ = {isa = PBXBuildFile; productRef = 620F1E482DB397F400898A8D /* ModernSlider */; };
 		62A1D7C22F1234567890ABCD /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 62A1D7C12F1234567890ABCD /* Sparkle */; };
 		7F1A2B3C4D5E6F708192A3B6 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 7F1A2B3C4D5E6F708192A3B5 /* Sentry */; };
+		D0CD01612F35976000AF348A /* Applepie-RPC.icon in Resources */ = {isa = PBXBuildFile; fileRef = D0CD01602F35976000AF348A /* Applepie-RPC.icon */; };
 		D0F1E2FD2F03A1CE002FB86E /* PylibKit-macos.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0F1E2FC2F03A1CE002FB86E /* PylibKit-macos.xcframework */; };
 		D0F1E2FE2F03A1CE002FB86E /* PylibKit-macos.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = D0F1E2FC2F03A1CE002FB86E /* PylibKit-macos.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -51,6 +52,7 @@
 		6238156D2DB2B12300AD874E /* Applepie-RPCUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Applepie-RPCUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		625BD3E62DBA24D0009567E7 /* MusicKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MusicKit.framework; path = System/Library/Frameworks/MusicKit.framework; sourceTree = SDKROOT; };
 		A1B2C3D4E5F60718293A4B5C /* xcconfigs/Applepie-RPC.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "xcconfigs/Applepie-RPC.xcconfig"; sourceTree = "<group>"; };
+		D0CD01602F35976000AF348A /* Applepie-RPC.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "Applepie-RPC.icon"; sourceTree = "<group>"; };
 		D0F1E2FC2F03A1CE002FB86E /* PylibKit-macos.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = "PylibKit-macos.xcframework"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -117,6 +119,7 @@
 		623815492DB2B12100AD874E = {
 			isa = PBXGroup;
 			children = (
+				D0CD01602F35976000AF348A /* Applepie-RPC.icon */,
 				62B562B22DB79DF70094DC22 /* Frameworks */,
 				A1B2C3D4E5F60718293A4B5C /* xcconfigs/Applepie-RPC.xcconfig */,
 				623815542DB2B12100AD874E /* Applepie-RPC */,
@@ -256,7 +259,7 @@
 			packageReferences = (
 				620F1E472DB397F400898A8D /* XCRemoteSwiftPackageReference "ModernSlider" */,
 				62A1D7C02F1234567890ABCD /* XCRemoteSwiftPackageReference "Sparkle" */,
-				7F1A2B3C4D5E6F708192A3B4 /* XCRemoteSwiftPackageReference "Sentry" */,
+				7F1A2B3C4D5E6F708192A3B4 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 623815532DB2B12100AD874E /* Products */;
@@ -275,6 +278,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D0CD01612F35976000AF348A /* Applepie-RPC.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -317,9 +321,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		623815652DB2B12300AD874E /* PBXTargetDependency */ = {
@@ -463,8 +464,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A1B2C3D4E5F60718293A4B5C /* xcconfigs/Applepie-RPC.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "Applepie-RPC";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = "Applepie-RPC/Resources/Applepie_RPC.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
@@ -483,6 +485,7 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Applepie-RPC/Resources/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Applepie-RPC";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Get info & Search Music on Apple Music";
@@ -509,8 +512,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A1B2C3D4E5F60718293A4B5C /* xcconfigs/Applepie-RPC.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "Applepie-RPC";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = "Applepie-RPC/Resources/Applepie_RPC.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
@@ -529,6 +533,7 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Applepie-RPC/Resources/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Applepie-RPC";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Get info & Search Music on Apple Music";
@@ -677,7 +682,7 @@
 				minimumVersion = 2.8.1;
 			};
 		};
-		7F1A2B3C4D5E6F708192A3B4 /* XCRemoteSwiftPackageReference "Sentry" */ = {
+		7F1A2B3C4D5E6F708192A3B4 /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/getsentry/sentry-cocoa";
 			requirement = {
@@ -700,7 +705,7 @@
 		};
 		7F1A2B3C4D5E6F708192A3B5 /* Sentry */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 7F1A2B3C4D5E6F708192A3B4 /* XCRemoteSwiftPackageReference "Sentry" */;
+			package = 7F1A2B3C4D5E6F708192A3B4 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
 			productName = Sentry;
 		};
 /* End XCSwiftPackageProductDependency section */
