@@ -259,7 +259,15 @@ struct MainMenuView: View {
             .cornerRadius(4)
             
             Button {
-                updaterService.checkForUpdates()
+                switch updaterService.updateChannel {
+                case .sparkle:
+                    updaterService.checkForUpdates()
+                case .homebrew:
+                    let command = updaterService.homebrewUpgradeCommand
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(command, forType: .string)
+                    showAlert(message: "\(String.localizable(.homebrewCommandCopied))\n\n\(command)")
+                }
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.triangle.2.circlepath")
@@ -268,7 +276,7 @@ struct MainMenuView: View {
                         .frame(width: 8, height: 8)
                         .padding(6)
                         .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
-                    Text(localizable: .checkForUpdates)
+                    Text(localizable: updaterService.updateChannel == .sparkle ? .checkForUpdates : .updateViaHomebrew)
                     Spacer()
                 }
             }

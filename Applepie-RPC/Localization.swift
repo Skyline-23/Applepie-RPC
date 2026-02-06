@@ -24,6 +24,8 @@ enum LocalizableKey {
     case status
     case discord
     case checkForUpdates
+    case updateViaHomebrew
+    case homebrewCommandCopied
 }
 
 extension LocalizableKey {
@@ -73,6 +75,10 @@ extension LocalizableKey {
             return "Discord"
         case .checkForUpdates:
             return "Check for Updates"
+        case .updateViaHomebrew:
+            return "Update via Homebrew"
+        case .homebrewCommandCopied:
+            return "Homebrew command copied"
         }
     }
 

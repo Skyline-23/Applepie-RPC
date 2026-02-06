@@ -1,50 +1,90 @@
-# Applepie-RPC
+# Applepie
 
-Applepie-RPC is a macOS menu bar app that publishes now-playing info to Discord Rich Presence. It pulls playback metadata via pyatv (through PylibKit) from your Mac or AirPlay targets like HomePod and Apple TV, then updates Discord with track details and progress.
+<p align="center">
+  <img src="Applepie-RPC/Resources/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon@2x.png" width="96" height="96" alt="Applepie icon">
+</p>
+
+<p align="center">
+  macOS menu bar app that publishes now-playing info to Discord Rich Presence.
+</p>
+
+<p align="center">
+  <a href="https://github.com/Skyline-23/Applepie-RPC/releases/latest">Download</a>
+  ·
+  <a href="#homebrew">Homebrew</a>
+  ·
+  <a href="#development">Development</a>
+</p>
+
+Applepie pulls playback metadata from:
+- Your Mac (Music.app)
+- AirPlay targets like HomePod / Apple TV (via `pyatv` through `PylibKit`)
+
+Then it keeps your Discord activity updated with track details and playback progress.
 
 ## Features
 - Discord Rich Presence with track title, artist, album, and artwork
 - Playback progress bar (position and duration)
-- AirPlay device selection
-- Pairing flow for protected devices
+- AirPlay device selection + pairing flow for protected devices
 - Adjustable update interval
 - Clear cached pairing credentials
 
+## Install
+
+### DMG (Recommended)
+1. Download the latest DMG from the GitHub Releases page.
+2. Move `Applepie-RPC.app` into `/Applications`.
+3. Launch Applepie and grant permissions when prompted.
+
+### Homebrew
+This repo ships a cask in `Casks/applepie-rpc.rb`.
+
+```bash
+brew tap skyline-23/applepie-rpc https://github.com/Skyline-23/Applepie-RPC
+brew install --cask applepie-rpc
+```
+
+To upgrade:
+
+```bash
+brew upgrade --cask applepie-rpc
+```
+
+## Updates (Sparkle)
+Applepie supports automatic updates (Sparkle) via:
+`https://github.com/Skyline-23/Applepie-RPC/releases/latest/download/appcast.xml`
+
+To avoid conflicts with cask-managed installs, Applepie prefers Homebrew as the update authority when it detects a Homebrew cask install.
+
 ## Requirements
 - macOS
-- Xcode (for building and running)
 - Discord desktop app running
 - Apple Music authorization (prompted at launch)
 - Accessibility permission (prompted at launch)
-- AirPlay devices on the same network
-
-## Build and Run
-1. Open `Applepie-RPC.xcodeproj` in Xcode.
-2. Build and run the `Applepie-RPC` target.
-3. Grant Accessibility and Apple Music permissions when prompted.
-4. Keep Discord running in the background.
+- AirPlay devices on the same network (for HomePod/Apple TV)
 
 ## Usage
-- Click the menu bar icon to open the app UI.
+- Click the menu bar icon to open the UI.
 - Select an AirPlay device from the Device menu.
 - If pairing is required, enter the PIN shown on the device.
 - Adjust the update interval slider to control polling.
 - Use Clear Cache to remove stored pairing credentials.
 
 ## Troubleshooting
-- No progress bar: the device might not expose duration; try another target or re-pair.
-- RPC not updating: confirm Discord is running and check Xcode logs for `[DiscordService]`.
-- Pairing issues: clear cache and retry pairing.
+- No progress bar: some devices do not expose duration; try another target or re-pair.
+- RPC not updating: confirm Discord is running and check logs for `[DiscordService]`.
+- Pairing issues: Clear Cache and retry pairing.
 
 ## Notes
-- Pairing credentials are stored in the app support directory as `pyatv_storage.json`.
+- Pairing credentials are stored under `~/Library/Application Support/Applepie-RPC/pyatv_storage.json`.
 - The Python runtime is bundled via PylibKit; no system Python setup is required.
 
-## Releases & Updates (Sparkle)
-This project ships updates via Sparkle using the appcast at:
-`https://github.com/Skyline-23/Applepie-RPC/releases/latest/download/appcast.xml`
+## Development
+1. Open `Applepie-RPC.xcodeproj` in Xcode.
+2. Build and run the `Applepie-RPC` target.
+3. Grant permissions when prompted.
 
-### Release flow
+## Release Flow
 1. Create a tag like `v1.2.3` and push it.
 2. GitHub Actions builds the app, creates a DMG, generates `appcast.xml`, and publishes a release.
 3. Clients will see the update once the tag and appcast are live.
