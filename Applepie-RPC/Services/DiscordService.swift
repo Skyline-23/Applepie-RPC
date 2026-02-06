@@ -29,6 +29,7 @@ class DiscordService {
     private var reconnectTask: Task<Void, Never>?
     private var reconnectAttempt: Int = 0
     private let reconnectDelays: [Double] = [2, 4, 8, 15, 30, 60]
+    private let activityGate = ActivityGate()
 
     /// Factory to create and initialize a DiscordService.
     static func create(
@@ -94,6 +95,10 @@ class DiscordService {
            nowDate.timeIntervalSince(lastSentAt) < minActivityUpdateInterval {
             return
         }
+        let activityToken = await activityGate.nextToken()
+        if Task.isCancelled {
+            return
+        }
 
         let lookupKey = (title + " " + (artist ?? "") + " " + (album ?? ""))
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -107,6 +112,12 @@ class DiscordService {
             }
         } else {
             extras = await musicService.fetchTrackExtras(lookupKey: lookupKey, isStoreID: false)
+        }
+        if Task.isCancelled {
+            return
+        }
+        guard await activityGate.isCurrent(activityToken) else {
+            return
         }
 
         let artworkUrl = extras["artworkUrl"]
@@ -156,6 +167,9 @@ class DiscordService {
 
         var didSend = false
         do {
+            guard await activityGate.isCurrent(activityToken) else {
+                return
+            }
             try await withButtonsRef(buttonsPayload) { buttonsRef in
                 if let buttonsRef {
                     _ = try await rpc.set_activity(
@@ -190,6 +204,9 @@ class DiscordService {
             if message.localizedCaseInsensitiveContains("buttons") {
                 buttonsEnabled = false
                 do {
+                    guard await activityGate.isCurrent(activityToken) else {
+                        return
+                    }
                     _ = try await rpc.set_activity(
                         activity_type: .lISTENING,
                         state: state,
@@ -210,7 +227,7 @@ class DiscordService {
                 handleRpcFailure()
             }
         }
-        if didSend {
+        if didSend, await activityGate.isCurrent(activityToken) {
             lastActivityKey = activityKey
             lastActivitySentAt = nowDate
         }
@@ -244,6 +261,7 @@ class DiscordService {
             return
         }
         lastClearAttemptAt = nowDate
+        await activityGate.invalidate()
 
         if rpc == nil {
             guard allowStart else { return }
@@ -391,6 +409,23 @@ class DiscordService {
             debugLog("[DiscordService] Failed to build buttons payload:", error)
             return try await body(nil)
         }
+    }
+}
+
+private actor ActivityGate {
+    private var token: UInt64 = 0
+
+    func nextToken() -> UInt64 {
+        token &+= 1
+        return token
+    }
+
+    func isCurrent(_ candidate: UInt64) -> Bool {
+        candidate == token
+    }
+
+    func invalidate() {
+        token &+= 1
     }
 }
 

@@ -9,7 +9,7 @@ import Foundation
 import PylibKit_Mac
 
 /// Service to fetch Apple TV now-playing info using PylibKit's pyatv bindings.
-class PyatvService {
+actor PyatvService {
     struct ATVProps {
         let trackID: String?
         let title: String

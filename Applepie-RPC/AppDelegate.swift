@@ -23,6 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables = Set<AnyCancellable>()
     private var appSettings: AppSettings?
     private var presenceUpdateTask: Task<Void, Never>?
+    private var activityUpdateTask: Task<Void, Never>?
 
     var container: ModelContainer?
     let updaterService = UpdaterService()
@@ -125,10 +126,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             nowPlayingService.$playingData
                 .prepend(nowPlayingService.playingData)
                 .sink { [weak self] data in
-                    guard let self, let discord = self.discordService else {
-                        return
-                    }
-                    Task {
+                    guard let self else { return }
+                    self.activityUpdateTask?.cancel()
+                    self.activityUpdateTask = Task { [weak self] in
+                        guard let self, let discord = self.discordService else {
+                            return
+                        }
                         if self.appSettings?.isPaused == true {
                             await discord.clearActivity(allowStart: false)
                             return
@@ -182,6 +185,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         debugLog("[AppDelegate] applicationWillTerminate")
         presenceUpdateTask?.cancel()
+        activityUpdateTask?.cancel()
         nowPlayingService.stop()
 
         let semaphore = DispatchSemaphore(value: 0)
