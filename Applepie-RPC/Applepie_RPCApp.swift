@@ -44,6 +44,9 @@ struct ApplepieRPCApp: App {
             } icon: {
                 Image("MenuBarIcon")
                     .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 18, height: 18)
             }
             .labelStyle(.iconOnly)
         }
@@ -100,6 +103,7 @@ struct MainMenuView: View {
     @State private var isHoveringCheckUpdates = false
     @State private var selectedHost: String = .localizable(.localhostName)
     @State private var previousHost: String = .localizable(.localhostName)
+    @State private var deviceMenuLayoutID = UUID()
     @StateObject private var browser = AirPlayBrowser()
     @EnvironmentObject var nowPlayingService: NowPlayingService
     @EnvironmentObject var updaterService: UpdaterService
@@ -200,14 +204,45 @@ struct MainMenuView: View {
                 Text(localizable: .device)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                Picker(.localizable(.device), selection: $selectedHost) {
+                // SwiftUI `Picker(.menu)` sometimes renders centered on first load in MenuBarExtra.
+                // A custom `Menu` avoids the initial layout glitch while keeping the same UX.
+                Menu {
                     ForEach(browser.hosts, id: \.self) { host in
-                        Text(host)
-                            .tag(host)
+                        Button {
+                            selectedHost = host
+                        } label: {
+                            if host == selectedHost {
+                                Label(host, systemImage: "checkmark")
+                            } else {
+                                Text(host)
+                            }
+                        }
                     }
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(selectedHost)
+                            .lineLimit(1)
+                        Spacer()
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .fill(Color(NSColor.controlBackgroundColor))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .stroke(Color(NSColor.separatorColor).opacity(0.6), lineWidth: 1)
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .labelsHidden()
-                .pickerStyle(.menu)
+                .id(deviceMenuLayoutID)
+                .menuIndicator(.hidden)
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .onChange(of: selectedHost) { newHost in
                     // Only perform switch if the host truly changed
@@ -316,6 +351,13 @@ struct MainMenuView: View {
         }
         .padding(10)
         .frame(width: 225)
+        .onAppear {
+            // Force an additional layout pass. MenuBarExtra can occasionally give menu controls
+            // an incorrect initial width until the user interacts with them.
+            DispatchQueue.main.async {
+                deviceMenuLayoutID = UUID()
+            }
+        }
     }
     
     // MARK: - Methods
