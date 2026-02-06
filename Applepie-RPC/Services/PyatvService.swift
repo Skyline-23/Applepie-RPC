@@ -44,6 +44,7 @@ actor PyatvService {
     private let pyatv: Pyatv.PyatvService
     private let loop: AsyncioLoop
     private let storage: Pyatv.Interface.StorageInstance?
+    private let storageURL: URL
     private let shield: Pyatv.Support.Shield.ShieldService
     private var pairings: [String: PairingSession] = [:]
     private var configCache: [String: CachedConfig] = [:]
@@ -59,13 +60,12 @@ actor PyatvService {
         let shield = await Pyatv.Support.Shield.ShieldService.create(executor: executor)
 
         var storage: Pyatv.Interface.StorageInstance? = nil
+        let baseDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let appDir = (baseDir ?? URL(fileURLWithPath: NSTemporaryDirectory()))
+            .appendingPathComponent("Applepie-RPC", isDirectory: true)
+        try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
+        let storageURL = appDir.appendingPathComponent("pyatv_storage.json")
         do {
-            let baseDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            let appDir = (baseDir ?? URL(fileURLWithPath: NSTemporaryDirectory()))
-                .appendingPathComponent("Applepie-RPC", isDirectory: true)
-            try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
-            let storageURL = appDir.appendingPathComponent("pyatv_storage.json")
-
             let fileStorage = try await Pyatv.Storage.FileStorage.FilestorageInstance.create(
                 executor: executor,
                 filename: storageURL.path,
@@ -84,6 +84,7 @@ actor PyatvService {
             pyatv: pyatv,
             loop: loop,
             storage: storage,
+            storageURL: storageURL,
             shield: shield
         )
     }
@@ -93,12 +94,14 @@ actor PyatvService {
         pyatv: Pyatv.PyatvService,
         loop: AsyncioLoop,
         storage: Pyatv.Interface.StorageInstance?,
+        storageURL: URL,
         shield: Pyatv.Support.Shield.ShieldService
     ) {
         self.executor = executor
         self.pyatv = pyatv
         self.loop = loop
         self.storage = storage
+        self.storageURL = storageURL
         self.shield = shield
     }
 
@@ -196,7 +199,7 @@ actor PyatvService {
 
     private func closeConnection(forKey key: String) async {
         if let cached = connectionCache.removeValue(forKey: key) {
-            try? await cached.atv.close()
+            _ = try? await cached.atv.close()
         }
     }
 
@@ -225,9 +228,11 @@ actor PyatvService {
     private func preferredProtocol(
         for config: Pyatv.Interface.BaseconfigInstance
     ) async -> Pyatv.Const.PyatvProtocol_ {
-        if let service = try? await config.get_service(protocol_: .companion), service != nil {
-            return .companion
-        }
+        do {
+            if let _ = try await config.get_service(protocol_: .companion) {
+                return .companion
+            }
+        } catch {}
         return .airPlay
     }
 
@@ -593,11 +598,64 @@ actor PyatvService {
                 removedAny = removedAny || removed
             }
             try await storage.save()
-            return removedAny || !settings.isEmpty
+            return true
         } catch {
             debugLog("[PyatvService] Failed to remove pairing: \(error)")
             return false
         }
+    }
+
+    /// Clears pairing credentials and drops all in-memory caches/connections.
+    /// This is stronger than `removePairing()` because it also closes cached connections so the
+    /// next fetch can't reuse an already-authenticated session.
+    func clearCache() async -> Bool {
+        // Close any in-flight pairing handlers.
+        for (_, session) in pairings {
+            _ = try? await session.handler.close()
+        }
+        pairings.removeAll()
+
+        // Close cached connections to avoid "still connected" behavior after clearing credentials.
+        for (_, cached) in connectionCache {
+            _ = try? await cached.atv.close()
+        }
+        connectionCache.removeAll()
+        configCache.removeAll()
+        lastSuccessfulProtocol.removeAll()
+
+        var ok = false
+        if let storage {
+            do {
+                try await storage.load()
+                let settings = (try await storage.settings()) ?? []
+                for item in settings {
+                    _ = try await storage.remove_settings(settings: item)
+                }
+                try await storage.save()
+                ok = true
+            } catch {
+                debugLog("[PyatvService] Failed to clear pairing via storage: \(error)")
+            }
+        }
+
+        // Belt-and-suspenders: reset the storage file to an empty structure so "Clear Cache"
+        // behaves deterministically even if pyatv's storage API fails.
+        do {
+            let payload = "{\"version\": 1, \"devices\": []}\n"
+            try FileManager.default.createDirectory(
+                at: storageURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try payload.write(to: storageURL, atomically: true, encoding: .utf8)
+            ok = true
+            if let storage {
+                try? await storage.load()
+            }
+        } catch {
+            debugLog("[PyatvService] Failed to reset storage file: \(error)")
+        }
+
+        return ok
     }
 
     /// Cancel pairing.

@@ -285,6 +285,6 @@ class NowPlayingService: ObservableObject {
     
     func clearCache() async -> Bool {
         guard let service = atvService else { return false }
-        return await service.removePairing()
+        return await service.clearCache()
     }
 }
