@@ -199,7 +199,8 @@ struct MainMenuView: View {
                     }
                 }
                 .labelsHidden()
-                .frame(maxWidth: .infinity)
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .onChange(of: selectedHost) { newHost in
                     // Only perform switch if the host truly changed
                     guard newHost != previousHost else { return }
