@@ -255,13 +255,17 @@ class DiscordService {
 
     /// Clears the activity on the Discord RPC connection.
     func clearActivity(allowStart: Bool = true) async {
+        // Always invalidate first so any in-flight setActivity won't "re-apply" stale presence
+        // if we end up throttling and returning early.
+        await activityGate.invalidate()
+
         let nowDate = Date()
-        if let lastClearAttemptAt,
+        if lastActivityKey == nil,
+           let lastClearAttemptAt,
            nowDate.timeIntervalSince(lastClearAttemptAt) < minClearInterval {
             return
         }
         lastClearAttemptAt = nowDate
-        await activityGate.invalidate()
 
         if rpc == nil {
             guard allowStart else { return }

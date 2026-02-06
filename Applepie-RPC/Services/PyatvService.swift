@@ -375,12 +375,17 @@ actor PyatvService {
                     return .connected(nil)
                 }
 
+                // Only treat explicit playback states as "now playing". Some devices report
+                // non-playing transitions (e.g. Interrupted) as `.loading`, which would otherwise
+                // keep stale metadata around and prevent the UI/Discord from clearing.
                 if let state = try await playing.device_state() {
-                    if state == .idle || state == .pauEd || state == .stopped {
-                        debugLog("[PyatvService] device_state=\(state) (host=\(host), proto=\(proto))")
+                    debugLog("[PyatvService] device_state=\(state) (host=\(host), proto=\(proto))")
+                    if state != .playing && state != .seeking {
                         return .connected(nil)
                     }
-                    debugLog("[PyatvService] device_state=\(state) (host=\(host), proto=\(proto))")
+                } else {
+                    debugLog("[PyatvService] device_state=nil (host=\(host), proto=\(proto))")
+                    return .connected(nil)
                 }
 
                 let title = (try await playing.title()) ?? ""
