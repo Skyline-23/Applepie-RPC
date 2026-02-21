@@ -37,10 +37,11 @@ Then it keeps your Discord activity updated with track details and playback prog
 3. Launch Applepie and grant permissions when prompted.
 
 ### Homebrew
-This repo ships a cask in `Casks/applepie-rpc.rb`.
+Homebrew tap is hosted in a dedicated repo:
+`https://github.com/Skyline-23/homebrew-applepie-rpc`
 
 ```bash
-brew tap skyline-23/applepie-rpc https://github.com/Skyline-23/Applepie-RPC
+brew tap skyline-23/applepie-rpc
 brew install --cask applepie-rpc
 ```
 
@@ -87,7 +88,8 @@ To avoid conflicts with cask-managed installs, Applepie prefers Homebrew as the 
 ## Release Flow
 1. Create a tag like `v1.2.3` and push it.
 2. GitHub Actions builds the app, creates a DMG, generates `appcast.xml`, and publishes a release.
-3. Clients will see the update once the tag and appcast are live.
+3. The workflow updates `Skyline-23/homebrew-applepie-rpc` cask version/sha automatically.
+4. Clients will see the update once the tag and appcast are live.
 
 Tag naming follows SemVer: `vMAJOR.MINOR.PATCH` (3-part). For hotfixes, bump `PATCH`. Legacy 4-part tags exist; avoid creating new ones.
 
