@@ -31,6 +31,8 @@ class NowPlayingService: ObservableObject {
     private var isFetching = false
     private var lastDeviceConnectedAt: Date?
     private var fetchTask: Task<Void, Never>?
+    private var currentFetchHost: String?
+    private var currentFetchInterval: TimeInterval?
 
     private var atvService: PyatvService?
 
@@ -63,6 +65,15 @@ class NowPlayingService: ObservableObject {
 
     /// Start fetching now-playing data periodically.
     func start(interval: TimeInterval, host: String) {
+        if currentFetchHost == host,
+           currentFetchInterval == interval,
+           timerCancellable != nil {
+            debugLog("[NowPlayingService] Skipping start; already fetching host=\(host) interval=\(interval)s")
+            return
+        }
+
+        currentFetchHost = host
+        currentFetchInterval = interval
         self.updateInterval = interval
         self.host = host
         self.deviceConnection = .unknown
@@ -120,6 +131,8 @@ class NowPlayingService: ObservableObject {
         timerCancellable = nil
         fetchTask?.cancel()
         fetchTask = nil
+        currentFetchHost = nil
+        currentFetchInterval = nil
         isFetching = false
         deviceConnection = .disconnected
         lastDeviceConnectedAt = nil
@@ -128,12 +141,21 @@ class NowPlayingService: ObservableObject {
 
     /// Update the fetch interval & host.
     func updateTimer(_ newInterval: TimeInterval, _ newHost: String) {
+        if currentFetchHost == newHost,
+           currentFetchInterval == newInterval,
+           timerCancellable != nil {
+            debugLog("[NowPlayingService] updateTimer no-op host=\(newHost) interval=\(newInterval)s")
+            return
+        }
+
         debugLog("[NowPlayingService] updateTimer interval=\(newInterval)s host=\(newHost)")
         deviceConnection = .unknown
         lastDeviceConnectedAt = nil
         playingData = nil
         fetchTask?.cancel()
         fetchTask = nil
+        currentFetchHost = nil
+        currentFetchInterval = nil
         isFetching = false
         start(interval: newInterval, host: newHost)
     }

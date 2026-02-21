@@ -50,8 +50,8 @@ actor PyatvService {
     private var configCache: [String: CachedConfig] = [:]
     private var connectionCache: [String: CachedConnection] = [:]
     private var lastSuccessfulProtocol: [String: Pyatv.Const.PyatvProtocol_] = [:]
-    private let configTTL: TimeInterval = 60
-    private let connectionTTL: TimeInterval = 30
+    private let configTTL: TimeInterval = 300
+    private let connectionTTL: TimeInterval = 120
 
     /// Factory to create and set up PyatvService.
     static func create(executor: PythonExecutor) async -> PyatvService {
@@ -383,14 +383,13 @@ actor PyatvService {
                 // Only treat explicit playback states as "now playing". Some devices report
                 // non-playing transitions (e.g. Interrupted) as `.loading`, which would otherwise
                 // keep stale metadata around and prevent the UI/Discord from clearing.
-                if let state = try await playing.device_state() {
+                if let state = try? await playing.device_state() {
                     debugLog("[PyatvService] device_state=\(state) (host=\(host), proto=\(proto))")
                     if state != .playing && state != .seeking {
                         return .connected(nil)
                     }
                 } else {
-                    debugLog("[PyatvService] device_state=nil (host=\(host), proto=\(proto))")
-                    return .connected(nil)
+                    debugLog("[PyatvService] device_state=nil; continuing metadata parse (host=\(host), proto=\(proto))")
                 }
 
                 let title = (try await playing.title()) ?? ""
