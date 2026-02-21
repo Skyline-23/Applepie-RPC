@@ -131,6 +131,24 @@ struct MainMenuView: View {
     private func statusKey(for state: ConnectionState) -> LocalizableKey {
         state == .connected ? .connected : .disconnected
     }
+
+    private var updateChannelName: String {
+        switch updaterService.updateChannel {
+        case .sparkle:
+            return "Sparkle"
+        case .homebrew:
+            return "Homebrew"
+        }
+    }
+
+    private var updateChannelDescription: String {
+        switch updaterService.updateChannel {
+        case .sparkle:
+            return "In-app feed update"
+        case .homebrew:
+            return "Runs brew update + upgrade in-app"
+        }
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -294,32 +312,90 @@ struct MainMenuView: View {
             .cornerRadius(4)
             
             Button {
-                let result = updaterService.checkForUpdates()
-                if result == .homebrewManualFallback {
-                    let command = updaterService.homebrewUpgradeCommand
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(command, forType: .string)
-                    showAlert(message: "\(String.localizable(.homebrewCommandCopied))\n\n\(command)")
-                }
+                updaterService.checkForUpdates()
             } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 8, height: 8)
-                        .padding(6)
-                        .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
-                    Text(localizable: .checkForUpdates)
-                    Spacer()
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 10, weight: .semibold))
+                            .frame(width: 18, height: 18)
+                            .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
+                        Text(localizable: .checkForUpdates)
+                            .font(.system(size: 12, weight: .semibold))
+                        Spacer()
+                        Text(updateChannelName)
+                            .font(.system(size: 10, weight: .semibold))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(Color(NSColor.tertiaryLabelColor).opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                    Text(updateChannelDescription)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
                 }
+                .foregroundColor(.primary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .fill(Color(NSColor.selectedControlColor).opacity(isHoveringCheckUpdates ? 0.22 : 0.12))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .stroke(Color(NSColor.separatorColor).opacity(0.45), lineWidth: 1)
+                )
+                .scaleEffect(isHoveringCheckUpdates ? 1.01 : 1.0)
+                .animation(.easeOut(duration: 0.15), value: isHoveringCheckUpdates)
             }
             .buttonStyle(PlainButtonStyle())
             .contentShape(Rectangle())
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 2)
             .onHover { hovering in isHoveringCheckUpdates = hovering }
-            .background(isHoveringCheckUpdates ? Color(NSColor.selectedControlColor).opacity(0.2) : Color.clear)
-            .cornerRadius(4)
+
+            if updaterService.isUpdating || !updaterService.updateStatusMessage.isEmpty || !updaterService.updateLog.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        if updaterService.isUpdating {
+                            ProgressView()
+                                .controlSize(.small)
+                                .scaleEffect(0.8)
+                        } else if let success = updaterService.lastUpdateSucceeded {
+                            Image(systemName: success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .foregroundColor(success ? Color(NSColor.systemGreen) : Color(NSColor.systemRed))
+                                .font(.system(size: 11))
+                        }
+                        Text(updaterService.updateStatusMessage)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                        Spacer()
+                    }
+
+                    let recentLog = Array(updaterService.updateLog.suffix(3))
+                    if !recentLog.isEmpty {
+                        VStack(alignment: .leading, spacing: 2) {
+                            ForEach(recentLog.indices, id: \.self) { idx in
+                                Text(recentLog[idx])
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.secondary.opacity(0.92))
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color(NSColor.textBackgroundColor).opacity(0.55))
+                        )
+                    }
+                }
+                .padding(.horizontal, 2)
+                .padding(.top, 1)
+                .padding(.bottom, 3)
+            }
             
             // Quit application
             Button {
@@ -348,7 +424,7 @@ struct MainMenuView: View {
             .cornerRadius(4)
         }
         .padding(10)
-        .frame(width: 225)
+        .frame(width: 232)
         .onAppear {
             // Force an additional layout pass. MenuBarExtra can occasionally give menu controls
             // an incorrect initial width until the user interacts with them.

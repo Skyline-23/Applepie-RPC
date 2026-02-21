@@ -8,13 +8,11 @@ final class UpdaterService: ObservableObject {
         case homebrew
     }
 
-    enum UpdateTriggerResult: Equatable {
-        case sparkle
-        case homebrewLaunched
-        case homebrewManualFallback
-    }
-
     @Published private(set) var updateChannel: UpdateChannel
+    @Published private(set) var isUpdating: Bool = false
+    @Published private(set) var updateStatusMessage: String = ""
+    @Published private(set) var updateLog: [String] = []
+    @Published private(set) var lastUpdateSucceeded: Bool?
 
     /// `nil` when updates are managed externally (e.g. Homebrew).
     private let updaterController: SPUStandardUpdaterController?
@@ -37,14 +35,20 @@ final class UpdaterService: ObservableObject {
         updaterController = controller
     }
 
-    @discardableResult
-    func checkForUpdates() -> UpdateTriggerResult {
+    func checkForUpdates() {
+        guard !isUpdating else { return }
+        updateLog.removeAll()
+        lastUpdateSucceeded = nil
+
         switch updateChannel {
         case .sparkle:
+            updateStatusMessage = "Sparkle update window opened."
+            appendLog("Sparkle update check requested.")
             updaterController?.updater.checkForUpdates()
-            return .sparkle
         case .homebrew:
-            return launchHomebrewUpgradeInTerminal() ? .homebrewLaunched : .homebrewManualFallback
+            Task {
+                await runHomebrewUpdate()
+            }
         }
     }
 
@@ -52,36 +56,31 @@ final class UpdaterService: ObservableObject {
         "brew upgrade --cask applepie-rpc"
     }
 
-    private func launchHomebrewUpgradeInTerminal() -> Bool {
+    private func runHomebrewUpdate() async {
         guard let brewPath = resolveHomebrewPath() else {
-            debugLog("[UpdaterService] Homebrew binary not found; falling back to manual command.")
-            return false
+            updateStatusMessage = "Homebrew not found. Run manually: \(homebrewUpgradeCommand)"
+            appendLog("Homebrew binary not found in PATH, /opt/homebrew/bin, or /usr/local/bin.")
+            lastUpdateSucceeded = false
+            return
         }
 
         let command = "\(brewPath) update && \(brewPath) upgrade --cask applepie-rpc"
-        let escapedCommand = Self.escapeForAppleScript(command)
-        let script = """
-        tell application "Terminal"
-            activate
-            do script "\(escapedCommand)"
-        end tell
-        """
+        isUpdating = true
+        updateStatusMessage = "Updating via Homebrew..."
+        appendLog("Using Homebrew: \(brewPath)")
+        appendLog("$ \(command)")
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        process.arguments = ["-e", script]
+        let status = await runShellCommand(command)
+        isUpdating = false
 
-        do {
-            try process.run()
-            process.waitUntilExit()
-            let succeeded = process.terminationStatus == 0
-            if !succeeded {
-                debugLog("[UpdaterService] Failed to open Terminal for Homebrew update (status=\(process.terminationStatus)).")
-            }
-            return succeeded
-        } catch {
-            debugLog("[UpdaterService] Failed to launch Homebrew update via Terminal: \(error)")
-            return false
+        if status == 0 {
+            updateStatusMessage = "Homebrew update completed successfully."
+            appendLog("Update completed.")
+            lastUpdateSucceeded = true
+        } else {
+            updateStatusMessage = "Homebrew update failed (exit \(status))."
+            appendLog("Update failed with exit code \(status).")
+            lastUpdateSucceeded = false
         }
     }
 
@@ -94,10 +93,68 @@ final class UpdaterService: ObservableObject {
         return allCandidates.first { FileManager.default.isExecutableFile(atPath: $0) }
     }
 
-    private static func escapeForAppleScript(_ value: String) -> String {
-        value
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
+    private func runShellCommand(_ command: String) async -> Int32 {
+        await withCheckedContinuation { continuation in
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            process.arguments = ["-lc", command]
+
+            let stdoutPipe = Pipe()
+            let stderrPipe = Pipe()
+            process.standardOutput = stdoutPipe
+            process.standardError = stderrPipe
+
+            let consume: (Data) -> Void = { [weak self] data in
+                guard !data.isEmpty, let self else { return }
+                Task { @MainActor in
+                    self.consumeOutput(data)
+                }
+            }
+
+            stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
+                consume(handle.availableData)
+            }
+            stderrPipe.fileHandleForReading.readabilityHandler = { handle in
+                consume(handle.availableData)
+            }
+
+            process.terminationHandler = { [weak self] proc in
+                stdoutPipe.fileHandleForReading.readabilityHandler = nil
+                stderrPipe.fileHandleForReading.readabilityHandler = nil
+
+                let trailingStdout = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                let trailingStderr = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+
+                Task { @MainActor in
+                    self?.consumeOutput(trailingStdout)
+                    self?.consumeOutput(trailingStderr)
+                    continuation.resume(returning: proc.terminationStatus)
+                }
+            }
+
+            do {
+                try process.run()
+            } catch {
+                appendLog("Failed to start Homebrew process: \(error.localizedDescription)")
+                continuation.resume(returning: -1)
+            }
+        }
+    }
+
+    private func consumeOutput(_ data: Data) {
+        guard let text = String(data: data, encoding: .utf8), !text.isEmpty else { return }
+        for line in text.split(whereSeparator: \.isNewline) {
+            appendLog(String(line))
+        }
+    }
+
+    private func appendLog(_ line: String) {
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        updateLog.append(trimmed)
+        if updateLog.count > 180 {
+            updateLog.removeFirst(updateLog.count - 180)
+        }
     }
 
     /// Best-effort detection to avoid Homebrew-managed app bundles being modified by Sparkle.
