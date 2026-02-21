@@ -294,10 +294,8 @@ struct MainMenuView: View {
             .cornerRadius(4)
             
             Button {
-                switch updaterService.updateChannel {
-                case .sparkle:
-                    updaterService.checkForUpdates()
-                case .homebrew:
+                let result = updaterService.checkForUpdates()
+                if result == .homebrewManualFallback {
                     let command = updaterService.homebrewUpgradeCommand
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(command, forType: .string)
@@ -311,7 +309,7 @@ struct MainMenuView: View {
                         .frame(width: 8, height: 8)
                         .padding(6)
                         .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
-                    Text(localizable: updaterService.updateChannel == .sparkle ? .checkForUpdates : .updateViaHomebrew)
+                    Text(localizable: .checkForUpdates)
                     Spacer()
                 }
             }
