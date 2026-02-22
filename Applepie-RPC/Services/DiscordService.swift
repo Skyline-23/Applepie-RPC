@@ -22,7 +22,7 @@ class DiscordService {
     private var lastActivityKey: String?
     private var lastActivitySentAt: Date?
     private var lastClearAttemptAt: Date?
-    private let minActivityUpdateInterval: TimeInterval = 15.0
+    private var minActivityUpdateInterval: TimeInterval = 3.0
     private var minClearInterval: TimeInterval = 3.0
     private(set) var connectionState: ConnectionState = .disconnected
     var onConnectionStateChange: ((ConnectionState) -> Void)?
@@ -53,7 +53,10 @@ class DiscordService {
     }
 
     func setClearInterval(_ interval: TimeInterval) {
-        minClearInterval = max(0.5, interval)
+        let normalized = max(0.5, interval)
+        minClearInterval = normalized
+        // Keep activity refresh responsive even when user sets a large polling interval.
+        minActivityUpdateInterval = max(1.0, min(normalized, 5.0))
     }
 
     private func ensureRpcLoop() async -> AsyncioLoop {
