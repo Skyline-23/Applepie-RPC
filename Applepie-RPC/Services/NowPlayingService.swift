@@ -21,6 +21,17 @@ struct PlayingData: Equatable {
 struct PlaybackStateSnapshot: Equatable {
     let playingData: PlayingData?
     let deviceConnection: ConnectionState
+    let discordConnection: ConnectionState
+
+    init(
+        playingData: PlayingData?,
+        deviceConnection: ConnectionState,
+        discordConnection: ConnectionState = .unknown
+    ) {
+        self.playingData = playingData
+        self.deviceConnection = deviceConnection
+        self.discordConnection = discordConnection
+    }
 }
 
 actor PlaybackStateStreamHub {
@@ -89,7 +100,8 @@ class NowPlayingService: ObservableObject {
     private func snapshot() -> PlaybackStateSnapshot {
         PlaybackStateSnapshot(
             playingData: playingData,
-            deviceConnection: deviceConnection
+            deviceConnection: deviceConnection,
+            discordConnection: discordConnection
         )
     }
 
@@ -192,6 +204,7 @@ class NowPlayingService: ObservableObject {
     func setDiscordConnection(_ state: ConnectionState) {
         guard discordConnection != state else { return }
         discordConnection = state
+        publishSnapshot()
     }
 
     /// Inject an ATV metadata service for Apple TV/HomePod hosts.

@@ -7,7 +7,6 @@
 
 import Cocoa
 import MusicKit
-import Combine
 import ApplicationServices
 
 @MainActor
@@ -19,7 +18,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var playbackControlService: PlaybackControlService { appContainer.playbackControlService }
     var updaterService: UpdaterService { appContainer.updaterService }
     var settingsRepository: SwiftDataSettingsRepository { appContainer.settingsRepository }
-    private var cancellables = Set<AnyCancellable>()
+    var mainMenuViewModel: MainMenuViewModel { appContainer.mainMenuViewModel }
     private let syncPresenceUseCase = SyncPresenceUseCase()
     private let sentryBootstrapService = SentryBootstrapService()
     private var settingsObservationTask: Task<Void, Never>?
@@ -53,14 +52,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         settingsObservationTask?.cancel()
         settingsObservationTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            var previousPaused = self.settingsRepository.current.isPaused
+            var previous = self.settingsRepository.current
             let stream = self.settingsRepository.makeSettingsStream()
             for await snapshot in stream {
                 if Task.isCancelled { return }
-                if snapshot.isPaused != previousPaused {
+                if snapshot.isPaused != previous.isPaused {
                     self.syncPresenceUseCase.handlePauseStateChanged()
                 }
-                previousPaused = snapshot.isPaused
+                if snapshot.updateInterval != previous.updateInterval {
+                    self.discordService?.setClearInterval(snapshot.updateInterval)
+                }
+                previous = snapshot
             }
         }
 
@@ -82,12 +84,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             self.discordService = discordService
             self.pyatvService = pyatvService
-            nowPlayingService.$updateInterval
-                .removeDuplicates()
-                .sink { [weak self] newInterval in
-                    self?.discordService?.setClearInterval(newInterval)
-                }
-                .store(in: &cancellables)
             discordService.onConnectionStateChange = { [weak self] state in
                 Task { @MainActor in
                     self?.nowPlayingService.setDiscordConnection(state)

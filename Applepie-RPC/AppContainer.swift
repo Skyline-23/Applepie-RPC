@@ -17,6 +17,8 @@ final class AppContainer {
     let playbackControlService: PlaybackControlService
     let updaterService: UpdaterService
     let settingsRepository: SwiftDataSettingsRepository
+    let airPlayBrowser: AirPlayBrowser
+    let mainMenuViewModel: MainMenuViewModel
     let pythonExecutor: PythonExecutor
 
     private let discordClientID: String
@@ -31,8 +33,16 @@ final class AppContainer {
         self.playbackControlService = PlaybackControlService(nowPlayingService: nowPlayingService)
         self.updaterService = UpdaterService()
         self.settingsRepository = settingsRepository ?? SwiftDataSettingsRepository()
+        self.airPlayBrowser = AirPlayBrowser()
         self.pythonExecutor = pythonExecutor
         self.discordClientID = discordClientID
+        self.mainMenuViewModel = MainMenuViewModel(
+            nowPlayingService: nowPlayingService,
+            playbackControlService: playbackControlService,
+            updaterService: updaterService,
+            settingsRepository: self.settingsRepository,
+            airPlayBrowser: airPlayBrowser
+        )
     }
 
     func installPythonLogForwarders() async {

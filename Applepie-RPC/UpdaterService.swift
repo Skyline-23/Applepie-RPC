@@ -1,5 +1,13 @@
 import Foundation
 
+struct UpdaterStateSnapshot: Equatable {
+    let updateChannel: AppUpdateChannel
+    let updateStatusMessage: String
+    let updateLog: [String]
+    let lastUpdateSucceeded: Bool?
+    let isUpdating: Bool
+}
+
 @MainActor
 final class UpdaterService: ObservableObject {
     typealias UpdateChannel = AppUpdateChannel
@@ -12,6 +20,7 @@ final class UpdaterService: ObservableObject {
     @Published private(set) var isUpdating: Bool = false
 
     private let provider: any UpdateProvider
+    private var continuations: [UUID: AsyncStream<UpdaterStateSnapshot>.Continuation] = [:]
 
     init(provider: (any UpdateProvider)? = nil) {
         let resolvedProvider = provider ?? Self.makeDefaultProvider()
@@ -19,11 +28,40 @@ final class UpdaterService: ObservableObject {
         self.updateChannel = resolvedProvider.channel
     }
 
+    func makeStateStream() -> AsyncStream<UpdaterStateSnapshot> {
+        let id = UUID()
+        let initialState = currentState
+
+        return AsyncStream(
+            UpdaterStateSnapshot.self,
+            bufferingPolicy: .bufferingNewest(1)
+        ) { continuation in
+            continuation.yield(initialState)
+            continuations[id] = continuation
+            continuation.onTermination = { [weak self] _ in
+                Task { @MainActor in
+                    self?.continuations.removeValue(forKey: id)
+                }
+            }
+        }
+    }
+
+    var currentState: UpdaterStateSnapshot {
+        UpdaterStateSnapshot(
+            updateChannel: updateChannel,
+            updateStatusMessage: updateStatusMessage,
+            updateLog: updateLog,
+            lastUpdateSucceeded: lastUpdateSucceeded,
+            isUpdating: isUpdating
+        )
+    }
+
     func checkForUpdates() async -> UpdateResult {
         guard !isUpdating else { return .alreadyRunning }
         lastUpdateSucceeded = nil
         updateLog.removeAll()
         isUpdating = true
+        publishState()
 
         let result = await provider.checkForUpdates(
             appendLog: { [weak self] line in
@@ -52,6 +90,7 @@ final class UpdaterService: ObservableObject {
             lastUpdateSucceeded = nil
         }
 
+        publishState()
         return result
     }
 
@@ -65,6 +104,14 @@ final class UpdaterService: ObservableObject {
         updateLog.append(trimmed)
         if updateLog.count > 200 {
             updateLog.removeFirst(updateLog.count - 200)
+        }
+        publishState()
+    }
+
+    private func publishState() {
+        let snapshot = currentState
+        for continuation in continuations.values {
+            continuation.yield(snapshot)
         }
     }
 

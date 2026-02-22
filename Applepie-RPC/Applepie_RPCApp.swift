@@ -16,11 +16,7 @@ struct ApplepieRPCApp: App {
     
     var body: some Scene {
         MenuBarExtra {
-            MainMenuView()
-                .environmentObject(delegate.nowPlayingService)
-                .environmentObject(delegate.playbackControlService)
-                .environmentObject(delegate.updaterService)
-                .environmentObject(delegate.settingsRepository)
+            MainMenuView(viewModel: delegate.mainMenuViewModel)
         } label: {
             Label {
                 Text(localizable: .appName)
@@ -78,20 +74,10 @@ struct MainMenuView: View {
     @State private var isHoveringCheckUpdates = false
     @State private var deviceMenuLayoutID = UUID()
     @State private var updatePopupWindow: NSWindow?
-    @StateObject private var viewModel = MainMenuViewModel()
-    @StateObject private var browser = AirPlayBrowser()
-    @EnvironmentObject var nowPlayingService: NowPlayingService
-    @EnvironmentObject var playbackControlService: PlaybackControlService
-    @EnvironmentObject var updaterService: UpdaterService
-    @EnvironmentObject var settingsRepository: SwiftDataSettingsRepository
-    
-    /// Returns the IP address for the currently selected host.
-    private var currentHostIP: String {
-        browser.serviceIPs[viewModel.selectedHost] ?? ""
-    }
+    @ObservedObject var viewModel: MainMenuViewModel
     
     private var effectiveDeviceConnection: ConnectionState {
-        viewModel.settings.isPaused ? .disconnected : nowPlayingService.deviceConnection
+        viewModel.effectiveDeviceConnection
     }
     
     private func statusKey(for state: ConnectionState) -> LocalizableKey {
@@ -99,7 +85,7 @@ struct MainMenuView: View {
     }
 
     private var updateChannelName: String {
-        viewModel.updateChannelName()
+        viewModel.updateChannelName
     }
     
     var body: some View {
@@ -117,7 +103,7 @@ struct MainMenuView: View {
                 Toggle(.localizable(.appName), isOn: Binding(
                     get: { !viewModel.settings.isPaused },
                     set: { newValue in
-                        viewModel.setEnabled(newValue, currentHostIP: currentHostIP)
+                        viewModel.setEnabled(newValue)
                     }
                 ))
                 .toggleStyle(SwitchToggleStyle())
@@ -130,7 +116,7 @@ struct MainMenuView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                 StatusRow(title: .localizable(.device), state: effectiveDeviceConnection)
-                StatusRow(title: .localizable(.discord), state: nowPlayingService.discordConnection)
+                StatusRow(title: .localizable(.discord), state: viewModel.discordConnection)
             }
             .padding(.vertical, 4)
             
@@ -146,10 +132,7 @@ struct MainMenuView: View {
                         value: Binding(
                             get: { viewModel.settings.updateInterval },
                             set: {
-                                viewModel.updateInterval(
-                                    $0,
-                                    currentHostIP: currentHostIP
-                                )
+                                viewModel.updateInterval($0)
                             }
                         ),
                         in: 1...15
@@ -169,12 +152,11 @@ struct MainMenuView: View {
                 // SwiftUI `Picker(.menu)` sometimes renders centered on first load in MenuBarExtra.
                 // A custom `Menu` avoids the initial layout glitch while keeping the same UX.
                 Menu {
-                    ForEach(browser.hosts, id: \.self) { host in
+                    ForEach(viewModel.hosts, id: \.self) { host in
                         Button {
                             Task {
                                 await viewModel.selectHost(
                                     host,
-                                    hostIPs: browser.serviceIPs,
                                     requestPIN: { await showPINWindow() },
                                     onPairingFailed: { showAlert(message: .localizable(.pairingFailed)) }
                                 )
@@ -221,7 +203,7 @@ struct MainMenuView: View {
                 Text(localizable: .nowPlaying)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                let title = nowPlayingService.playingData?.title ?? ""
+                let title = viewModel.currentTitle
                 Text(title.isEmpty ? .localizable(.noInformation) : title)
                     .bold()
             }
@@ -230,8 +212,7 @@ struct MainMenuView: View {
             // Clear all stored pairing credentials
             Button {
                 Task {
-                    viewModel.resetToLocalhost()
-                    if await nowPlayingService.clearCache() {
+                    if await viewModel.clearCache() {
                         showAlert(message: .localizable(.cacheClearedSuccessfully))
                     } else {
                         showAlert(message: .localizable(.cacheClearingFailed))
@@ -324,12 +305,6 @@ struct MainMenuView: View {
         .padding(10)
         .frame(width: 225)
         .onAppear {
-            viewModel.configure(
-                nowPlayingService: nowPlayingService,
-                playbackControlService: playbackControlService,
-                updaterService: updaterService,
-                settingsRepository: settingsRepository
-            )
             // Force an additional layout pass. MenuBarExtra can occasionally give menu controls
             // an incorrect initial width until the user interacts with them.
             DispatchQueue.main.async {
@@ -387,7 +362,7 @@ struct MainMenuView: View {
     }
 
     private func copyHomebrewCommandToClipboard() {
-        let command = updaterService.homebrewUpgradeCommand
+        let command = viewModel.homebrewUpgradeCommand
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(command, forType: .string)
         showAlert(message: "\(String.localizable(.homebrewCommandCopied))\n\n\(command)")
@@ -401,7 +376,7 @@ struct MainMenuView: View {
         }
 
         let popup = UpdateProgressPopupView(
-            updaterService: updaterService,
+            viewModel: viewModel,
             onClose: {
                 self.viewModel.dismissUpdatePopup()
             },
@@ -428,23 +403,21 @@ struct MainMenuView: View {
 }
 
 struct UpdateProgressPopupView: View {
-    @ObservedObject var updaterService: UpdaterService
+    @ObservedObject var viewModel: MainMenuViewModel
     let onClose: () -> Void
     let onCopyCommand: () -> Void
 
     private var shouldShowCopyButton: Bool {
-        guard !updaterService.isUpdating else { return false }
-        guard let success = updaterService.lastUpdateSucceeded else { return false }
-        return !success
+        viewModel.canCopyHomebrewCommand
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                if updaterService.isUpdating {
+                if viewModel.isUpdating {
                     ProgressView()
                         .controlSize(.small)
-                } else if let success = updaterService.lastUpdateSucceeded {
+                } else if let success = viewModel.lastUpdateSucceeded {
                     Image(systemName: success ? "checkmark.circle.fill" : "xmark.circle.fill")
                         .foregroundColor(success ? Color(NSColor.systemGreen) : Color(NSColor.systemRed))
                 } else {
@@ -456,12 +429,12 @@ struct UpdateProgressPopupView: View {
                     .font(.headline)
             }
 
-            Text(updaterService.updateStatusMessage.isEmpty ? "Preparing update..." : updaterService.updateStatusMessage)
+            Text(viewModel.updateStatusMessage.isEmpty ? "Preparing update..." : viewModel.updateStatusMessage)
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
                 .lineLimit(2)
 
-            if let latest = updaterService.updateLog.last {
+            if let latest = viewModel.latestUpdateLogLine {
                 Text(latest)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
@@ -482,7 +455,7 @@ struct UpdateProgressPopupView: View {
 
                 Button("Close", action: onClose)
                     .buttonStyle(.borderedProminent)
-                    .disabled(updaterService.isUpdating)
+                    .disabled(viewModel.isUpdating)
             }
         }
         .padding(14)
