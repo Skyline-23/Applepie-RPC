@@ -22,11 +22,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var playbackControlService: PlaybackControlService { appContainer.playbackControlService }
     var updaterService: UpdaterService { appContainer.updaterService }
     private var cancellables = Set<AnyCancellable>()
-    private var appSettings: AppSettings?
-    private var lastObservedPausedState: Bool?
+    private let appSettingsService = AppSettingsService()
     private let presenceCoordinator = DiscordPresenceCoordinator()
 
-    var container: ModelContainer?
+    var container: ModelContainer? { appSettingsService.container }
 
     override init() {
         super.init()
@@ -52,42 +51,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        // Load saved update interval from AppSettings
-        var interval: Double = 1.0
-        do {
-            self.container = try ModelContainer(for: AppSettings.self)
-            let list = try container?.mainContext.fetch(FetchDescriptor<AppSettings>())
-            if let setting = list?.first {
-                self.appSettings = setting
-            } else {
-                let newSetting = AppSettings()
-                container?.mainContext.insert(newSetting)
-                self.appSettings = newSetting
-            }
-            if let setting = self.appSettings {
-                interval = setting.updateInterval
-                lastObservedPausedState = setting.isPaused
-            }
-        } catch {
-            debugLog("Failed to fetch AppSettings:", error)
-        }
+        let interval = appSettingsService.loadOrCreate()
 
         // Observe SwiftData save notifications to refresh AppSettings
-        NotificationCenter.default
-            .publisher(for: ModelContext.didSave)
-            .sink { [weak self] _ in
-                guard let self = self, let context = self.container?.mainContext else { return }
-                if let updated = try? context.fetch(FetchDescriptor<AppSettings>()).first {
-                    let previousPaused = self.lastObservedPausedState ?? false
-                    self.appSettings = updated
-                    self.lastObservedPausedState = updated.isPaused
-
-                    self.presenceCoordinator.handlePauseTransition(
-                        isPaused: updated.isPaused,
-                        wasPaused: previousPaused,
-                        discordService: self.discordService
-                    )
-                }
+        appSettingsService
+            .observeChanges { [weak self] updated, previousPaused in
+                guard let self else { return }
+                self.presenceCoordinator.handlePauseTransition(
+                    isPaused: updated.isPaused,
+                    wasPaused: previousPaused,
+                    discordService: self.discordService
+                )
             }
             .store(in: &cancellables)
 
@@ -131,7 +105,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 discordService: discordService,
                 nowPlayingService: nowPlayingService,
                 isPaused: { [weak self] in
-                    self?.appSettings?.isPaused == true
+                    self?.appSettingsService.isPaused ?? false
                 }
             )
         }
