@@ -106,6 +106,7 @@ struct MainMenuView: View {
     @State private var previousHost: String = .localizable(.localhostName)
     @State private var deviceMenuLayoutID = UUID()
     @State private var updatePopupWindow: NSWindow?
+    private let deviceSwitchService = DeviceSwitchService()
     @StateObject private var browser = AirPlayBrowser()
     @EnvironmentObject var nowPlayingService: NowPlayingService
     @EnvironmentObject var playbackControlService: PlaybackControlService
@@ -402,54 +403,29 @@ struct MainMenuView: View {
     /// Handle switching to a new host: stop updates, perform pairing if needed, then resume.
     private func switchHost(to newHost: String) {
         let oldHost = previousHost
-        // Stop now-playing updates for old device
-        nowPlayingService.stop()
         Task {
-            let newHostIP = browser.serviceIPs[newHost] ?? ""
-            debugLog("[UI] Device selection: \(oldHost) -> \(newHost) (ip=\(newHostIP))")
-            guard !newHostIP.isEmpty else {
-                debugLog("[UI] Device switch aborted: no IP resolved for \(newHost)")
-                selectedHost = oldHost
-                return
-            }
-
-            let needsPairing = await nowPlayingService.isPairingNeeded(host: newHostIP)
-            debugLog("[UI] Pairing needed: \(needsPairing) (host=\(newHostIP))")
-            if needsPairing {
-                let began = await nowPlayingService.pairDeviceBegin(host: newHostIP)
-                guard began else {
-                    showAlert(message: .localizable(.pairingFailed))
-                    selectedHost = oldHost
-                    return
-                }
-                // Await PIN input
-                if let pin = await showPINWindow() {
-                    if let creds = await nowPlayingService.pairDeviceFinish(host: newHostIP, pin: pin) {
-                        debugLog("[PyatvService] Pairing finished with credentials:", creds)
-                        nowPlayingService.updateTimer(setting.updateInterval, newHostIP)
-                        previousHost = newHost
-                    } else {
-                        debugLog("[PyatvService] Pairing failed")
-                        showAlert(message: .localizable(.pairingFailed))
-                        selectedHost = oldHost
-                    }
-                } else {
-                    _ = await nowPlayingService.pairDeviceCancel(host: newHostIP)
-                    selectedHost = oldHost
-                }
-                return
-            }
-            nowPlayingService.updateTimer(setting.updateInterval, newHostIP)
-            debugLog("[UI] Switched device to \(newHost) (ip=\(newHostIP))")
-            previousHost = newHost
+            let result = await deviceSwitchService.switchHost(
+                oldHost: oldHost,
+                newHost: newHost,
+                hostIPs: browser.serviceIPs,
+                updateInterval: setting.updateInterval,
+                nowPlayingService: nowPlayingService,
+                requestPIN: { await showPINWindow() },
+                onPairingFailed: { showAlert(message: .localizable(.pairingFailed)) }
+            )
+            selectedHost = result.selectedHost
+            previousHost = result.previousHost
         }
     }
     
     private func resetToLocalhost() {
-        // Reset to localhost
-        selectedHost = .localizable(.localhostName)
-        previousHost = .localizable(.localhostName)
-        nowPlayingService.updateTimer(setting.updateInterval, "localhost")
+        let result = deviceSwitchService.resetToLocalhost(
+            localhostName: .localizable(.localhostName),
+            updateInterval: setting.updateInterval,
+            nowPlayingService: nowPlayingService
+        )
+        selectedHost = result.selectedHost
+        previousHost = result.previousHost
     }
     
     /// Display PIN entry window and await user input
