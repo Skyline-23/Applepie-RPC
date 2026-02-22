@@ -8,11 +8,19 @@ final class UpdaterService: ObservableObject {
         case homebrew
     }
 
+    enum UpdateResult: Equatable {
+        case sparkleOpened
+        case alreadyRunning
+        case homebrewCompleted
+        case homebrewFailed(Int32)
+        case homebrewBinaryMissing
+    }
+
     @Published private(set) var updateChannel: UpdateChannel
-    @Published private(set) var isUpdating: Bool = false
     @Published private(set) var updateStatusMessage: String = ""
     @Published private(set) var updateLog: [String] = []
     @Published private(set) var lastUpdateSucceeded: Bool?
+    @Published private(set) var isUpdating: Bool = false
 
     /// `nil` when updates are managed externally (e.g. Homebrew).
     private let updaterController: SPUStandardUpdaterController?
@@ -35,20 +43,19 @@ final class UpdaterService: ObservableObject {
         updaterController = controller
     }
 
-    func checkForUpdates() {
-        guard !isUpdating else { return }
-        updateLog.removeAll()
+    func checkForUpdates() async -> UpdateResult {
+        guard !isUpdating else { return .alreadyRunning }
         lastUpdateSucceeded = nil
+        updateLog.removeAll()
 
         switch updateChannel {
         case .sparkle:
             updateStatusMessage = "Sparkle update window opened."
             appendLog("Sparkle update check requested.")
             updaterController?.updater.checkForUpdates()
+            return .sparkleOpened
         case .homebrew:
-            Task {
-                await runHomebrewUpdate()
-            }
+            return await runHomebrewUpdate()
         }
     }
 
@@ -56,12 +63,11 @@ final class UpdaterService: ObservableObject {
         "brew upgrade --cask applepie-rpc"
     }
 
-    private func runHomebrewUpdate() async {
+    private func runHomebrewUpdate() async -> UpdateResult {
         guard let brewPath = resolveHomebrewPath() else {
-            updateStatusMessage = "Homebrew not found. Run manually: \(homebrewUpgradeCommand)"
-            appendLog("Homebrew binary not found in PATH, /opt/homebrew/bin, or /usr/local/bin.")
-            lastUpdateSucceeded = false
-            return
+            updateStatusMessage = "Homebrew not found."
+            appendLog("Homebrew binary not found in PATH, /opt/homebrew/bin, /usr/local/bin")
+            return .homebrewBinaryMissing
         }
 
         let command = "\(brewPath) update && \(brewPath) upgrade --cask applepie-rpc"
@@ -77,10 +83,12 @@ final class UpdaterService: ObservableObject {
             updateStatusMessage = "Homebrew update completed successfully."
             appendLog("Update completed.")
             lastUpdateSucceeded = true
+            return .homebrewCompleted
         } else {
             updateStatusMessage = "Homebrew update failed (exit \(status))."
             appendLog("Update failed with exit code \(status).")
             lastUpdateSucceeded = false
+            return .homebrewFailed(status)
         }
     }
 
@@ -118,7 +126,7 @@ final class UpdaterService: ObservableObject {
                 consume(handle.availableData)
             }
 
-            process.terminationHandler = { [weak self] proc in
+            process.terminationHandler = { proc in
                 stdoutPipe.fileHandleForReading.readabilityHandler = nil
                 stderrPipe.fileHandleForReading.readabilityHandler = nil
 
@@ -126,8 +134,8 @@ final class UpdaterService: ObservableObject {
                 let trailingStderr = stderrPipe.fileHandleForReading.readDataToEndOfFile()
 
                 Task { @MainActor in
-                    self?.consumeOutput(trailingStdout)
-                    self?.consumeOutput(trailingStderr)
+                    self.consumeOutput(trailingStdout)
+                    self.consumeOutput(trailingStderr)
                     continuation.resume(returning: proc.terminationStatus)
                 }
             }
@@ -135,7 +143,9 @@ final class UpdaterService: ObservableObject {
             do {
                 try process.run()
             } catch {
-                appendLog("Failed to start Homebrew process: \(error.localizedDescription)")
+                Task { @MainActor in
+                    self.appendLog("Failed to start Homebrew process: \(error.localizedDescription)")
+                }
                 continuation.resume(returning: -1)
             }
         }
@@ -152,8 +162,8 @@ final class UpdaterService: ObservableObject {
         let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         updateLog.append(trimmed)
-        if updateLog.count > 180 {
-            updateLog.removeFirst(updateLog.count - 180)
+        if updateLog.count > 200 {
+            updateLog.removeFirst(updateLog.count - 200)
         }
     }
 

@@ -104,6 +104,7 @@ struct MainMenuView: View {
     @State private var selectedHost: String = .localizable(.localhostName)
     @State private var previousHost: String = .localizable(.localhostName)
     @State private var deviceMenuLayoutID = UUID()
+    @State private var updatePopupWindow: NSWindow?
     @StateObject private var browser = AirPlayBrowser()
     @EnvironmentObject var nowPlayingService: NowPlayingService
     @EnvironmentObject var updaterService: UpdaterService
@@ -138,15 +139,6 @@ struct MainMenuView: View {
             return "Sparkle"
         case .homebrew:
             return "Homebrew"
-        }
-    }
-
-    private var updateChannelDescription: String {
-        switch updaterService.updateChannel {
-        case .sparkle:
-            return "In-app feed update"
-        case .homebrew:
-            return "Runs brew update + upgrade in-app"
         }
     }
     
@@ -312,90 +304,56 @@ struct MainMenuView: View {
             .cornerRadius(4)
             
             Button {
-                updaterService.checkForUpdates()
-            } label: {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 10, weight: .semibold))
-                            .frame(width: 18, height: 18)
-                            .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
-                        Text(localizable: .checkForUpdates)
-                            .font(.system(size: 12, weight: .semibold))
-                        Spacer()
-                        Text(updateChannelName)
-                            .font(.system(size: 10, weight: .semibold))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2)
-                            .background(Color(NSColor.tertiaryLabelColor).opacity(0.15))
-                            .clipShape(Capsule())
+                Task {
+                    if updaterService.updateChannel == .homebrew {
+                        showUpdatePopup()
                     }
-                    Text(updateChannelDescription)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+
+                    let result = await updaterService.checkForUpdates()
+                    switch result {
+                    case .sparkleOpened:
+                        break
+                    case .alreadyRunning:
+                        if updaterService.updateChannel == .homebrew {
+                            showUpdatePopup()
+                        }
+                    case .homebrewCompleted, .homebrewFailed, .homebrewBinaryMissing:
+                        showUpdatePopup()
+                    }
                 }
-                .foregroundColor(.primary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 10, height: 10)
+                        .padding(6)
+                        .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
+                    Text(localizable: .checkForUpdates)
+                        .font(.system(size: 12, weight: .semibold))
+                    Spacer()
+                    Text(updateChannelName)
+                        .font(.system(size: 10, weight: .semibold))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(Color(NSColor.tertiaryLabelColor).opacity(0.15))
+                        .clipShape(Capsule())
+                }
+                .padding(.vertical, 2)
                 .background(
-                    RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .fill(Color(NSColor.selectedControlColor).opacity(isHoveringCheckUpdates ? 0.22 : 0.12))
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(Color(NSColor.selectedControlColor).opacity(isHoveringCheckUpdates ? 0.18 : 0.0))
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .stroke(Color(NSColor.separatorColor).opacity(0.45), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .stroke(Color.clear, lineWidth: 0)
                 )
-                .scaleEffect(isHoveringCheckUpdates ? 1.01 : 1.0)
-                .animation(.easeOut(duration: 0.15), value: isHoveringCheckUpdates)
             }
             .buttonStyle(PlainButtonStyle())
             .contentShape(Rectangle())
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 2)
             .onHover { hovering in isHoveringCheckUpdates = hovering }
-
-            if updaterService.isUpdating || !updaterService.updateStatusMessage.isEmpty || !updaterService.updateLog.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
-                        if updaterService.isUpdating {
-                            ProgressView()
-                                .controlSize(.small)
-                                .scaleEffect(0.8)
-                        } else if let success = updaterService.lastUpdateSucceeded {
-                            Image(systemName: success ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                .foregroundColor(success ? Color(NSColor.systemGreen) : Color(NSColor.systemRed))
-                                .font(.system(size: 11))
-                        }
-                        Text(updaterService.updateStatusMessage)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .lineLimit(2)
-                        Spacer()
-                    }
-
-                    let recentLog = Array(updaterService.updateLog.suffix(3))
-                    if !recentLog.isEmpty {
-                        VStack(alignment: .leading, spacing: 2) {
-                            ForEach(recentLog.indices, id: \.self) { idx in
-                                Text(recentLog[idx])
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundColor(.secondary.opacity(0.92))
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                            }
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(Color(NSColor.textBackgroundColor).opacity(0.55))
-                        )
-                    }
-                }
-                .padding(.horizontal, 2)
-                .padding(.top, 1)
-                .padding(.bottom, 3)
-            }
             
             // Quit application
             Button {
@@ -424,7 +382,7 @@ struct MainMenuView: View {
             .cornerRadius(4)
         }
         .padding(10)
-        .frame(width: 232)
+        .frame(width: 225)
         .onAppear {
             // Force an additional layout pass. MenuBarExtra can occasionally give menu controls
             // an incorrect initial width until the user interacts with them.
@@ -526,6 +484,109 @@ struct MainMenuView: View {
         let alert = NSAlert()
         alert.messageText = message
         alert.runModal()
+    }
+
+    private func copyHomebrewCommandToClipboard() {
+        let command = updaterService.homebrewUpgradeCommand
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(command, forType: .string)
+        showAlert(message: "\(String.localizable(.homebrewCommandCopied))\n\n\(command)")
+    }
+
+    private func showUpdatePopup() {
+        if let window = updatePopupWindow {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let popup = UpdateProgressPopupView(
+            updaterService: updaterService,
+            onClose: {
+                self.updatePopupWindow?.orderOut(nil)
+            },
+            onCopyCommand: {
+                self.copyHomebrewCommandToClipboard()
+            }
+        )
+
+        let hostingController = NSHostingController(rootView: popup)
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "Applepie Update"
+        window.styleMask = [.titled, .closable]
+        window.isReleasedWhenClosed = false
+        window.level = .floating
+        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isHidden = true
+        window.setContentSize(NSSize(width: 390, height: 185))
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        updatePopupWindow = window
+    }
+}
+
+struct UpdateProgressPopupView: View {
+    @ObservedObject var updaterService: UpdaterService
+    let onClose: () -> Void
+    let onCopyCommand: () -> Void
+
+    private var shouldShowCopyButton: Bool {
+        guard !updaterService.isUpdating else { return false }
+        guard let success = updaterService.lastUpdateSucceeded else { return false }
+        return !success
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                if updaterService.isUpdating {
+                    ProgressView()
+                        .controlSize(.small)
+                } else if let success = updaterService.lastUpdateSucceeded {
+                    Image(systemName: success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .foregroundColor(success ? Color(NSColor.systemGreen) : Color(NSColor.systemRed))
+                } else {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .foregroundColor(.secondary)
+                }
+
+                Text("Updating Applepie")
+                    .font(.headline)
+            }
+
+            Text(updaterService.updateStatusMessage.isEmpty ? "Preparing update..." : updaterService.updateStatusMessage)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .lineLimit(2)
+
+            if let latest = updaterService.updateLog.last {
+                Text(latest)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .padding(.top, 2)
+            }
+
+            Spacer()
+
+            HStack {
+                if shouldShowCopyButton {
+                    Button("Copy Homebrew Command", action: onCopyCommand)
+                        .buttonStyle(.bordered)
+                }
+
+                Spacer()
+
+                Button("Close", action: onClose)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(updaterService.isUpdating)
+            }
+        }
+        .padding(14)
+        .frame(width: 390, height: 185, alignment: .topLeading)
     }
 }
 
