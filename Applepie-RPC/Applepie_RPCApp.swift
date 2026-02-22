@@ -102,11 +102,9 @@ struct MainMenuView: View {
     @State private var isHoveringQuit = false
     @State private var isHoveringClearCache = false
     @State private var isHoveringCheckUpdates = false
-    @State private var selectedHost: String = .localizable(.localhostName)
-    @State private var previousHost: String = .localizable(.localhostName)
     @State private var deviceMenuLayoutID = UUID()
     @State private var updatePopupWindow: NSWindow?
-    private let deviceSwitchService = DeviceSwitchService()
+    @StateObject private var viewModel = MainMenuViewModel()
     @StateObject private var browser = AirPlayBrowser()
     @EnvironmentObject var nowPlayingService: NowPlayingService
     @EnvironmentObject var playbackControlService: PlaybackControlService
@@ -125,7 +123,7 @@ struct MainMenuView: View {
     
     /// Returns the IP address for the currently selected host.
     private var currentHostIP: String {
-        browser.serviceIPs[selectedHost] ?? ""
+        browser.serviceIPs[viewModel.selectedHost] ?? ""
     }
     
     private var effectiveDeviceConnection: ConnectionState {
@@ -137,12 +135,7 @@ struct MainMenuView: View {
     }
 
     private var updateChannelName: String {
-        switch updaterService.updateChannel {
-        case .sparkle:
-            return "Sparkle"
-        case .homebrew:
-            return "Homebrew"
-        }
+        viewModel.updateChannelName()
     }
     
     var body: some View {
@@ -160,20 +153,18 @@ struct MainMenuView: View {
                 Toggle(.localizable(.appName), isOn: Binding(
                     get: { !self.setting.isPaused },
                     set: { newValue in
-                        self.setting.isPaused = !newValue
-                        do {
-                            try modelContext.save()
-                        } catch {
-                            debugLog("Failed to save isPaused:", error)
-                        }
-                        if self.setting.isPaused {
-                            playbackControlService.pausePlayback()
-                        } else {
-                            playbackControlService.resumePlayback(
-                                interval: self.setting.updateInterval,
-                                host: currentHostIP
-                            )
-                        }
+                        viewModel.setPaused(
+                            !newValue,
+                            setting: self.setting,
+                            save: {
+                                do {
+                                    try modelContext.save()
+                                } catch {
+                                    debugLog("Failed to save isPaused:", error)
+                                }
+                            },
+                            currentHostIP: currentHostIP
+                        )
                     }
                 ))
                 .toggleStyle(SwitchToggleStyle())
@@ -202,8 +193,11 @@ struct MainMenuView: View {
                         value: Binding(
                             get: { self.setting.updateInterval },
                             set: {
-                                self.setting.updateInterval = $0
-                                nowPlayingService.updateTimer($0, browser.serviceIPs[selectedHost] ?? "")
+                                viewModel.updateInterval(
+                                    $0,
+                                    setting: self.setting,
+                                    currentHostIP: currentHostIP
+                                )
                             }
                         ),
                         in: 1...15
@@ -225,9 +219,17 @@ struct MainMenuView: View {
                 Menu {
                     ForEach(browser.hosts, id: \.self) { host in
                         Button {
-                            selectedHost = host
+                            Task {
+                                await viewModel.selectHost(
+                                    host,
+                                    hostIPs: browser.serviceIPs,
+                                    updateInterval: setting.updateInterval,
+                                    requestPIN: { await showPINWindow() },
+                                    onPairingFailed: { showAlert(message: .localizable(.pairingFailed)) }
+                                )
+                            }
                         } label: {
-                            if host == selectedHost {
+                            if host == viewModel.selectedHost {
                                 Label(host, systemImage: "checkmark")
                             } else {
                                 Text(host)
@@ -236,7 +238,7 @@ struct MainMenuView: View {
                     }
                 } label: {
                     HStack(spacing: 8) {
-                        Text(selectedHost)
+                        Text(viewModel.selectedHost)
                             .lineLimit(1)
                         Spacer()
                         Image(systemName: "chevron.up.chevron.down")
@@ -260,11 +262,6 @@ struct MainMenuView: View {
                 .buttonStyle(.plain)
                 .contentShape(Rectangle())
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .onChange(of: selectedHost) { _, newHost in
-                    // Only perform switch if the host truly changed
-                    guard newHost != previousHost else { return }
-                    switchHost(to: newHost)
-                }
             }
             .padding(.vertical, 4)
             
@@ -282,7 +279,7 @@ struct MainMenuView: View {
             // Clear all stored pairing credentials
             Button {
                 Task {
-                    resetToLocalhost()
+                    viewModel.resetToLocalhost(updateInterval: setting.updateInterval)
                     if await nowPlayingService.clearCache() {
                         showAlert(message: .localizable(.cacheClearedSuccessfully))
                     } else {
@@ -390,6 +387,11 @@ struct MainMenuView: View {
         .padding(10)
         .frame(width: 225)
         .onAppear {
+            viewModel.configure(
+                nowPlayingService: nowPlayingService,
+                playbackControlService: playbackControlService,
+                updaterService: updaterService
+            )
             // Force an additional layout pass. MenuBarExtra can occasionally give menu controls
             // an incorrect initial width until the user interacts with them.
             DispatchQueue.main.async {
@@ -399,35 +401,7 @@ struct MainMenuView: View {
     }
     
     // MARK: - Methods
-    
-    /// Handle switching to a new host: stop updates, perform pairing if needed, then resume.
-    private func switchHost(to newHost: String) {
-        let oldHost = previousHost
-        Task {
-            let result = await deviceSwitchService.switchHost(
-                oldHost: oldHost,
-                newHost: newHost,
-                hostIPs: browser.serviceIPs,
-                updateInterval: setting.updateInterval,
-                nowPlayingService: nowPlayingService,
-                requestPIN: { await showPINWindow() },
-                onPairingFailed: { showAlert(message: .localizable(.pairingFailed)) }
-            )
-            selectedHost = result.selectedHost
-            previousHost = result.previousHost
-        }
-    }
-    
-    private func resetToLocalhost() {
-        let result = deviceSwitchService.resetToLocalhost(
-            localhostName: .localizable(.localhostName),
-            updateInterval: setting.updateInterval,
-            nowPlayingService: nowPlayingService
-        )
-        selectedHost = result.selectedHost
-        previousHost = result.previousHost
-    }
-    
+
     /// Display PIN entry window and await user input
     private func showPINWindow() async -> Int? {
         await withCheckedContinuation { (continuation: CheckedContinuation<Int?, Never>) in
