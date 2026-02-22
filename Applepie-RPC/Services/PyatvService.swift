@@ -40,6 +40,13 @@ actor PyatvService {
         var lastUsed: Date
     }
 
+    private struct TrackMarker: Equatable {
+        let trackID: String?
+        let title: String
+        let artist: String?
+        let album: String?
+    }
+
     private let executor: PythonExecutor
     private let pyatv: Pyatv.PyatvService
     private let loop: AsyncioLoop
@@ -50,6 +57,7 @@ actor PyatvService {
     private var configCache: [String: CachedConfig] = [:]
     private var connectionCache: [String: CachedConnection] = [:]
     private var lastSuccessfulProtocol: [String: Pyatv.Const.PyatvProtocol_] = [:]
+    private var lastEmittedTrackByHost: [String: TrackMarker] = [:]
     private let configTTL: TimeInterval = 300
     private let connectionTTL: TimeInterval = 120
 
@@ -203,6 +211,39 @@ actor PyatvService {
         }
     }
 
+    private func normalizeMetadataField(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
+
+    private func makeTrackMarker(
+        trackID: String?,
+        title: String,
+        artist: String?,
+        album: String?
+    ) -> TrackMarker? {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return nil }
+        return TrackMarker(
+            trackID: trackID,
+            title: trimmedTitle,
+            artist: normalizeMetadataField(artist),
+            album: normalizeMetadataField(album)
+        )
+    }
+
+    private func didTrackChange(host: String, marker: TrackMarker) -> Bool {
+        guard let previous = lastEmittedTrackByHost[host] else { return true }
+        return previous != marker
+    }
+
+    private func rememberTrack(host: String, marker: TrackMarker) {
+        lastEmittedTrackByHost[host] = marker
+    }
+
     private func scanConfig(
         host: String,
         protocolType proto: Pyatv.Const.PyatvProtocol_? = nil
@@ -349,7 +390,6 @@ actor PyatvService {
                     didConnect = true
                     storeConnection(atv, host: host, proto: proto)
                 }
-                lastSuccessfulProtocol[host] = proto
 
                 if await isBlocking(atv, host: host, proto: proto, context: "pre-metadata") {
                     await closeConnection(forKey: connKey)
@@ -366,6 +406,7 @@ actor PyatvService {
                 }
                 guard let metadata else {
                     debugLog("[PyatvService] metadata is nil (host=\(host), proto=\(proto))")
+                    await closeConnection(forKey: connKey)
                     return .connected(nil)
                 }
                 if await isBlocking(atv, host: host, proto: proto, context: "playing") {
@@ -377,29 +418,40 @@ actor PyatvService {
                 }
                 guard let playing else {
                     debugLog("[PyatvService] playing is nil (host=\(host), proto=\(proto))")
+                    await closeConnection(forKey: connKey)
                     return .connected(nil)
                 }
 
-                // Only treat explicit playback states as "now playing". Some devices report
-                // non-playing transitions (e.g. Interrupted) as `.loading`, which would otherwise
-                // keep stale metadata around and prevent the UI/Discord from clearing.
+                let title = (try await playing.title()) ?? ""
+                let artist = try await playing.artist()
+                let album = try await playing.album()
+                let itunesId = try await playing.itunes_store_identifier()
+                let trackID = itunesId.flatMap { $0 > 0 ? String($0) : nil }
+                let marker = makeTrackMarker(trackID: trackID, title: title, artist: artist, album: album)
+
+                // HomePod can briefly report transitional states while the next track metadata
+                // is already available. If track marker changed, allow it through.
                 if let state = try? await playing.device_state() {
                     debugLog("[PyatvService] device_state=\(state) (host=\(host), proto=\(proto))")
                     if state != .playing && state != .seeking {
-                        return .connected(nil)
+                        if let marker, didTrackChange(host: host, marker: marker) {
+                            debugLog("[PyatvService] allowing metadata in non-playing state due to track change (host=\(host), proto=\(proto))")
+                        } else {
+                            await closeConnection(forKey: connKey)
+                            return .connected(nil)
+                        }
                     }
                 } else {
                     debugLog("[PyatvService] device_state=nil; continuing metadata parse (host=\(host), proto=\(proto))")
                 }
 
-                let title = (try await playing.title()) ?? ""
-                if title.isEmpty {
+                let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmedTitle.isEmpty {
                     debugLog("[PyatvService] title is empty (host=\(host), proto=\(proto))")
+                    await closeConnection(forKey: connKey)
                     return .connected(nil)
                 }
 
-                let artist = try await playing.artist()
-                let album = try await playing.album()
                 var duration = Double((try await playing.total_time()) ?? 0)
                 var position = Double((try await playing.position()) ?? 0)
                 if duration == 0 || position == 0 {
@@ -412,17 +464,16 @@ actor PyatvService {
                         }
                     }
                 }
-                let itunesId = try await playing.itunes_store_identifier()
-                let trackID = itunesId.flatMap { $0 > 0 ? String($0) : nil }
-
-                if duration <= 0 {
-                    debugLog("[PyatvService] duration unavailable (host=\(host), proto=\(proto))")
-                    return .connected(nil)
+                duration = max(duration, 0)
+                position = max(position, 0)
+                if let marker {
+                    rememberTrack(host: host, marker: marker)
                 }
+                lastSuccessfulProtocol[host] = proto
 
                 return .connected(ATVProps(
                     trackID: trackID,
-                    title: title,
+                    title: trimmedTitle,
                     artist: artist,
                     album: album,
                     position: position,
@@ -621,6 +672,7 @@ actor PyatvService {
         connectionCache.removeAll()
         configCache.removeAll()
         lastSuccessfulProtocol.removeAll()
+        lastEmittedTrackByHost.removeAll()
 
         var ok = false
         if let storage {
