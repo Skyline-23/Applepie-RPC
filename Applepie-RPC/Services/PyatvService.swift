@@ -47,6 +47,12 @@ actor PyatvService {
         let album: String?
     }
 
+    private struct PlaybackSnapshot {
+        let marker: TrackMarker
+        let position: Double
+        let duration: Double
+    }
+
     private let executor: PythonExecutor
     private let pyatv: Pyatv.PyatvService
     private let loop: AsyncioLoop
@@ -58,6 +64,8 @@ actor PyatvService {
     private var connectionCache: [String: CachedConnection] = [:]
     private var lastSuccessfulProtocol: [String: Pyatv.Const.PyatvProtocol_] = [:]
     private var lastEmittedTrackByHost: [String: TrackMarker] = [:]
+    private var lastPlaybackSnapshotByHost: [String: PlaybackSnapshot] = [:]
+    private var nilStateStagnationCountByHost: [String: Int] = [:]
     private let configTTL: TimeInterval = 300
     private let connectionTTL: TimeInterval = 120
 
@@ -244,6 +252,64 @@ actor PyatvService {
         lastEmittedTrackByHost[host] = marker
     }
 
+    private func resetNilStateStagnation(host: String) {
+        nilStateStagnationCountByHost[host] = 0
+    }
+
+    private func shouldTreatNilStateAsInactive(
+        host: String,
+        marker: TrackMarker?,
+        position: Double,
+        duration: Double
+    ) -> Bool {
+        guard let marker else {
+            resetNilStateStagnation(host: host)
+            return false
+        }
+        guard let previous = lastPlaybackSnapshotByHost[host] else {
+            resetNilStateStagnation(host: host)
+            return false
+        }
+        guard previous.marker == marker else {
+            resetNilStateStagnation(host: host)
+            return false
+        }
+
+        let hasTimelineSignal = duration > 0 || previous.duration > 0 || position > 0 || previous.position > 0
+        guard hasTimelineSignal else {
+            resetNilStateStagnation(host: host)
+            return false
+        }
+
+        let delta = abs(position - previous.position)
+        if delta < 0.2 {
+            let count = (nilStateStagnationCountByHost[host] ?? 0) + 1
+            nilStateStagnationCountByHost[host] = count
+            return count >= 1
+        }
+
+        resetNilStateStagnation(host: host)
+        return false
+    }
+
+    private func rememberPlaybackSnapshot(
+        host: String,
+        marker: TrackMarker?,
+        position: Double,
+        duration: Double
+    ) {
+        guard let marker else {
+            resetNilStateStagnation(host: host)
+            return
+        }
+        lastPlaybackSnapshotByHost[host] = PlaybackSnapshot(
+            marker: marker,
+            position: position,
+            duration: duration
+        )
+        resetNilStateStagnation(host: host)
+    }
+
     private func scanConfig(
         host: String,
         protocolType proto: Pyatv.Const.PyatvProtocol_? = nil
@@ -426,23 +492,32 @@ actor PyatvService {
                 let artist = try await playing.artist()
                 let album = try await playing.album()
                 let itunesId = try await playing.itunes_store_identifier()
+                let contentIdentifier = try await playing.content_identifier()
+                let playbackHash = try await playing.hash()
                 let trackID = itunesId.flatMap { $0 > 0 ? String($0) : nil }
+                    ?? normalizeMetadataField(contentIdentifier)
+                    ?? normalizeMetadataField(playbackHash)
                 let marker = makeTrackMarker(trackID: trackID, title: title, artist: artist, album: album)
+                let trackChanged = marker.map { didTrackChange(host: host, marker: $0) } ?? false
+
+                let deviceState = try? await playing.device_state()
+                if let deviceState {
+                    debugLog("[PyatvService] device_state=\(deviceState) (host=\(host), proto=\(proto))")
+                } else {
+                    debugLog("[PyatvService] device_state=nil; applying fallback playback checks (host=\(host), proto=\(proto))")
+                }
 
                 // HomePod can briefly report transitional states while the next track metadata
                 // is already available. If track marker changed, allow it through.
-                if let state = try? await playing.device_state() {
-                    debugLog("[PyatvService] device_state=\(state) (host=\(host), proto=\(proto))")
-                    if state != .playing && state != .seeking {
-                        if let marker, didTrackChange(host: host, marker: marker) {
+                if let deviceState {
+                    if deviceState != .playing && deviceState != .seeking {
+                        if trackChanged {
                             debugLog("[PyatvService] allowing metadata in non-playing state due to track change (host=\(host), proto=\(proto))")
                         } else {
                             await closeConnection(forKey: connKey)
                             return .connected(nil)
                         }
                     }
-                } else {
-                    debugLog("[PyatvService] device_state=nil; continuing metadata parse (host=\(host), proto=\(proto))")
                 }
 
                 let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -466,9 +541,21 @@ actor PyatvService {
                 }
                 duration = max(duration, 0)
                 position = max(position, 0)
+                if deviceState == nil,
+                   shouldTreatNilStateAsInactive(
+                    host: host,
+                    marker: marker,
+                    position: position,
+                    duration: duration
+                   ) {
+                    debugLog("[PyatvService] treating nil-state stagnant playback as inactive (host=\(host), proto=\(proto))")
+                    await closeConnection(forKey: connKey)
+                    return .connected(nil)
+                }
                 if let marker {
                     rememberTrack(host: host, marker: marker)
                 }
+                rememberPlaybackSnapshot(host: host, marker: marker, position: position, duration: duration)
                 lastSuccessfulProtocol[host] = proto
 
                 return .connected(ATVProps(
@@ -673,6 +760,8 @@ actor PyatvService {
         configCache.removeAll()
         lastSuccessfulProtocol.removeAll()
         lastEmittedTrackByHost.removeAll()
+        lastPlaybackSnapshotByHost.removeAll()
+        nilStateStagnationCountByHost.removeAll()
 
         var ok = false
         if let storage {
