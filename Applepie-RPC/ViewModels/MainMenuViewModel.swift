@@ -10,6 +10,7 @@ final class MainMenuViewModel: ObservableObject {
     @Published var selectedHost: String
     @Published private(set) var previousHost: String
     @Published private(set) var settings: AppSettingsSnapshot = .default
+    @Published var shouldShowUpdatePopup: Bool = false
 
     private let deviceSwitchService: DeviceSwitchService
     private weak var nowPlayingService: NowPlayingService?
@@ -118,6 +119,30 @@ final class MainMenuViewModel: ObservableObject {
             return "Sparkle"
         case .homebrew:
             return "Homebrew"
+        }
+    }
+
+    func dismissUpdatePopup() {
+        shouldShowUpdatePopup = false
+    }
+
+    func checkForUpdates() async {
+        guard let updaterService else { return }
+
+        if updaterService.updateChannel == .homebrew {
+            shouldShowUpdatePopup = true
+        }
+
+        let result = await updaterService.checkForUpdates()
+        switch result {
+        case .sparkleOpened:
+            break
+        case .alreadyRunning:
+            if updaterService.updateChannel == .homebrew {
+                shouldShowUpdatePopup = true
+            }
+        case .homebrewCompleted, .homebrewFailed, .homebrewBinaryMissing:
+            shouldShowUpdatePopup = true
         }
     }
 }

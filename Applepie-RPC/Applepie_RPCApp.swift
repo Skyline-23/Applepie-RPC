@@ -259,21 +259,7 @@ struct MainMenuView: View {
             
             Button {
                 Task {
-                    if updaterService.updateChannel == .homebrew {
-                        showUpdatePopup()
-                    }
-
-                    let result = await updaterService.checkForUpdates()
-                    switch result {
-                    case .sparkleOpened:
-                        break
-                    case .alreadyRunning:
-                        if updaterService.updateChannel == .homebrew {
-                            showUpdatePopup()
-                        }
-                    case .homebrewCompleted, .homebrewFailed, .homebrewBinaryMissing:
-                        showUpdatePopup()
-                    }
+                    await viewModel.checkForUpdates()
                 }
             } label: {
                 HStack(spacing: 8) {
@@ -350,6 +336,13 @@ struct MainMenuView: View {
                 deviceMenuLayoutID = UUID()
             }
         }
+        .onChange(of: viewModel.shouldShowUpdatePopup) { _, shouldShow in
+            if shouldShow {
+                showUpdatePopup()
+            } else {
+                updatePopupWindow?.orderOut(nil)
+            }
+        }
     }
     
     // MARK: - Methods
@@ -410,7 +403,7 @@ struct MainMenuView: View {
         let popup = UpdateProgressPopupView(
             updaterService: updaterService,
             onClose: {
-                self.updatePopupWindow?.orderOut(nil)
+                self.viewModel.dismissUpdatePopup()
             },
             onCopyCommand: {
                 self.copyHomebrewCommandToClipboard()
