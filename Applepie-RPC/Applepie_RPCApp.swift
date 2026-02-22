@@ -9,36 +9,18 @@ import SwiftUI
 import AppKit
 
 import ModernSlider
-import SwiftData
 
 @main
 struct ApplepieRPCApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
-    // Fallback container if AppDelegate's container is not available
-    private let defaultContainer: ModelContainer = {
-        do {
-            return try ModelContainer(for: AppSettings.self)
-        } catch {
-            debugLog("[SwiftData] Failed to create default ModelContainer:", error)
-            do {
-                let inMemory = ModelConfiguration(isStoredInMemoryOnly: true)
-                return try ModelContainer(for: AppSettings.self, configurations: inMemory)
-            } catch {
-                errorLog("[SwiftData] Failed to create in-memory ModelContainer:", error)
-                fatalError("Failed to create any ModelContainer: \(error)")
-            }
-
-        }
-    }()
-    
     var body: some Scene {
         MenuBarExtra {
             MainMenuView()
-                .environment(\.modelContext, delegate.container?.mainContext ?? defaultContainer.mainContext)
                 .environmentObject(delegate.nowPlayingService)
                 .environmentObject(delegate.playbackControlService)
                 .environmentObject(delegate.updaterService)
+                .environmentObject(delegate.settingsRepository)
         } label: {
             Label {
                 Text(localizable: .appName)
@@ -52,12 +34,6 @@ struct ApplepieRPCApp: App {
             .labelStyle(.iconOnly)
         }
         .menuBarExtraStyle(.window)
-    }
-    
-    private func showAlert(message: String) {
-        let alert = NSAlert()
-        alert.messageText = message
-        alert.runModal()
     }
 }
 
@@ -97,8 +73,6 @@ struct StatusRow: View {
 }
 
 struct MainMenuView: View {
-    @Query private var settings: [AppSettings]
-    @Environment(\.modelContext) private var modelContext
     @State private var isHoveringQuit = false
     @State private var isHoveringClearCache = false
     @State private var isHoveringCheckUpdates = false
@@ -109,17 +83,7 @@ struct MainMenuView: View {
     @EnvironmentObject var nowPlayingService: NowPlayingService
     @EnvironmentObject var playbackControlService: PlaybackControlService
     @EnvironmentObject var updaterService: UpdaterService
-    
-    /// Current AppSettings instance, creating one if missing
-    private var setting: AppSettings {
-        if let existing = settings.first {
-            return existing
-        } else {
-            let newSetting = AppSettings()
-            modelContext.insert(newSetting)
-            return newSetting
-        }
-    }
+    @EnvironmentObject var settingsRepository: SwiftDataSettingsRepository
     
     /// Returns the IP address for the currently selected host.
     private var currentHostIP: String {
@@ -127,7 +91,7 @@ struct MainMenuView: View {
     }
     
     private var effectiveDeviceConnection: ConnectionState {
-        setting.isPaused ? .disconnected : nowPlayingService.deviceConnection
+        viewModel.settings.isPaused ? .disconnected : nowPlayingService.deviceConnection
     }
     
     private func statusKey(for state: ConnectionState) -> LocalizableKey {
@@ -151,20 +115,9 @@ struct MainMenuView: View {
                 }
                 Spacer()
                 Toggle(.localizable(.appName), isOn: Binding(
-                    get: { !self.setting.isPaused },
+                    get: { !viewModel.settings.isPaused },
                     set: { newValue in
-                        viewModel.setPaused(
-                            !newValue,
-                            setting: self.setting,
-                            save: {
-                                do {
-                                    try modelContext.save()
-                                } catch {
-                                    debugLog("Failed to save isPaused:", error)
-                                }
-                            },
-                            currentHostIP: currentHostIP
-                        )
+                        viewModel.setEnabled(newValue, currentHostIP: currentHostIP)
                     }
                 ))
                 .toggleStyle(SwitchToggleStyle())
@@ -191,11 +144,10 @@ struct MainMenuView: View {
                         sliderWidth: 180,
                         sliderHeight: 16,
                         value: Binding(
-                            get: { self.setting.updateInterval },
+                            get: { viewModel.settings.updateInterval },
                             set: {
                                 viewModel.updateInterval(
                                     $0,
-                                    setting: self.setting,
                                     currentHostIP: currentHostIP
                                 )
                             }
@@ -204,7 +156,7 @@ struct MainMenuView: View {
                     )
                     .padding(.horizontal, -12)
                     .padding(.vertical, -12)
-                    Text(localizable: .llds(Int(self.setting.updateInterval)))
+                    Text(localizable: .llds(Int(viewModel.settings.updateInterval)))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -223,7 +175,6 @@ struct MainMenuView: View {
                                 await viewModel.selectHost(
                                     host,
                                     hostIPs: browser.serviceIPs,
-                                    updateInterval: setting.updateInterval,
                                     requestPIN: { await showPINWindow() },
                                     onPairingFailed: { showAlert(message: .localizable(.pairingFailed)) }
                                 )
@@ -279,7 +230,7 @@ struct MainMenuView: View {
             // Clear all stored pairing credentials
             Button {
                 Task {
-                    viewModel.resetToLocalhost(updateInterval: setting.updateInterval)
+                    viewModel.resetToLocalhost()
                     if await nowPlayingService.clearCache() {
                         showAlert(message: .localizable(.cacheClearedSuccessfully))
                     } else {
@@ -390,7 +341,8 @@ struct MainMenuView: View {
             viewModel.configure(
                 nowPlayingService: nowPlayingService,
                 playbackControlService: playbackControlService,
-                updaterService: updaterService
+                updaterService: updaterService,
+                settingsRepository: settingsRepository
             )
             // Force an additional layout pass. MenuBarExtra can occasionally give menu controls
             // an incorrect initial width until the user interacts with them.

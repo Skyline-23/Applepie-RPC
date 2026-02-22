@@ -16,18 +16,21 @@ final class AppContainer {
     let nowPlayingService: NowPlayingService
     let playbackControlService: PlaybackControlService
     let updaterService: UpdaterService
+    let settingsRepository: SwiftDataSettingsRepository
     let pythonExecutor: PythonExecutor
 
     private let discordClientID: String
 
     init(
         nowPlayingService: NowPlayingService = NowPlayingService(),
+        settingsRepository: SwiftDataSettingsRepository? = nil,
         pythonExecutor: PythonExecutor = PythonExecutor(threadName: "PylibKitThread"),
         discordClientID: String = "1362417259154374696"
     ) {
         self.nowPlayingService = nowPlayingService
         self.playbackControlService = PlaybackControlService(nowPlayingService: nowPlayingService)
         self.updaterService = UpdaterService()
+        self.settingsRepository = settingsRepository ?? SwiftDataSettingsRepository()
         self.pythonExecutor = pythonExecutor
         self.discordClientID = discordClientID
     }

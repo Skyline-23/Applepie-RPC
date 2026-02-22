@@ -6,7 +6,6 @@
 //
 
 import Cocoa
-import SwiftData
 import MusicKit
 import Combine
 import ApplicationServices
@@ -19,12 +18,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var nowPlayingService: NowPlayingService { appContainer.nowPlayingService }
     var playbackControlService: PlaybackControlService { appContainer.playbackControlService }
     var updaterService: UpdaterService { appContainer.updaterService }
+    var settingsRepository: SwiftDataSettingsRepository { appContainer.settingsRepository }
     private var cancellables = Set<AnyCancellable>()
-    private let appSettingsService = AppSettingsService()
     private let syncPresenceUseCase = SyncPresenceUseCase()
     private let sentryBootstrapService = SentryBootstrapService()
-
-    var container: ModelContainer? { appSettingsService.container }
+    private var settingsObservationTask: Task<Void, Never>?
 
     override init() {
         super.init()
@@ -50,16 +48,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let interval = appSettingsService.loadOrCreate()
+        let interval = settingsRepository.current.updateInterval
 
-        // Observe SwiftData save notifications to refresh AppSettings
-        appSettingsService
-            .observeChanges { [weak self] updated, previousPaused in
-                guard let self else { return }
-                guard updated.isPaused != previousPaused else { return }
-                self.syncPresenceUseCase.handlePauseStateChanged()
+        settingsObservationTask?.cancel()
+        settingsObservationTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            var previousPaused = self.settingsRepository.current.isPaused
+            let stream = self.settingsRepository.makeSettingsStream()
+            for await snapshot in stream {
+                if Task.isCancelled { return }
+                if snapshot.isPaused != previousPaused {
+                    self.syncPresenceUseCase.handlePauseStateChanged()
+                }
+                previousPaused = snapshot.isPaused
             }
-            .store(in: &cancellables)
+        }
 
         // Async RPC initialization and start updates
         Task { @MainActor in
@@ -99,7 +102,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 discordService: discordService,
                 nowPlayingService: nowPlayingService,
                 isPaused: { [weak self] in
-                    self?.appSettingsService.isPaused ?? false
+                    self?.settingsRepository.current.isPaused ?? false
                 }
             )
         }
@@ -107,6 +110,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         debugLog("[AppDelegate] applicationWillTerminate")
+        settingsObservationTask?.cancel()
+        settingsObservationTask = nil
         syncPresenceUseCase.stop(clearPresence: true)
         nowPlayingService.stop()
     }

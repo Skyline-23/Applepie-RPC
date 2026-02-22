@@ -9,11 +9,14 @@ import Foundation
 final class MainMenuViewModel: ObservableObject {
     @Published var selectedHost: String
     @Published private(set) var previousHost: String
+    @Published private(set) var settings: AppSettingsSnapshot = .default
 
     private let deviceSwitchService: DeviceSwitchService
     private weak var nowPlayingService: NowPlayingService?
     private weak var playbackControlService: PlaybackControlService?
     private weak var updaterService: UpdaterService?
+    private weak var settingsRepository: (any SettingsRepository)?
+    private var settingsTask: Task<Void, Never>?
 
     init(
         localhostName: String = .localizable(.localhostName),
@@ -27,28 +30,40 @@ final class MainMenuViewModel: ObservableObject {
     func configure(
         nowPlayingService: NowPlayingService,
         playbackControlService: PlaybackControlService,
-        updaterService: UpdaterService
+        updaterService: UpdaterService,
+        settingsRepository: any SettingsRepository
     ) {
         self.nowPlayingService = nowPlayingService
         self.playbackControlService = playbackControlService
         self.updaterService = updaterService
+        self.settingsRepository = settingsRepository
+        self.settings = settingsRepository.current
+
+        settingsTask?.cancel()
+        settingsTask = Task { [weak self] in
+            guard let self else { return }
+            let stream = settingsRepository.makeSettingsStream()
+            for await snapshot in stream {
+                if Task.isCancelled { return }
+                self.settings = snapshot
+            }
+        }
     }
 
-    func setPaused(
-        _ isPaused: Bool,
-        setting: AppSettings,
-        save: () -> Void,
-        currentHostIP: String
-    ) {
-        setting.isPaused = isPaused
-        save()
+    deinit {
+        settingsTask?.cancel()
+    }
+
+    func setEnabled(_ isEnabled: Bool, currentHostIP: String) {
+        let isPaused = !isEnabled
+        settingsRepository?.setPaused(isPaused)
 
         guard let playbackControlService else { return }
-        if setting.isPaused {
+        if isPaused {
             playbackControlService.pausePlayback()
         } else {
             playbackControlService.resumePlayback(
-                interval: setting.updateInterval,
+                interval: settings.updateInterval,
                 host: currentHostIP
             )
         }
@@ -56,17 +71,15 @@ final class MainMenuViewModel: ObservableObject {
 
     func updateInterval(
         _ interval: TimeInterval,
-        setting: AppSettings,
         currentHostIP: String
     ) {
-        setting.updateInterval = interval
+        settingsRepository?.setUpdateInterval(interval)
         nowPlayingService?.updateTimer(interval, currentHostIP)
     }
 
     func selectHost(
         _ host: String,
         hostIPs: [String: String],
-        updateInterval: TimeInterval,
         requestPIN: @escaping @MainActor () async -> Int?,
         onPairingFailed: @escaping @MainActor () -> Void
     ) async {
@@ -77,7 +90,7 @@ final class MainMenuViewModel: ObservableObject {
             oldHost: previousHost,
             newHost: host,
             hostIPs: hostIPs,
-            updateInterval: updateInterval,
+            updateInterval: settings.updateInterval,
             nowPlayingService: nowPlayingService,
             requestPIN: requestPIN,
             onPairingFailed: onPairingFailed
@@ -86,12 +99,12 @@ final class MainMenuViewModel: ObservableObject {
         previousHost = result.previousHost
     }
 
-    func resetToLocalhost(updateInterval: TimeInterval) {
+    func resetToLocalhost() {
         guard let nowPlayingService else { return }
         let localhostName = String.localizable(.localhostName)
         let result = deviceSwitchService.resetToLocalhost(
             localhostName: localhostName,
-            updateInterval: updateInterval,
+            updateInterval: settings.updateInterval,
             nowPlayingService: nowPlayingService
         )
         selectedHost = result.selectedHost
