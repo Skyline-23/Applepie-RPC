@@ -34,7 +34,7 @@ class NowPlayingService: ObservableObject {
     private var currentFetchHost: String?
     private var currentFetchInterval: TimeInterval?
 
-    private var atvService: PyatvService?
+    private var atvService: (any ATVServiceProviding)?
 
     private struct FetchResult {
         let connection: ConnectionState
@@ -165,8 +165,8 @@ class NowPlayingService: ObservableObject {
         discordConnection = state
     }
 
-    /// Inject a PyatvService for Apple TV/HomePod hosts.
-    func setATVService(_ service: PyatvService) {
+    /// Inject an ATV metadata service for Apple TV/HomePod hosts.
+    func setATVService(_ service: any ATVServiceProviding) {
         self.atvService = service
     }
 

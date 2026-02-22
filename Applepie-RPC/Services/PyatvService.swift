@@ -813,3 +813,5 @@ actor PyatvService {
         }
     }
 }
+
+extension PyatvService: ATVServiceProviding {}

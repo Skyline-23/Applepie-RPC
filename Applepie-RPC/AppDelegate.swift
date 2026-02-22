@@ -11,15 +11,15 @@ import MusicKit
 import Combine
 import ApplicationServices
 import Dispatch
-import PylibKit_Mac
 import Sentry
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     var discordService: DiscordService?
     var pyatvService: PyatvService?
-    let nowPlayingService = NowPlayingService()
-    private let pythonExecutor = PythonExecutor(threadName: "PylibKitThread")
+    private let appContainer = AppContainer()
+    var nowPlayingService: NowPlayingService { appContainer.nowPlayingService }
+    var updaterService: UpdaterService { appContainer.updaterService }
     private var cancellables = Set<AnyCancellable>()
     private var appSettings: AppSettings?
     private var lastObservedPausedState: Bool?
@@ -27,7 +27,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var activityUpdateTask: Task<Void, Never>?
 
     var container: ModelContainer?
-    let updaterService = UpdaterService()
 
     override init() {
         super.init()
@@ -35,7 +34,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task {
-            await pythonExecutor.installPythonLogForwarders(logLevel: .info)
+            await appContainer.installPythonLogForwarders()
         }
 
         startSentryIfConfigured()
@@ -101,20 +100,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if !musicAuthorized {
                 debugLog("⚠️ Apple Music authorization denied: \(authStatus)")
             }
-            // Create and initialize the DiscordService using the async factory
-            let discordService = await DiscordService.create(
-                clientID: "1362417259154374696",
-                executor: pythonExecutor
+
+            let runtimeServices = await appContainer.makeRuntimeServices(
+                musicAuthorized: musicAuthorized,
+                updateInterval: interval
             )
-            let pyatvService = await PyatvService.create(
-                executor: pythonExecutor
-            )
+            let discordService = runtimeServices.discordService
+            let pyatvService = runtimeServices.pyatvService
 
             self.discordService = discordService
             self.pyatvService = pyatvService
-            nowPlayingService.setATVService(pyatvService)
-            discordService.setMusicKitEnabled(musicAuthorized)
-            discordService.setClearInterval(interval)
             nowPlayingService.$updateInterval
                 .removeDuplicates()
                 .sink { [weak self] newInterval in
