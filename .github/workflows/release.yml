@@ -260,17 +260,21 @@ jobs:
           version = os.environ["VERSION"]
           sha = os.environ["DMG_SHA"]
 
-          updated = re.sub(
-              r'^(\\s*version\\s+\")[^\"]+(\"\\s*)$',
-              rf'\\1{version}\\2',
+          version_pattern = re.compile(r'^(\s*version\s+")[^"]+("\s*)$', flags=re.M)
+          sha_pattern = re.compile(r'^(\s*sha256\s+")[0-9a-fA-F]+("\s*)$', flags=re.M)
+
+          if not version_pattern.search(content):
+              raise SystemExit("❌ Could not locate version line in Casks/applepie-rpc.rb")
+          if not sha_pattern.search(content):
+              raise SystemExit("❌ Could not locate sha256 line in Casks/applepie-rpc.rb")
+
+          updated = version_pattern.sub(
+              lambda m: f"{m.group(1)}{version}{m.group(2)}",
               content,
-              flags=re.M,
           )
-          updated = re.sub(
-              r'^(\\s*sha256\\s+\")[0-9a-fA-F]+(\"\\s*)$',
-              rf'\\1{sha}\\2',
+          updated = sha_pattern.sub(
+              lambda m: f"{m.group(1)}{sha}{m.group(2)}",
               updated,
-              flags=re.M,
           )
 
           path.write_text(updated)
