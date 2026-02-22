@@ -24,8 +24,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables = Set<AnyCancellable>()
     private var appSettings: AppSettings?
     private var lastObservedPausedState: Bool?
-    private var presenceUpdateTask: Task<Void, Never>?
-    private var activityUpdateTask: Task<Void, Never>?
+    private let presenceCoordinator = DiscordPresenceCoordinator()
 
     var container: ModelContainer?
 
@@ -83,12 +82,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     self.appSettings = updated
                     self.lastObservedPausedState = updated.isPaused
 
-                    if updated.isPaused && updated.isPaused != previousPaused {
-                        self.activityUpdateTask?.cancel()
-                        Task { [weak self] in
-                            await self?.discordService?.clearActivity(allowStart: false)
-                        }
-                    }
+                    self.presenceCoordinator.handlePauseTransition(
+                        isPaused: updated.isPaused,
+                        wasPaused: previousPaused,
+                        discordService: self.discordService
+                    )
                 }
             }
             .store(in: &cancellables)
@@ -129,70 +127,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Start periodic fetching in NowPlayingService
             nowPlayingService.start(interval: interval, host: "localhost")
 
-            // Subscribe to updates and forward to DiscordService
-            nowPlayingService.$playingData
-                .prepend(nowPlayingService.playingData)
-                .sink { [weak self] data in
-                    guard let self else { return }
-                    self.activityUpdateTask?.cancel()
-                    self.activityUpdateTask = Task { [weak self] in
-                        guard let self, let discord = self.discordService else {
-                            return
-                        }
-                        if self.appSettings?.isPaused == true {
-                            await discord.clearActivity(allowStart: false)
-                            return
-                        }
-                        guard let data else {
-                            await discord.clearActivity(allowStart: false)
-                            return
-                        }
-                        let trimmedTitle = data.title.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard !trimmedTitle.isEmpty else {
-                            await discord.clearActivity(allowStart: false)
-                            return
-                        }
-                        await discord.setActivity(
-                            trackID: data.trackID,
-                            title: trimmedTitle,
-                            artist: data.artist ?? "",
-                            album: data.album,
-                            position: data.position,
-                            duration: data.duration
-                        )
-                    }
+            presenceCoordinator.start(
+                discordService: discordService,
+                nowPlayingService: nowPlayingService,
+                isPaused: { [weak self] in
+                    self?.appSettings?.isPaused == true
                 }
-                .store(in: &cancellables)
-
-            presenceUpdateTask?.cancel()
-            presenceUpdateTask = Task { [weak self] in
-                var lastClearedAt: Date?
-                while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    guard let self else { return }
-
-                    let shouldClear = await MainActor.run {
-                        self.appSettings?.isPaused == true || self.nowPlayingService.playingData == nil
-                    }
-
-                    if shouldClear {
-                        let now = Date()
-                        if lastClearedAt == nil || now.timeIntervalSince(lastClearedAt ?? now) >= 3 {
-                            await self.discordService?.clearActivity(allowStart: false)
-                            lastClearedAt = now
-                        }
-                    } else {
-                        lastClearedAt = nil
-                    }
-                }
-            }
+            )
         }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         debugLog("[AppDelegate] applicationWillTerminate")
-        presenceUpdateTask?.cancel()
-        activityUpdateTask?.cancel()
+        presenceCoordinator.stop()
         nowPlayingService.stop()
 
         let semaphore = DispatchSemaphore(value: 0)
