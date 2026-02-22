@@ -131,17 +131,32 @@ actor PlaybackPollingUseCase {
         return AsyncStream { continuation in
             let task = Task {
                 while !Task.isCancelled {
-                    let fetched = await fetcher.fetch(host: host)
+                    // Keep polling cadence strict: if one fetch overruns the interval,
+                    // cancel it and start a new cycle.
+                    let cycleStartedAt = Date()
+                    let fetched = await self.fetchWithDeadline(
+                        timeout: pollInterval,
+                        host: host,
+                        fetcher: fetcher
+                    )
+                    if Task.isCancelled { break }
+
+                    let rawConnection = fetched?.connection ?? .disconnected
                     let resolved = self.resolveConnection(
-                        raw: fetched.connection,
+                        raw: rawConnection,
                         interval: interval
                     )
                     continuation.yield(
-                        PlaybackFetchResult(connection: resolved, metadata: fetched.metadata)
+                        PlaybackFetchResult(connection: resolved, metadata: fetched?.metadata)
                     )
-                    try? await Task.sleep(
-                        nanoseconds: UInt64(pollInterval * 1_000_000_000)
-                    )
+
+                    let elapsed = Date().timeIntervalSince(cycleStartedAt)
+                    let remaining = pollInterval - elapsed
+                    if remaining > 0 {
+                        try? await Task.sleep(
+                            nanoseconds: UInt64(remaining * 1_000_000_000)
+                        )
+                    }
                 }
                 continuation.finish()
             }
@@ -149,6 +164,27 @@ actor PlaybackPollingUseCase {
             continuation.onTermination = { _ in
                 task.cancel()
             }
+        }
+    }
+
+    private func fetchWithDeadline(
+        timeout: TimeInterval,
+        host: String,
+        fetcher: any PlaybackFetching
+    ) async -> PlaybackFetchResult? {
+        let timeoutNanos = UInt64(max(0.1, timeout) * 1_000_000_000)
+        return await withTaskGroup(of: PlaybackFetchResult?.self) { group in
+            group.addTask {
+                await fetcher.fetch(host: host)
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: timeoutNanos)
+                return nil
+            }
+
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
         }
     }
 
