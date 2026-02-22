@@ -37,6 +37,7 @@ struct ApplepieRPCApp: App {
             MainMenuView()
                 .environment(\.modelContext, delegate.container?.mainContext ?? defaultContainer.mainContext)
                 .environmentObject(delegate.nowPlayingService)
+                .environmentObject(delegate.playbackControlService)
                 .environmentObject(delegate.updaterService)
         } label: {
             Label {
@@ -107,6 +108,7 @@ struct MainMenuView: View {
     @State private var updatePopupWindow: NSWindow?
     @StateObject private var browser = AirPlayBrowser()
     @EnvironmentObject var nowPlayingService: NowPlayingService
+    @EnvironmentObject var playbackControlService: PlaybackControlService
     @EnvironmentObject var updaterService: UpdaterService
     
     /// Current AppSettings instance, creating one if missing
@@ -164,14 +166,12 @@ struct MainMenuView: View {
                             debugLog("Failed to save isPaused:", error)
                         }
                         if self.setting.isPaused {
-                            nowPlayingService.stop()
-                            Task {
-                                await (NSApplication.shared.delegate as? AppDelegate)?
-                                    .discordService?
-                                    .clearActivity(allowStart: false)
-                            }
+                            playbackControlService.pausePlayback()
                         } else {
-                            nowPlayingService.updateTimer(self.setting.updateInterval, currentHostIP)
+                            playbackControlService.resumePlayback(
+                                interval: self.setting.updateInterval,
+                                host: currentHostIP
+                            )
                         }
                     }
                 ))

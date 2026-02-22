@@ -9,11 +9,12 @@ import PylibKit_Mac
 @MainActor
 final class AppContainer {
     struct RuntimeServices {
-        let discordService: DiscordService
+        let discordService: any DiscordServiceProviding
         let pyatvService: PyatvService
     }
 
     let nowPlayingService: NowPlayingService
+    let playbackControlService: PlaybackControlService
     let updaterService: UpdaterService
     let pythonExecutor: PythonExecutor
 
@@ -25,6 +26,7 @@ final class AppContainer {
         discordClientID: String = "1362417259154374696"
     ) {
         self.nowPlayingService = nowPlayingService
+        self.playbackControlService = PlaybackControlService(nowPlayingService: nowPlayingService)
         self.updaterService = UpdaterService()
         self.pythonExecutor = pythonExecutor
         self.discordClientID = discordClientID
@@ -47,6 +49,7 @@ final class AppContainer {
         )
 
         nowPlayingService.setATVService(pyatvService)
+        playbackControlService.setDiscordService(discordService)
         discordService.setMusicKitEnabled(musicAuthorized)
         discordService.setClearInterval(updateInterval)
 

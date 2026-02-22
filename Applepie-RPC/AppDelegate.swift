@@ -15,10 +15,11 @@ import Sentry
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
-    var discordService: DiscordService?
+    var discordService: (any DiscordServiceProviding)?
     var pyatvService: PyatvService?
     private let appContainer = AppContainer()
     var nowPlayingService: NowPlayingService { appContainer.nowPlayingService }
+    var playbackControlService: PlaybackControlService { appContainer.playbackControlService }
     var updaterService: UpdaterService { appContainer.updaterService }
     private var cancellables = Set<AnyCancellable>()
     private var appSettings: AppSettings?
@@ -123,7 +124,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             nowPlayingService.setDiscordConnection(discordService.connectionState)
 
-            await discordService.clearActivity()
+            await discordService.clearActivity(allowStart: true)
 
             // Start periodic fetching in NowPlayingService
             nowPlayingService.start(interval: interval, host: "localhost")

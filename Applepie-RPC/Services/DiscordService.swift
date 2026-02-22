@@ -416,6 +416,8 @@ class DiscordService {
     }
 }
 
+extension DiscordService: DiscordServiceProviding {}
+
 private actor ActivityGate {
     private var token: UInt64 = 0
 
