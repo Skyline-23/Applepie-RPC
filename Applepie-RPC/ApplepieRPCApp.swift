@@ -1,5 +1,5 @@
 //
-//  Applepie_RPCApp.swift
+//  ApplepieRPCApp.swift
 //  Applepie-RPC
 //
 //  Created by 김부성 on 4/19/25.
