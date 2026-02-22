@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 struct UpdaterStateSnapshot: Equatable {
     let updateChannel: AppUpdateChannel
@@ -96,6 +97,28 @@ final class UpdaterService: ObservableObject {
 
     var homebrewUpgradeCommand: String {
         provider.homebrewUpgradeCommand
+    }
+
+    @discardableResult
+    func relaunchApplication() -> Bool {
+        guard updateChannel == .homebrew else { return false }
+        guard lastUpdateSucceeded == true else { return false }
+
+        let bundlePath = Bundle.main.bundleURL.path
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = ["-n", bundlePath]
+
+        do {
+            try process.run()
+            NSApp.terminate(nil)
+            return true
+        } catch {
+            appendLog("Failed to relaunch app: \(error.localizedDescription)")
+            updateStatusMessage = "Relaunch failed."
+            publishState()
+            return false
+        }
     }
 
     private func appendLog(_ line: String) {

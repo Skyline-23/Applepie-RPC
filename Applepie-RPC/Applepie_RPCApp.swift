@@ -382,6 +382,9 @@ struct MainMenuView: View {
             },
             onCopyCommand: {
                 self.copyHomebrewCommandToClipboard()
+            },
+            onRelaunch: {
+                self.viewModel.relaunchApplication()
             }
         )
 
@@ -406,9 +409,14 @@ struct UpdateProgressPopupView: View {
     @ObservedObject var viewModel: MainMenuViewModel
     let onClose: () -> Void
     let onCopyCommand: () -> Void
+    let onRelaunch: () -> Void
 
     private var shouldShowCopyButton: Bool {
         viewModel.canCopyHomebrewCommand
+    }
+
+    private var shouldShowRelaunchButton: Bool {
+        viewModel.canRelaunchApplication
     }
 
     var body: some View {
@@ -453,9 +461,14 @@ struct UpdateProgressPopupView: View {
 
                 Spacer()
 
-                Button("Close", action: onClose)
-                    .buttonStyle(.borderedProminent)
-                    .disabled(viewModel.isUpdating)
+                if shouldShowRelaunchButton {
+                    Button("Relaunch", action: onRelaunch)
+                        .buttonStyle(.borderedProminent)
+                } else {
+                    Button("Close", action: onClose)
+                        .buttonStyle(.borderedProminent)
+                        .disabled(viewModel.isUpdating)
+                }
             }
         }
         .padding(14)

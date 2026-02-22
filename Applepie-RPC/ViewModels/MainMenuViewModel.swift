@@ -115,6 +115,12 @@ final class MainMenuViewModel: ObservableObject {
         return lastUpdateSucceeded == false
     }
 
+    var canRelaunchApplication: Bool {
+        guard updateChannel == .homebrew else { return false }
+        guard !isUpdating else { return false }
+        return lastUpdateSucceeded == true
+    }
+
     func setEnabled(_ isEnabled: Bool) {
         let isPaused = !isEnabled
         settingsRepository.setPaused(isPaused)
@@ -190,6 +196,10 @@ final class MainMenuViewModel: ObservableObject {
         case .homebrewCompleted, .homebrewFailed, .homebrewBinaryMissing:
             shouldShowUpdatePopup = true
         }
+    }
+
+    func relaunchApplication() {
+        _ = updaterService.relaunchApplication()
     }
 
     private func startObservations() {
