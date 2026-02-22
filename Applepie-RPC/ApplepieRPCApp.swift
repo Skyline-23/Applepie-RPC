@@ -43,8 +43,7 @@ struct StatusDot: View {
     var body: some View {
         Circle()
             .fill(color)
-            .frame(width: 8, height: 8)
-            .shadow(color: color.opacity(0.35), radius: 3, x: 0, y: 0)
+            .frame(width: 6, height: 6)
     }
 }
 
@@ -57,53 +56,26 @@ struct StatusRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             StatusDot(state: state)
             Text(title)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-            Spacer(minLength: 8)
+                .font(.caption)
             Text(localizable: statusKey)
-                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .font(.caption)
                 .foregroundColor(.secondary)
+            Spacer()
         }
-    }
-}
-
-struct MenuSectionCard<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            content
-        }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(NSColor.controlBackgroundColor).opacity(0.92),
-                            Color(NSColor.underPageBackgroundColor).opacity(0.78)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color(NSColor.separatorColor).opacity(0.6), lineWidth: 1)
-        )
     }
 }
 
 struct MainMenuView: View {
     @State private var isHoveringQuit = false
+    @State private var isHoveringInfo = false
     @State private var isHoveringClearCache = false
     @State private var isHoveringCheckUpdates = false
     @State private var deviceMenuLayoutID = UUID()
     @State private var updatePopupWindow: NSWindow?
+    @State private var infoPopupWindow: NSWindow?
     @ObservedObject var viewModel: MainMenuViewModel
     
     private var effectiveDeviceConnection: ConnectionState {
@@ -118,77 +90,58 @@ struct MainMenuView: View {
         viewModel.updateChannelName
     }
 
-    private var nowPlayingTitle: String {
-        let trimmed = viewModel.currentTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? String.localizable(.noInformation) : trimmed
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-"
+    }
+
+    private var appBuild: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "-"
+    }
+
+    private var bundleIdentifier: String {
+        Bundle.main.bundleIdentifier ?? "-"
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            MenuSectionCard {
-                HStack(alignment: .center, spacing: 10) {
-                    VStack(alignment: .leading, spacing: 7) {
-                        HStack(spacing: 8) {
-                            ZStack {
-                                Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [
-                                                Color(NSColor.systemBlue),
-                                                Color(NSColor.systemTeal)
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                Image("MenuBarIcon")
-                                    .renderingMode(.template)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 10, height: 10)
-                                    .foregroundStyle(.white)
-                            }
-                            .frame(width: 22, height: 22)
-
-                            Text(localizable: .appName)
-                                .font(.system(size: 33 / 2, weight: .bold, design: .rounded))
-                        }
-
-                        HStack(spacing: 6) {
-                            StatusDot(state: effectiveDeviceConnection)
-                            Text(localizable: statusKey(for: effectiveDeviceConnection))
-                                .font(.system(size: 13, weight: .medium, design: .rounded))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    Spacer()
-                    Toggle(.localizable(.appName), isOn: Binding(
-                        get: { !viewModel.settings.isPaused },
-                        set: { newValue in
-                            viewModel.setEnabled(newValue)
-                        }
-                    ))
-                    .toggleStyle(.switch)
-                    .labelsHidden()
+        VStack(alignment: .leading, spacing: 4) {
+            // App title with toggle switch and connection status
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(localizable: .appName)
+                        .font(.headline)
+                    Text(localizable: statusKey(for: effectiveDeviceConnection))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
+                Spacer()
+                Toggle(.localizable(.appName), isOn: Binding(
+                    get: { !viewModel.settings.isPaused },
+                    set: { newValue in
+                        viewModel.setEnabled(newValue)
+                    }
+                ))
+                .toggleStyle(SwitchToggleStyle())
+                .labelsHidden()
             }
+            .padding(.bottom, 8)
 
-            MenuSectionCard {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(localizable: .status)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.caption)
                     .foregroundColor(.secondary)
                 StatusRow(title: .localizable(.device), state: effectiveDeviceConnection)
                 StatusRow(title: .localizable(.discord), state: viewModel.discordConnection)
             }
-
-            MenuSectionCard {
+            .padding(.vertical, 4)
+            
+            VStack(alignment: .leading, spacing: 4) {
                 Text(localizable: .updateInterval)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.caption)
                     .foregroundColor(.secondary)
                 HStack {
                     ModernSlider(
                         systemImage: "clock",
-                        sliderWidth: 200,
+                        sliderWidth: 180,
                         sliderHeight: 16,
                         value: Binding(
                             get: { viewModel.settings.updateInterval },
@@ -200,16 +153,18 @@ struct MainMenuView: View {
                     )
                     .padding(.horizontal, -12)
                     .padding(.vertical, -12)
-
                     Text(localizable: .llds(Int(viewModel.settings.updateInterval)))
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundColor(.primary.opacity(0.85))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-
+            }
+            // Device Selection
+            VStack(alignment: .leading, spacing: 4) {
                 Text(localizable: .device)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.caption)
                     .foregroundColor(.secondary)
-
+                // SwiftUI `Picker(.menu)` sometimes renders centered on first load in MenuBarExtra.
+                // A custom `Menu` avoids the initial layout glitch while keeping the same UX.
                 Menu {
                     ForEach(viewModel.hosts, id: \.self) { host in
                         Button {
@@ -231,21 +186,20 @@ struct MainMenuView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Text(viewModel.selectedHost)
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .lineLimit(1)
                         Spacer()
                         Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.secondary)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
                     .background(
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .fill(Color(NSColor.windowBackgroundColor).opacity(0.55))
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .fill(Color(NSColor.controlBackgroundColor))
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
                             .stroke(Color(NSColor.separatorColor).opacity(0.6), lineWidth: 1)
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -256,132 +210,133 @@ struct MainMenuView: View {
                 .contentShape(Rectangle())
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            MenuSectionCard {
+            .padding(.vertical, 4)
+            
+            // Now Playing Info
+            VStack(alignment: .leading, spacing: 4) {
                 Text(localizable: .nowPlaying)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.caption)
                     .foregroundColor(.secondary)
-                Text(nowPlayingTitle)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .lineLimit(2)
-                    .foregroundStyle(nowPlayingTitle == String.localizable(.noInformation) ? .secondary : .primary)
+                let title = viewModel.currentTitle
+                Text(title.isEmpty ? .localizable(.noInformation) : title)
+                    .bold()
             }
-
-            VStack(spacing: 6) {
-                Button {
-                    Task {
-                        if await viewModel.clearCache() {
-                            showAlert(message: .localizable(.cacheClearedSuccessfully))
-                        } else {
-                            showAlert(message: .localizable(.cacheClearingFailed))
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "trash")
-                            .font(.system(size: 11, weight: .semibold))
-                            .frame(width: 18, height: 18)
-                            .background(Circle().fill(Color(NSColor.quaternaryLabelColor).opacity(0.75)))
-                        Text(localizable: .clearCache)
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        Spacer()
+            .padding(.vertical, 4)
+            
+            // Clear all stored pairing credentials
+            Button {
+                Task {
+                    if await viewModel.clearCache() {
+                        showAlert(message: .localizable(.cacheClearedSuccessfully))
+                    } else {
+                        showAlert(message: .localizable(.cacheClearingFailed))
                     }
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color(NSColor.controlBackgroundColor).opacity(isHoveringClearCache ? 0.7 : 0.4))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Color(NSColor.separatorColor).opacity(0.45), lineWidth: 1)
-                )
-                .onHover { hovering in isHoveringClearCache = hovering }
-
-                Button {
-                    Task {
-                        await viewModel.checkForUpdates()
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 11, weight: .semibold))
-                            .frame(width: 18, height: 18)
-                            .background(Circle().fill(Color.white.opacity(0.15)))
-                        Text(localizable: .checkForUpdates)
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .lineLimit(1)
-                        Spacer()
-                        Text(updateChannelName)
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.white.opacity(0.22))
-                            .clipShape(Capsule())
-                    }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "trash")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 8, height: 8)
+                        .padding(6)
+                        .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
+                    Text(localizable: .clearCache)
+                    Spacer()
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: isHoveringCheckUpdates
-                                    ? [Color(NSColor.systemBlue), Color(NSColor.systemTeal)]
-                                    : [Color(NSColor.systemBlue).opacity(0.9), Color(NSColor.systemTeal).opacity(0.85)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                )
-                .shadow(color: Color(NSColor.systemBlue).opacity(0.25), radius: 6, x: 0, y: 3)
-                .onHover { hovering in isHoveringCheckUpdates = hovering }
-
-                Button {
-                    NSApp.terminate(nil)
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 11, weight: .semibold))
-                            .frame(width: 18, height: 18)
-                            .background(Circle().fill(Color(NSColor.quaternaryLabelColor).opacity(0.75)))
-                        Text(localizable: .quit)
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        Spacer()
-                        Text(localizable: .q)
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color(NSColor.controlBackgroundColor).opacity(isHoveringQuit ? 0.7 : 0.4))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Color(NSColor.separatorColor).opacity(0.45), lineWidth: 1)
-                )
-                .onHover { hovering in isHoveringQuit = hovering }
             }
+            .buttonStyle(PlainButtonStyle())
+            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 2)
+            .onHover { hovering in isHoveringClearCache = hovering }
+            .background(isHoveringClearCache ? Color(NSColor.selectedControlColor).opacity(0.2) : Color.clear)
+            .cornerRadius(4)
+            
+            Button {
+                Task {
+                    await viewModel.checkForUpdates()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 10, height: 10)
+                        .padding(6)
+                        .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
+                    Text(localizable: .checkForUpdates)
+                        .font(.system(size: 12, weight: .semibold))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .minimumScaleFactor(0.85)
+                        .layoutPriority(1)
+                    Spacer()
+                    Text(updateChannelName)
+                        .font(.system(size: 10, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color(NSColor.tertiaryLabelColor).opacity(0.15))
+                        .clipShape(Capsule())
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 2)
+            .onHover { hovering in isHoveringCheckUpdates = hovering }
+            .background(isHoveringCheckUpdates ? Color(NSColor.selectedControlColor).opacity(0.2) : Color.clear)
+            .cornerRadius(4)
+
+            Button {
+                showInfoPopup()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 8, height: 8)
+                        .padding(6)
+                        .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
+                    Text("Info")
+                    Spacer()
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 2)
+            .onHover { hovering in isHoveringInfo = hovering }
+            .background(isHoveringInfo ? Color(NSColor.selectedControlColor).opacity(0.2) : Color.clear)
+            .cornerRadius(4)
+            
+            // Quit application
+            Button {
+                NSApp.terminate(nil)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "xmark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 8, height: 8)
+                        .padding(6)
+                        .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
+                    Text(localizable: .quit)
+                    Spacer()
+                    Text(localizable: .q)
+                        .font(.system(size: 11))
+                        .foregroundColor(.primary.opacity(0.5))
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 2)
+            .onHover { hovering in isHoveringQuit = hovering }
+            .background(isHoveringQuit ? Color(NSColor.selectedControlColor).opacity(0.2) : Color.clear)
+            .cornerRadius(4)
         }
-        .padding(12)
-        .frame(width: 275)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color(NSColor.windowBackgroundColor).opacity(0.96))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color(NSColor.separatorColor).opacity(0.35), lineWidth: 1)
-        )
-        .shadow(color: Color.black.opacity(0.16), radius: 12, x: 0, y: 8)
+        .padding(10)
+        .frame(width: 225)
         .onAppear {
             // Force an additional layout pass. MenuBarExtra can occasionally give menu controls
             // an incorrect initial width until the user interacts with them.
@@ -481,6 +436,41 @@ struct MainMenuView: View {
 
         updatePopupWindow = window
     }
+
+    private func showInfoPopup() {
+        if let window = infoPopupWindow {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let popup = InfoPopupView(
+            appName: .localizable(.appName),
+            version: appVersion,
+            build: appBuild,
+            device: viewModel.selectedHost,
+            updater: updateChannelName,
+            bundleIdentifier: bundleIdentifier,
+            onCopyCommand: {
+                self.copyHomebrewCommandToClipboard()
+            }
+        )
+
+        let hostingController = NSHostingController(rootView: popup)
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "Applepie Info"
+        window.styleMask = [.titled, .closable]
+        window.isReleasedWhenClosed = false
+        window.level = .floating
+        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isHidden = true
+        window.setContentSize(NSSize(width: 390, height: 220))
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        infoPopupWindow = window
+    }
 }
 
 struct UpdateProgressPopupView: View {
@@ -551,6 +541,54 @@ struct UpdateProgressPopupView: View {
         }
         .padding(14)
         .frame(width: 390, height: 185, alignment: .topLeading)
+    }
+}
+
+struct InfoPopupView: View {
+    let appName: String
+    let version: String
+    let build: String
+    let device: String
+    let updater: String
+    let bundleIdentifier: String
+    let onCopyCommand: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(appName)
+                .font(.headline)
+
+            infoRow("Version", value: version)
+            infoRow("Build", value: build)
+            infoRow("Device", value: device)
+            infoRow("Updater", value: updater)
+            infoRow("Bundle ID", value: bundleIdentifier)
+
+            Spacer()
+
+            HStack {
+                Spacer()
+                Button("Copy Homebrew Command", action: onCopyCommand)
+                    .buttonStyle(.bordered)
+            }
+        }
+        .padding(14)
+        .frame(width: 390, height: 220, alignment: .topLeading)
+    }
+
+    @ViewBuilder
+    private func infoRow(_ title: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .frame(width: 64, alignment: .leading)
+            Text(value)
+                .font(.system(size: 12))
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 0)
+        }
     }
 }
 
