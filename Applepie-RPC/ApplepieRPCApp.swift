@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AppKit
+import Darwin
 
 import ModernSlider
 
@@ -454,8 +455,8 @@ struct MainMenuView: View {
             device: viewModel.selectedHost,
             updater: updateChannelName,
             bundleIdentifier: bundleIdentifier,
-            onCopyCommand: {
-                self.copyHomebrewCommandToClipboard()
+            onMoreInfo: {
+                self.openProjectInfoPage()
             }
         )
 
@@ -467,12 +468,19 @@ struct MainMenuView: View {
         window.level = .floating
         window.standardWindowButton(.miniaturizeButton)?.isHidden = true
         window.standardWindowButton(.zoomButton)?.isHidden = true
-        window.setContentSize(NSSize(width: 390, height: 205))
+        window.setContentSize(NSSize(width: 390, height: 320))
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
 
         infoPopupWindow = window
+    }
+
+    private func openProjectInfoPage() {
+        guard let url = URL(string: "https://github.com/Skyline-23/Applepie-RPC") else {
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 }
 
@@ -554,78 +562,109 @@ struct InfoPopupView: View {
     let device: String
     let updater: String
     let bundleIdentifier: String
-    let onCopyCommand: () -> Void
+    let onMoreInfo: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(appName)
-                        .font(.headline)
-                    Text("Version \(version) (\(build))")
-                        .font(.caption)
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(NSColor.windowBackgroundColor),
+                    Color(NSColor.controlBackgroundColor).opacity(0.55)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                Image(systemName: "laptopcomputer")
+                    .font(.system(size: 76, weight: .thin))
+                    .foregroundColor(Color.accentColor.opacity(0.9))
+                    .padding(.top, 6)
+
+                VStack(spacing: 2) {
+                    Text(machineName)
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    Text("\(appName) \(version) (\(build))")
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
 
-                Spacer(minLength: 8)
+                VStack(spacing: 5) {
+                    specRow(title: "Chip", value: chipDescription)
+                    specRow(title: "Memory", value: memoryDescription)
+                    specRow(title: "Device", value: device)
+                    specRow(title: "Updater", value: updater)
+                    specRow(title: "macOS", value: osDescription)
+                }
+                .padding(.top, 2)
 
-                Text(updater)
-                    .font(.system(size: 10, weight: .semibold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color(NSColor.tertiaryLabelColor).opacity(0.16))
-                    .clipShape(Capsule())
-            }
+                Button("More Info...", action: onMoreInfo)
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .padding(.top, 2)
 
-            VStack(spacing: 0) {
-                infoRow("Device", value: device)
-                Divider().opacity(0.35)
-                infoRow("Updater", value: updater)
-                Divider().opacity(0.35)
-                infoRow("Bundle ID", value: bundleIdentifier)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color(NSColor.controlBackgroundColor))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Color(NSColor.separatorColor).opacity(0.5), lineWidth: 1)
-            )
-
-            HStack(spacing: 8) {
-                Button("Copy Homebrew Command", action: onCopyCommand)
-                    .buttonStyle(.borderedProminent)
-                Spacer(minLength: 8)
-                Text("Close with Cmd+W")
+                Text(bundleIdentifier)
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .padding(.top, 2)
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
         }
-        .padding(14)
-        .frame(width: 390, height: 205, alignment: .topLeading)
-        .background(
-            Color(NSColor.windowBackgroundColor)
-                .ignoresSafeArea()
-        )
+        .frame(width: 390, height: 320)
+    }
+
+    private var machineName: String {
+        Host.current().localizedName ?? "My Mac"
+    }
+
+    private var memoryDescription: String {
+        let gigabytes = Int((Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824).rounded())
+        return "\(gigabytes) GB"
+    }
+
+    private var osDescription: String {
+        let os = ProcessInfo.processInfo.operatingSystemVersion
+        return "\(os.majorVersion).\(os.minorVersion).\(os.patchVersion)"
+    }
+
+    private var chipDescription: String {
+        if let brand = Self.sysctlString("machdep.cpu.brand_string"), !brand.isEmpty {
+            return brand
+        }
+        return "Apple Silicon"
     }
 
     @ViewBuilder
-    private func infoRow(_ title: String, value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+    private func specRow(title: String, value: String) -> some View {
+        HStack(spacing: 10) {
             Text(title)
-                .font(.caption)
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.secondary)
-                .frame(width: 66, alignment: .leading)
+                .frame(width: 72, alignment: .trailing)
             Text(value)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 13, weight: .semibold))
                 .lineLimit(1)
                 .truncationMode(.middle)
-            Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.vertical, 6)
+    }
+
+    private static func sysctlString(_ key: String) -> String? {
+        var size: Int = 0
+        guard sysctlbyname(key, nil, &size, nil, 0) == 0, size > 0 else {
+            return nil
+        }
+        var buffer = [CChar](repeating: 0, count: size)
+        guard sysctlbyname(key, &buffer, &size, nil, 0) == 0 else {
+            return nil
+        }
+        return String(cString: buffer)
     }
 }
 
