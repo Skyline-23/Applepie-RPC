@@ -20,7 +20,11 @@ struct PlaybackFetchResult {
     let metadata: PlaybackMetadata?
 }
 
-actor PlaybackFetchAdapter {
+protocol PlaybackFetching: AnyObject {
+    func fetch(host: String) async -> PlaybackFetchResult
+}
+
+actor PlaybackFetchAdapter: PlaybackFetching {
     private var atvService: (any ATVServiceProviding)?
 
     func setATVService(_ service: any ATVServiceProviding) {
@@ -119,7 +123,7 @@ actor PlaybackPollingUseCase {
     func makeStream(
         interval: TimeInterval,
         host: String,
-        fetcher: PlaybackFetchAdapter
+        fetcher: any PlaybackFetching
     ) -> AsyncStream<PlaybackFetchResult> {
         lastConnectedAt = nil
         let pollInterval = max(0.5, interval)

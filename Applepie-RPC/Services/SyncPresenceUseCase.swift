@@ -5,6 +5,12 @@
 
 import Foundation
 
+protocol PlaybackStateStreaming: AnyObject {
+    func makePlaybackStateStream() -> AsyncStream<PlaybackStateSnapshot>
+}
+
+extension NowPlayingService: PlaybackStateStreaming {}
+
 @MainActor
 final class SyncPresenceUseCase {
     private var syncTask: Task<Void, Never>?
@@ -17,7 +23,7 @@ final class SyncPresenceUseCase {
 
     func start(
         discordService: any DiscordServiceProviding,
-        nowPlayingService: NowPlayingService,
+        playbackStateSource: any PlaybackStateStreaming,
         isPaused: @escaping @MainActor () -> Bool
     ) {
         stop(clearPresence: false)
@@ -26,7 +32,7 @@ final class SyncPresenceUseCase {
 
         syncTask = Task { [weak self] in
             guard let self else { return }
-            let stream = nowPlayingService.makePlaybackStateStream()
+            let stream = playbackStateSource.makePlaybackStateStream()
             for await snapshot in stream {
                 if Task.isCancelled { return }
                 await self.consume(snapshot)

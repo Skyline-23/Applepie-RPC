@@ -100,7 +100,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             syncPresenceUseCase.start(
                 discordService: discordService,
-                nowPlayingService: nowPlayingService,
+                playbackStateSource: nowPlayingService,
                 isPaused: { [weak self] in
                     self?.settingsRepository.current.isPaused ?? false
                 }
