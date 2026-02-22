@@ -18,6 +18,32 @@ struct PlayingData: Equatable {
     let duration: Double
 }
 
+struct PlaybackStateSnapshot: Equatable {
+    let playingData: PlayingData?
+    let deviceConnection: ConnectionState
+}
+
+actor PlaybackStateStreamHub {
+    private var continuations: [UUID: AsyncStream<PlaybackStateSnapshot>.Continuation] = [:]
+
+    func add(
+        id: UUID,
+        continuation: AsyncStream<PlaybackStateSnapshot>.Continuation
+    ) {
+        continuations[id] = continuation
+    }
+
+    func remove(id: UUID) {
+        continuations.removeValue(forKey: id)
+    }
+
+    func broadcast(_ snapshot: PlaybackStateSnapshot) {
+        for continuation in continuations.values {
+            continuation.yield(snapshot)
+        }
+    }
+}
+
 /// Encapsulates now-playing fetch logic via AppleScript.
 class NowPlayingService: ObservableObject {
     @Published var playingData: PlayingData?
@@ -26,6 +52,7 @@ class NowPlayingService: ObservableObject {
 
     private let pollingUseCase: PlaybackPollingUseCase
     private let fetchAdapter: PlaybackFetchAdapter
+    private let streamHub = PlaybackStateStreamHub()
     private var pollingTask: Task<Void, Never>?
     @Published private(set) var updateInterval: TimeInterval = 5.0
     private var currentFetchHost: String?
@@ -57,6 +84,40 @@ class NowPlayingService: ObservableObject {
             position: metadata.position,
             duration: metadata.duration
         )
+    }
+
+    private func snapshot() -> PlaybackStateSnapshot {
+        PlaybackStateSnapshot(
+            playingData: playingData,
+            deviceConnection: deviceConnection
+        )
+    }
+
+    private func publishSnapshot() {
+        let currentSnapshot = snapshot()
+        Task {
+            await streamHub.broadcast(currentSnapshot)
+        }
+    }
+
+    func makePlaybackStateStream() -> AsyncStream<PlaybackStateSnapshot> {
+        let id = UUID()
+        let initialSnapshot = snapshot()
+
+        return AsyncStream(
+            PlaybackStateSnapshot.self,
+            bufferingPolicy: .bufferingNewest(1)
+        ) { [streamHub] continuation in
+            Task {
+                await streamHub.add(id: id, continuation: continuation)
+                continuation.yield(initialSnapshot)
+            }
+            continuation.onTermination = { _ in
+                Task {
+                    await streamHub.remove(id: id)
+                }
+            }
+        }
     }
 
     /// Start fetching now-playing data periodically.
@@ -92,6 +153,7 @@ class NowPlayingService: ObservableObject {
                     if self.playingData != newData {
                         self.playingData = newData
                     }
+                    self.publishSnapshot()
                 }
             }
         }
@@ -104,6 +166,7 @@ class NowPlayingService: ObservableObject {
         currentFetchInterval = nil
         deviceConnection = .disconnected
         playingData = nil
+        publishSnapshot()
     }
 
     /// Update the fetch interval & host.
@@ -122,6 +185,7 @@ class NowPlayingService: ObservableObject {
         pollingTask = nil
         currentFetchHost = nil
         currentFetchInterval = nil
+        publishSnapshot()
         start(interval: newInterval, host: newHost)
     }
 

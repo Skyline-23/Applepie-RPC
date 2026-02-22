@@ -10,7 +10,6 @@ import SwiftData
 import MusicKit
 import Combine
 import ApplicationServices
-import Dispatch
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -22,7 +21,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var updaterService: UpdaterService { appContainer.updaterService }
     private var cancellables = Set<AnyCancellable>()
     private let appSettingsService = AppSettingsService()
-    private let presenceCoordinator = DiscordPresenceCoordinator()
+    private let syncPresenceUseCase = SyncPresenceUseCase()
     private let sentryBootstrapService = SentryBootstrapService()
 
     var container: ModelContainer? { appSettingsService.container }
@@ -57,11 +56,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         appSettingsService
             .observeChanges { [weak self] updated, previousPaused in
                 guard let self else { return }
-                self.presenceCoordinator.handlePauseTransition(
-                    isPaused: updated.isPaused,
-                    wasPaused: previousPaused,
-                    discordService: self.discordService
-                )
+                guard updated.isPaused != previousPaused else { return }
+                self.syncPresenceUseCase.handlePauseStateChanged()
             }
             .store(in: &cancellables)
 
@@ -96,12 +92,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             nowPlayingService.setDiscordConnection(discordService.connectionState)
 
-            await discordService.clearActivity(allowStart: true)
-
             // Start periodic fetching in NowPlayingService
             nowPlayingService.start(interval: interval, host: "localhost")
 
-            presenceCoordinator.start(
+            syncPresenceUseCase.start(
                 discordService: discordService,
                 nowPlayingService: nowPlayingService,
                 isPaused: { [weak self] in
@@ -113,14 +107,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         debugLog("[AppDelegate] applicationWillTerminate")
-        presenceCoordinator.stop()
+        syncPresenceUseCase.stop(clearPresence: true)
         nowPlayingService.stop()
-
-        let semaphore = DispatchSemaphore(value: 0)
-        Task {
-            await discordService?.clearActivity(allowStart: false)
-            semaphore.signal()
-        }
-        _ = semaphore.wait(timeout: .now() + 1.0)
     }
 }
