@@ -467,7 +467,7 @@ struct MainMenuView: View {
         window.level = .floating
         window.standardWindowButton(.miniaturizeButton)?.isHidden = true
         window.standardWindowButton(.zoomButton)?.isHidden = true
-        window.setContentSize(NSSize(width: 390, height: 220))
+        window.setContentSize(NSSize(width: 390, height: 205))
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -557,26 +557,59 @@ struct InfoPopupView: View {
     let onCopyCommand: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(appName)
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(appName)
+                        .font(.headline)
+                    Text("Version \(version) (\(build))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
 
-            infoRow("Version", value: version)
-            infoRow("Build", value: build)
-            infoRow("Device", value: device)
-            infoRow("Updater", value: updater)
-            infoRow("Bundle ID", value: bundleIdentifier)
+                Spacer(minLength: 8)
 
-            Spacer()
+                Text(updater)
+                    .font(.system(size: 10, weight: .semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color(NSColor.tertiaryLabelColor).opacity(0.16))
+                    .clipShape(Capsule())
+            }
 
-            HStack {
-                Spacer()
+            VStack(spacing: 0) {
+                infoRow("Device", value: device)
+                Divider().opacity(0.35)
+                infoRow("Updater", value: updater)
+                Divider().opacity(0.35)
+                infoRow("Bundle ID", value: bundleIdentifier)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color(NSColor.controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color(NSColor.separatorColor).opacity(0.5), lineWidth: 1)
+            )
+
+            HStack(spacing: 8) {
                 Button("Copy Homebrew Command", action: onCopyCommand)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
+                Spacer(minLength: 8)
+                Text("Close with Cmd+W")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
         }
         .padding(14)
-        .frame(width: 390, height: 220, alignment: .topLeading)
+        .frame(width: 390, height: 205, alignment: .topLeading)
+        .background(
+            Color(NSColor.windowBackgroundColor)
+                .ignoresSafeArea()
+        )
     }
 
     @ViewBuilder
@@ -585,13 +618,14 @@ struct InfoPopupView: View {
             Text(title)
                 .font(.caption)
                 .foregroundColor(.secondary)
-                .frame(width: 64, alignment: .leading)
+                .frame(width: 66, alignment: .leading)
             Text(value)
-                .font(.system(size: 12))
+                .font(.system(size: 12, weight: .medium))
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 0)
         }
+        .padding(.vertical, 6)
     }
 }
 
