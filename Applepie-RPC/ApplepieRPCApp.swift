@@ -7,7 +7,6 @@
 
 import SwiftUI
 import AppKit
-import Darwin
 
 import ModernSlider
 
@@ -266,18 +265,19 @@ struct MainMenuView: View {
                         .padding(6)
                         .background(Circle().fill(Color(NSColor.quaternaryLabelColor)))
                     Text(localizable: .checkForUpdates)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 11.5, weight: .semibold))
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .allowsTightening(true)
-                        .minimumScaleFactor(0.85)
-                    Spacer(minLength: 6)
+                        .minimumScaleFactor(0.9)
+                        .layoutPriority(2)
+                    Spacer(minLength: 4)
                     Text(updateChannelName)
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 9.5, weight: .semibold))
                         .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: true)
-                        .layoutPriority(1)
-                        .padding(.horizontal, 6)
+                        .allowsTightening(true)
+                        .minimumScaleFactor(0.7)
+                        .padding(.horizontal, 5)
                         .padding(.vertical, 2)
                         .background(Color(NSColor.tertiaryLabelColor).opacity(0.15))
                         .clipShape(Capsule())
@@ -468,7 +468,7 @@ struct MainMenuView: View {
         window.level = .floating
         window.standardWindowButton(.miniaturizeButton)?.isHidden = true
         window.standardWindowButton(.zoomButton)?.isHidden = true
-        window.setContentSize(NSSize(width: 390, height: 320))
+        window.setContentSize(NSSize(width: 390, height: 270))
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -566,105 +566,64 @@ struct InfoPopupView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    Color(NSColor.windowBackgroundColor),
-                    Color(NSColor.controlBackgroundColor).opacity(0.55)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            Color(NSColor.windowBackgroundColor)
+                .ignoresSafeArea()
 
-            VStack(spacing: 12) {
-                Image(systemName: "laptopcomputer")
-                    .font(.system(size: 76, weight: .thin))
-                    .foregroundColor(Color.accentColor.opacity(0.9))
+            VStack(spacing: 10) {
+                Image("MenuBarIcon")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 58, height: 58)
+                    .foregroundStyle(Color.accentColor)
                     .padding(.top, 6)
 
-                VStack(spacing: 2) {
-                    Text(machineName)
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                    Text("\(appName) \(version) (\(build))")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
+                Text("Applepie-RPC")
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
-                VStack(spacing: 5) {
-                    specRow(title: "Chip", value: chipDescription)
-                    specRow(title: "Memory", value: memoryDescription)
-                    specRow(title: "Device", value: device)
-                    specRow(title: "Updater", value: updater)
-                    specRow(title: "macOS", value: osDescription)
+                Text("Version \(version) (\(build))")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                VStack(spacing: 4) {
+                    infoRow(title: "Device", value: device)
+                    infoRow(title: "Updater", value: updater)
                 }
                 .padding(.top, 2)
 
                 Button("More Info...", action: onMoreInfo)
                     .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .padding(.top, 2)
+                    .controlSize(.regular)
+                    .padding(.top, 4)
 
                 Text(bundleIdentifier)
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                    .padding(.top, 2)
+                    .padding(.top, 4)
             }
             .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(.vertical, 14)
         }
-        .frame(width: 390, height: 320)
-    }
-
-    private var machineName: String {
-        Host.current().localizedName ?? "My Mac"
-    }
-
-    private var memoryDescription: String {
-        let gigabytes = Int((Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824).rounded())
-        return "\(gigabytes) GB"
-    }
-
-    private var osDescription: String {
-        let os = ProcessInfo.processInfo.operatingSystemVersion
-        return "\(os.majorVersion).\(os.minorVersion).\(os.patchVersion)"
-    }
-
-    private var chipDescription: String {
-        if let brand = Self.sysctlString("machdep.cpu.brand_string"), !brand.isEmpty {
-            return brand
-        }
-        return "Apple Silicon"
+        .frame(width: 390, height: 270)
     }
 
     @ViewBuilder
-    private func specRow(title: String, value: String) -> some View {
-        HStack(spacing: 10) {
+    private func infoRow(title: String, value: String) -> some View {
+        HStack(spacing: 8) {
             Text(title)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 13, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(width: 72, alignment: .trailing)
+                .frame(width: 62, alignment: .trailing)
             Text(value)
                 .font(.system(size: 13, weight: .semibold))
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-    }
-
-    private static func sysctlString(_ key: String) -> String? {
-        var size: Int = 0
-        guard sysctlbyname(key, nil, &size, nil, 0) == 0, size > 0 else {
-            return nil
-        }
-        var buffer = [CChar](repeating: 0, count: size)
-        guard sysctlbyname(key, &buffer, &size, nil, 0) == 0 else {
-            return nil
-        }
-        return String(cString: buffer)
     }
 }
 
