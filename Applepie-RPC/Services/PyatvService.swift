@@ -382,15 +382,27 @@ actor PyatvService {
         if await isBlocking(atv, host: host, proto: proto, context: "features") {
             return false
         }
-        guard let features = try? await atv.features() else {
+        guard let features = try? await withTimeout(
+            seconds: 3,
+            operation: "features",
+            {
+                try await atv.features()
+            }
+        ) else {
             debugLog("[PyatvService] metadata feature check failed (host=\(host), proto=\(proto))")
             return false
         }
 
         let states: [Pyatv.Const.PyatvFeaturestate] = [.available]
-        let titleAvailable = (try? await features.in_state(
-            states: states,
-            Pyatv.Const.PyatvFeaturename.title
+        let titleAvailable = (try? await withTimeout(
+            seconds: 2,
+            operation: "title_feature_state",
+            {
+                try await features.in_state(
+                    states: states,
+                    Pyatv.Const.PyatvFeaturename.title
+                )
+            }
         )) ?? false
 
         if !titleAvailable {
@@ -429,6 +441,14 @@ actor PyatvService {
             _ proto: Pyatv.Const.PyatvProtocol_,
             config: Pyatv.Interface.BaseconfigInstance
         ) async -> FetchOutcome {
+            func timed<T>(
+                _ operation: String,
+                seconds: Double = 2.5,
+                _ work: @escaping () async throws -> T
+            ) async throws -> T {
+                try await self.withTimeout(seconds: seconds, operation: operation, work)
+            }
+
             var didConnect = false
             let connKey = connectionKey(host: host, proto: proto)
             do {
@@ -488,19 +508,21 @@ actor PyatvService {
                     return .connected(nil)
                 }
 
-                let title = (try await playing.title()) ?? ""
-                let artist = try await playing.artist()
-                let album = try await playing.album()
-                let itunesId = try await playing.itunes_store_identifier()
-                let contentIdentifier = try await playing.content_identifier()
-                let playbackHash = try await playing.hash()
+                let title = (try await timed("title") { try await playing.title() }) ?? ""
+                let artist = try await timed("artist") { try await playing.artist() }
+                let album = try await timed("album") { try await playing.album() }
+                let itunesId = try await timed("itunes_store_identifier") { try await playing.itunes_store_identifier() }
+                let contentIdentifier = try await timed("content_identifier") { try await playing.content_identifier() }
+                let playbackHash = try await timed("playback_hash") { try await playing.hash() }
                 let trackID = itunesId.flatMap { $0 > 0 ? String($0) : nil }
                     ?? normalizeMetadataField(contentIdentifier)
                     ?? normalizeMetadataField(playbackHash)
                 let marker = makeTrackMarker(trackID: trackID, title: title, artist: artist, album: album)
                 let trackChanged = marker.map { didTrackChange(host: host, marker: $0) } ?? false
 
-                let deviceState = try? await playing.device_state()
+                let deviceState = try? await timed("device_state", seconds: 2.0) {
+                    try await playing.device_state()
+                }
                 if let deviceState {
                     debugLog("[PyatvService] device_state=\(deviceState) (host=\(host), proto=\(proto))")
                 } else {
@@ -527,14 +549,30 @@ actor PyatvService {
                     return .connected(nil)
                 }
 
-                var duration = Double((try await playing.total_time()) ?? 0)
-                var position = Double((try await playing.position()) ?? 0)
+                var duration = Double((try await timed("total_time", seconds: 2.0) {
+                    try await playing.total_time()
+                }) ?? 0)
+                var position = Double((try await timed("position", seconds: 2.0) {
+                    try await playing.position()
+                }) ?? 0)
                 if duration == 0 || position == 0 {
-                    if let ref = await playing.objectRef() {
-                        if duration == 0, let rawTotal = try? await ref.total_time.double() {
+                    if let ref = try await timed("playing_object_ref", seconds: 2.0, { await playing.objectRef() }) {
+                        if duration == 0, let rawTotal = try? await timed(
+                            "ref_total_time",
+                            seconds: 2.0,
+                            {
+                                try await ref.total_time.double()
+                            }
+                        ) {
                             duration = rawTotal
                         }
-                        if position == 0, let rawPosition = try? await ref.position.double() {
+                        if position == 0, let rawPosition = try? await timed(
+                            "ref_position",
+                            seconds: 2.0,
+                            {
+                                try await ref.position.double()
+                            }
+                        ) {
                             position = rawPosition
                         }
                     }
