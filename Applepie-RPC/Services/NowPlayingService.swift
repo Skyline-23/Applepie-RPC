@@ -25,12 +25,9 @@ class NowPlayingService: ObservableObject {
     @Published var deviceConnection: ConnectionState = .unknown
     @Published var discordConnection: ConnectionState = .unknown
 
-    private var timerCancellable: AnyCancellable?
+    private var pollingTask: Task<Void, Never>?
     @Published private(set) var updateInterval: TimeInterval = 5.0
-    private var host: String = "localhost"
-    private var isFetching = false
     private var lastDeviceConnectedAt: Date?
-    private var fetchTask: Task<Void, Never>?
     private var currentFetchHost: String?
     private var currentFetchInterval: TimeInterval?
 
@@ -67,7 +64,7 @@ class NowPlayingService: ObservableObject {
     func start(interval: TimeInterval, host: String) {
         if currentFetchHost == host,
            currentFetchInterval == interval,
-           timerCancellable != nil {
+           pollingTask != nil {
             debugLog("[NowPlayingService] Skipping start; already fetching host=\(host) interval=\(interval)s")
             return
         }
@@ -75,65 +72,58 @@ class NowPlayingService: ObservableObject {
         currentFetchHost = host
         currentFetchInterval = interval
         self.updateInterval = interval
-        self.host = host
         self.deviceConnection = .unknown
         self.playingData = nil
         self.lastDeviceConnectedAt = nil
         debugLog("[NowPlayingService] start interval=\(interval)s host=\(host)")
 
-        timerCancellable?.cancel()
-        fetchTask?.cancel()
-        fetchTask = nil
-        isFetching = false
+        pollingTask?.cancel()
+        pollingTask = Task { [weak self] in
+            guard let self else { return }
 
-        timerCancellable = Timer
-            .publish(every: updateInterval, on: .main, in: .common)
-            .autoconnect()
-            .sink { [weak self] _ in
-                guard let self else { return }
-                guard !self.isFetching else { return }
-                self.isFetching = true
+            while !Task.isCancelled {
+                await self.performFetch(host: host)
+                if Task.isCancelled { break }
 
-                self.fetchTask = Task { [weak self] in
-                    guard let self else { return }
-                    defer { self.isFetching = false }
-
-                    let result = await self.fetch(host: host)
-                    if Task.isCancelled { return }
-
-                    let now = Date()
-                    let disconnectGrace = min(max(5.0, self.updateInterval * 1.5), 20.0)
-                    let resolvedConnection: ConnectionState
-
-                    if result.connection == .connected {
-                        self.lastDeviceConnectedAt = now
-                        resolvedConnection = .connected
-                    } else if let last = self.lastDeviceConnectedAt,
-                              now.timeIntervalSince(last) <= disconnectGrace {
-                        resolvedConnection = .connected
-                    } else {
-                        resolvedConnection = result.connection
-                    }
-
-                    await MainActor.run {
-                        self.deviceConnection = resolvedConnection
-                        let newData = self.makePlayingData(from: result)
-                        if self.playingData != newData {
-                            self.playingData = newData
-                        }
-                    }
-                }
+                let sleepSeconds = max(0.5, interval)
+                let sleepNanos = UInt64(sleepSeconds * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: sleepNanos)
             }
+        }
+    }
+
+    private func performFetch(host: String) async {
+        let result = await fetch(host: host)
+        if Task.isCancelled { return }
+
+        let now = Date()
+        let disconnectGrace = min(max(5.0, updateInterval * 1.5), 20.0)
+        let resolvedConnection: ConnectionState
+
+        if result.connection == .connected {
+            lastDeviceConnectedAt = now
+            resolvedConnection = .connected
+        } else if let last = lastDeviceConnectedAt,
+                  now.timeIntervalSince(last) <= disconnectGrace {
+            resolvedConnection = .connected
+        } else {
+            resolvedConnection = result.connection
+        }
+
+        await MainActor.run {
+            self.deviceConnection = resolvedConnection
+            let newData = self.makePlayingData(from: result)
+            if self.playingData != newData {
+                self.playingData = newData
+            }
+        }
     }
     
     func stop() {
-        timerCancellable?.cancel()
-        timerCancellable = nil
-        fetchTask?.cancel()
-        fetchTask = nil
+        pollingTask?.cancel()
+        pollingTask = nil
         currentFetchHost = nil
         currentFetchInterval = nil
-        isFetching = false
         deviceConnection = .disconnected
         lastDeviceConnectedAt = nil
         playingData = nil
@@ -143,7 +133,7 @@ class NowPlayingService: ObservableObject {
     func updateTimer(_ newInterval: TimeInterval, _ newHost: String) {
         if currentFetchHost == newHost,
            currentFetchInterval == newInterval,
-           timerCancellable != nil {
+           pollingTask != nil {
             debugLog("[NowPlayingService] updateTimer no-op host=\(newHost) interval=\(newInterval)s")
             return
         }
@@ -152,11 +142,10 @@ class NowPlayingService: ObservableObject {
         deviceConnection = .unknown
         lastDeviceConnectedAt = nil
         playingData = nil
-        fetchTask?.cancel()
-        fetchTask = nil
+        pollingTask?.cancel()
+        pollingTask = nil
         currentFetchHost = nil
         currentFetchInterval = nil
-        isFetching = false
         start(interval: newInterval, host: newHost)
     }
 
