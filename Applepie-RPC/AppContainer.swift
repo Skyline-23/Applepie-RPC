@@ -48,7 +48,7 @@ final class AppContainer {
             executor: pythonExecutor
         )
 
-        nowPlayingService.setATVService(pyatvService)
+        await nowPlayingService.setATVService(pyatvService)
         playbackControlService.setDiscordService(discordService)
         discordService.setMusicKitEnabled(musicAuthorized)
         discordService.setClearInterval(updateInterval)
