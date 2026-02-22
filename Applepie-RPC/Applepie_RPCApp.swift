@@ -260,7 +260,7 @@ struct MainMenuView: View {
                 .buttonStyle(.plain)
                 .contentShape(Rectangle())
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .onChange(of: selectedHost) { newHost in
+                .onChange(of: selectedHost) { _, newHost in
                     // Only perform switch if the host truly changed
                     guard newHost != previousHost else { return }
                     switchHost(to: newHost)
@@ -604,7 +604,7 @@ struct PINPromptWindow: View {
                 .controlSize(.large)
             }
         }
-        .onChange(of: digits) { newDigits in
+        .onChange(of: digits) { _, newDigits in
             if newDigits.allSatisfy({ $0.count == 1 }) {
                 if let pin = Int(newDigits.joined()) {
                     onComplete(pin)
