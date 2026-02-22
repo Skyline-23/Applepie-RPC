@@ -22,6 +22,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let pythonExecutor = PythonExecutor(threadName: "PylibKitThread")
     private var cancellables = Set<AnyCancellable>()
     private var appSettings: AppSettings?
+    private var lastObservedPausedState: Bool?
     private var presenceUpdateTask: Task<Void, Never>?
     private var activityUpdateTask: Task<Void, Never>?
 
@@ -66,6 +67,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             if let setting = self.appSettings {
                 interval = setting.updateInterval
+                lastObservedPausedState = setting.isPaused
             }
         } catch {
             debugLog("Failed to fetch AppSettings:", error)
@@ -77,7 +79,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] _ in
                 guard let self = self, let context = self.container?.mainContext else { return }
                 if let updated = try? context.fetch(FetchDescriptor<AppSettings>()).first {
+                    let previousPaused = self.lastObservedPausedState ?? false
                     self.appSettings = updated
+                    self.lastObservedPausedState = updated.isPaused
+
+                    if updated.isPaused && updated.isPaused != previousPaused {
+                        self.activityUpdateTask?.cancel()
+                        Task { [weak self] in
+                            await self?.discordService?.clearActivity(allowStart: false)
+                        }
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -170,7 +181,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
                     if shouldClear {
                         let now = Date()
-                        if lastClearedAt == nil || now.timeIntervalSince(lastClearedAt ?? now) >= 15 {
+                        if lastClearedAt == nil || now.timeIntervalSince(lastClearedAt ?? now) >= 3 {
                             await self.discordService?.clearActivity(allowStart: false)
                             lastClearedAt = now
                         }

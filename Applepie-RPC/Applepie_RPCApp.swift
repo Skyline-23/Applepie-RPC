@@ -165,6 +165,11 @@ struct MainMenuView: View {
                         }
                         if self.setting.isPaused {
                             nowPlayingService.stop()
+                            Task {
+                                await (NSApplication.shared.delegate as? AppDelegate)?
+                                    .discordService?
+                                    .clearActivity(allowStart: false)
+                            }
                         } else {
                             nowPlayingService.updateTimer(self.setting.updateInterval, currentHostIP)
                         }
