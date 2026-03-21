@@ -11,9 +11,15 @@ import SwiftData
 final class AppSettings {
     var updateInterval: Double = 3
     var isPaused: Bool = false
+    var includesBetaUpdates: Bool = false
     
-    init(updateInterval: Double = 3, isPaused: Bool = false) {
+    init(
+        updateInterval: Double = 3,
+        isPaused: Bool = false,
+        includesBetaUpdates: Bool = false
+    ) {
         self.updateInterval = updateInterval
         self.isPaused = isPaused
+        self.includesBetaUpdates = includesBetaUpdates
     }
 }

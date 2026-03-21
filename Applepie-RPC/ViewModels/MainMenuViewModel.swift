@@ -15,6 +15,8 @@ final class MainMenuViewModel: ObservableObject {
     @Published private(set) var discordConnection: ConnectionState = .unknown
     @Published private(set) var currentTitle: String = ""
     @Published private(set) var updateChannel: AppUpdateChannel
+    @Published private(set) var updateTrack: AppUpdateTrack
+    @Published private(set) var supportsBetaUpdates: Bool
     @Published private(set) var updateStatusMessage: String = ""
     @Published private(set) var updateLog: [String] = []
     @Published private(set) var lastUpdateSucceeded: Bool?
@@ -56,6 +58,8 @@ final class MainMenuViewModel: ObservableObject {
         )
         self.settings = settingsRepository.current
         self.updateChannel = updaterService.updateChannel
+        self.updateTrack = updaterService.updateTrack
+        self.supportsBetaUpdates = updaterService.supportsBetaUpdates
 
         var resolvedIPs = airPlayBrowser.serviceIPs
         if resolvedIPs[localhostName] == nil {
@@ -93,12 +97,18 @@ final class MainMenuViewModel: ObservableObject {
     }
 
     var updateChannelName: String {
+        let baseName: String
         switch updateChannel {
         case .sparkle:
-            return "Sparkle"
+            baseName = "Sparkle"
         case .homebrew:
-            return "Homebrew"
+            baseName = "Homebrew"
         }
+        return updateTrack == .beta ? "\(baseName) Beta" : baseName
+    }
+
+    var canToggleBetaUpdates: Bool {
+        supportsBetaUpdates
     }
 
     var homebrewUpgradeCommand: String {
@@ -139,6 +149,10 @@ final class MainMenuViewModel: ObservableObject {
     func updateInterval(_ interval: TimeInterval) {
         settingsRepository.setUpdateInterval(interval)
         nowPlayingService.updateTimer(interval, currentHostIPAddress())
+    }
+
+    func setIncludesBetaUpdates(_ includesBetaUpdates: Bool) {
+        settingsRepository.setIncludesBetaUpdates(includesBetaUpdates)
     }
 
     func selectHost(
@@ -266,6 +280,8 @@ final class MainMenuViewModel: ObservableObject {
 
     private func applyUpdaterSnapshot(_ snapshot: UpdaterStateSnapshot) {
         updateChannel = snapshot.updateChannel
+        updateTrack = snapshot.updateTrack
+        supportsBetaUpdates = snapshot.supportsBetaUpdates
         updateStatusMessage = snapshot.updateStatusMessage
         updateLog = snapshot.updateLog
         lastUpdateSucceeded = snapshot.lastUpdateSucceeded

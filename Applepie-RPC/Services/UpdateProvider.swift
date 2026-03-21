@@ -4,11 +4,16 @@
 //
 
 import Foundation
-import Sparkle
+@preconcurrency import Sparkle
 
 enum AppUpdateChannel: Equatable {
     case sparkle
     case homebrew
+}
+
+enum AppUpdateTrack: Equatable {
+    case stable
+    case beta
 }
 
 enum AppUpdateResult: Equatable {
@@ -22,7 +27,10 @@ enum AppUpdateResult: Equatable {
 @MainActor
 protocol UpdateProvider {
     var channel: AppUpdateChannel { get }
+    var updateTrack: AppUpdateTrack { get }
+    var supportsBetaUpdates: Bool { get }
     var homebrewUpgradeCommand: String { get }
+    func setIncludesBetaUpdates(_ enabled: Bool)
 
     func checkForUpdates(
         appendLog: @MainActor @escaping (String) -> Void,
@@ -31,16 +39,27 @@ protocol UpdateProvider {
 }
 
 @MainActor
-final class SparkleUpdateProvider: UpdateProvider {
+final class SparkleUpdateProvider: NSObject, UpdateProvider, SPUUpdaterDelegate {
     let channel: AppUpdateChannel = .sparkle
+    let supportsBetaUpdates = true
     let homebrewUpgradeCommand = "brew upgrade --cask applepie-rpc"
 
-    private let updaterController: SPUStandardUpdaterController
+    private var updaterController: SPUStandardUpdaterController!
+    private var includesBetaUpdates: Bool
 
-    init() {
+    var updateTrack: AppUpdateTrack {
+        includesBetaUpdates ? .beta : .stable
+    }
+
+    private static let betaFeedURLString =
+        "https://raw.githubusercontent.com/Skyline-23/Applepie-RPC/update-feed/beta/appcast.xml"
+
+    init(includesBetaUpdates: Bool = false) {
+        self.includesBetaUpdates = includesBetaUpdates
+        super.init()
         let controller = SPUStandardUpdaterController(
             startingUpdater: true,
-            updaterDelegate: nil,
+            updaterDelegate: self,
             userDriverDelegate: nil
         )
         controller.updater.automaticallyChecksForUpdates = true
@@ -57,12 +76,34 @@ final class SparkleUpdateProvider: UpdateProvider {
         updaterController.updater.checkForUpdates()
         return .sparkleOpened
     }
+
+    func setIncludesBetaUpdates(_ enabled: Bool) {
+        guard includesBetaUpdates != enabled else { return }
+        includesBetaUpdates = enabled
+        updaterController.updater.resetUpdateCycleAfterShortDelay()
+    }
+
+    func feedURLString(for updater: SPUUpdater) -> String? {
+        includesBetaUpdates ? Self.betaFeedURLString : nil
+    }
 }
 
 @MainActor
 final class HomebrewUpdateProvider: UpdateProvider {
     let channel: AppUpdateChannel = .homebrew
-    let homebrewUpgradeCommand = "brew upgrade --cask applepie-rpc"
+    let supportsBetaUpdates = false
+    let homebrewUpgradeCommand: String
+    let updateTrack: AppUpdateTrack
+
+    private let caskName: String
+
+    init(caskName: String = "applepie-rpc") {
+        self.caskName = caskName
+        self.homebrewUpgradeCommand = "brew upgrade --cask \(caskName)"
+        self.updateTrack = caskName == "applepie-rpc-beta" ? .beta : .stable
+    }
+
+    func setIncludesBetaUpdates(_ enabled: Bool) {}
 
     func checkForUpdates(
         appendLog: @MainActor @escaping (String) -> Void,
@@ -74,7 +115,7 @@ final class HomebrewUpdateProvider: UpdateProvider {
             return .homebrewBinaryMissing
         }
 
-        let command = "\(brewPath) update && \(brewPath) upgrade --cask applepie-rpc"
+        let command = "\(brewPath) update && \(brewPath) upgrade --cask \(caskName)"
         setStatus("Updating via Homebrew...")
         appendLog("Using Homebrew: \(brewPath)")
         appendLog("$ \(command)")

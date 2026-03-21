@@ -31,8 +31,10 @@ final class AppContainer {
     ) {
         self.nowPlayingService = nowPlayingService
         self.playbackControlService = PlaybackControlService(nowPlayingService: nowPlayingService)
-        self.updaterService = UpdaterService()
         self.settingsRepository = settingsRepository ?? SwiftDataSettingsRepository()
+        self.updaterService = UpdaterService(
+            includesBetaUpdates: self.settingsRepository.current.includesBetaUpdates
+        )
         self.airPlayBrowser = AirPlayBrowser()
         self.pythonExecutor = pythonExecutor
         self.discordClientID = discordClientID

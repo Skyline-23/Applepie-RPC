@@ -3,6 +3,8 @@ import AppKit
 
 struct UpdaterStateSnapshot: Equatable {
     let updateChannel: AppUpdateChannel
+    let updateTrack: AppUpdateTrack
+    let supportsBetaUpdates: Bool
     let updateStatusMessage: String
     let updateLog: [String]
     let lastUpdateSucceeded: Bool?
@@ -12,9 +14,12 @@ struct UpdaterStateSnapshot: Equatable {
 @MainActor
 final class UpdaterService: ObservableObject {
     typealias UpdateChannel = AppUpdateChannel
+    typealias UpdateTrack = AppUpdateTrack
     typealias UpdateResult = AppUpdateResult
 
     @Published private(set) var updateChannel: UpdateChannel
+    @Published private(set) var updateTrack: UpdateTrack
+    @Published private(set) var supportsBetaUpdates: Bool
     @Published private(set) var updateStatusMessage: String = ""
     @Published private(set) var updateLog: [String] = []
     @Published private(set) var lastUpdateSucceeded: Bool?
@@ -23,10 +28,20 @@ final class UpdaterService: ObservableObject {
     private let provider: any UpdateProvider
     private var continuations: [UUID: AsyncStream<UpdaterStateSnapshot>.Continuation] = [:]
 
-    init(provider: (any UpdateProvider)? = nil) {
-        let resolvedProvider = provider ?? Self.makeDefaultProvider()
+    init(
+        provider: (any UpdateProvider)? = nil,
+        includesBetaUpdates: Bool = false
+    ) {
+        let resolvedProvider = provider ?? Self.makeDefaultProvider(
+            includesBetaUpdates: includesBetaUpdates
+        )
+        if provider != nil, resolvedProvider.supportsBetaUpdates {
+            resolvedProvider.setIncludesBetaUpdates(includesBetaUpdates)
+        }
         self.provider = resolvedProvider
         self.updateChannel = resolvedProvider.channel
+        self.updateTrack = resolvedProvider.updateTrack
+        self.supportsBetaUpdates = resolvedProvider.supportsBetaUpdates
     }
 
     func makeStateStream() -> AsyncStream<UpdaterStateSnapshot> {
@@ -50,6 +65,8 @@ final class UpdaterService: ObservableObject {
     var currentState: UpdaterStateSnapshot {
         UpdaterStateSnapshot(
             updateChannel: updateChannel,
+            updateTrack: updateTrack,
+            supportsBetaUpdates: supportsBetaUpdates,
             updateStatusMessage: updateStatusMessage,
             updateLog: updateLog,
             lastUpdateSucceeded: lastUpdateSucceeded,
@@ -99,6 +116,15 @@ final class UpdaterService: ObservableObject {
         provider.homebrewUpgradeCommand
     }
 
+    func setIncludesBetaUpdates(_ includesBetaUpdates: Bool) {
+        guard supportsBetaUpdates else { return }
+        provider.setIncludesBetaUpdates(includesBetaUpdates)
+        let newTrack = provider.updateTrack
+        guard updateTrack != newTrack else { return }
+        updateTrack = newTrack
+        publishState()
+    }
+
     @discardableResult
     func relaunchApplication() -> Bool {
         guard updateChannel == .homebrew else { return false }
@@ -138,29 +164,42 @@ final class UpdaterService: ObservableObject {
         }
     }
 
-    private static func makeDefaultProvider() -> any UpdateProvider {
-        if isHomebrewManagedInstall() {
-            return HomebrewUpdateProvider()
+    private static func makeDefaultProvider(
+        includesBetaUpdates: Bool
+    ) -> any UpdateProvider {
+        if let homebrewCaskName = resolveHomebrewCaskName() {
+            return HomebrewUpdateProvider(caskName: homebrewCaskName)
         }
-        return SparkleUpdateProvider()
+        return SparkleUpdateProvider(includesBetaUpdates: includesBetaUpdates)
     }
 
     /// Best-effort detection to avoid Homebrew-managed app bundles being modified by Sparkle.
     /// Sparkle self-updates are great for direct installs, but fight with cask-managed upgrades.
-    private static func isHomebrewManagedInstall() -> Bool {
+    private static func resolveHomebrewCaskName() -> String? {
         let resolvedBundlePath = Bundle.main.bundleURL.resolvingSymlinksInPath().path
-        if resolvedBundlePath.contains("/Caskroom/") {
-            return true
+        if resolvedBundlePath.contains("/Caskroom/applepie-rpc-beta/") {
+            return "applepie-rpc-beta"
+        }
+        if resolvedBundlePath.contains("/Caskroom/applepie-rpc/") {
+            return "applepie-rpc"
         }
 
         // If the cask exists, prefer Homebrew as the update authority.
         // This is intentionally conservative; users can still update via Homebrew even if the app
         // was moved to /Applications.
-        let caskName = "applepie-rpc"
         let candidateCaskrooms = [
-            "/opt/homebrew/Caskroom/\(caskName)",
-            "/usr/local/Caskroom/\(caskName)"
+            "applepie-rpc-beta",
+            "applepie-rpc"
         ]
-        return candidateCaskrooms.contains { FileManager.default.fileExists(atPath: $0) }
+        for caskName in candidateCaskrooms {
+            let paths = [
+                "/opt/homebrew/Caskroom/\(caskName)",
+                "/usr/local/Caskroom/\(caskName)"
+            ]
+            if paths.contains(where: { FileManager.default.fileExists(atPath: $0) }) {
+                return caskName
+            }
+        }
+        return nil
     }
 }

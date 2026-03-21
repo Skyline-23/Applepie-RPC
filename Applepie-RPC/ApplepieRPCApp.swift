@@ -251,6 +251,21 @@ struct MainMenuView: View {
             .onHover { hovering in isHoveringClearCache = hovering }
             .background(isHoveringClearCache ? Color(NSColor.selectedControlColor).opacity(0.2) : Color.clear)
             .cornerRadius(4)
+
+            if viewModel.canToggleBetaUpdates {
+                Toggle(isOn: Binding(
+                    get: { viewModel.settings.includesBetaUpdates },
+                    set: { newValue in
+                        viewModel.setIncludesBetaUpdates(newValue)
+                    }
+                )) {
+                    Text(localizable: .includeBetaUpdates)
+                        .font(.system(size: 11.5, weight: .semibold))
+                }
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .padding(.vertical, 2)
+            }
             
             Button {
                 Task {

@@ -62,6 +62,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 if snapshot.updateInterval != previous.updateInterval {
                     self.discordService?.setClearInterval(snapshot.updateInterval)
                 }
+                if snapshot.includesBetaUpdates != previous.includesBetaUpdates {
+                    self.updaterService.setIncludesBetaUpdates(snapshot.includesBetaUpdates)
+                }
                 previous = snapshot
             }
         }

@@ -26,6 +26,7 @@ enum LocalizableKey {
     case checkForUpdates
     case updateViaHomebrew
     case homebrewCommandCopied
+    case includeBetaUpdates
 }
 
 extension LocalizableKey {
@@ -79,6 +80,8 @@ extension LocalizableKey {
             return "Update via Homebrew"
         case .homebrewCommandCopied:
             return "Homebrew command copied"
+        case .includeBetaUpdates:
+            return "Include Beta Updates"
         }
     }
 

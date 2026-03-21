@@ -9,8 +9,13 @@ import SwiftData
 struct AppSettingsSnapshot: Equatable {
     let updateInterval: TimeInterval
     let isPaused: Bool
+    let includesBetaUpdates: Bool
 
-    static let `default` = AppSettingsSnapshot(updateInterval: 3.0, isPaused: false)
+    static let `default` = AppSettingsSnapshot(
+        updateInterval: 3.0,
+        isPaused: false,
+        includesBetaUpdates: false
+    )
 }
 
 @MainActor
@@ -18,6 +23,7 @@ protocol SettingsRepository: AnyObject {
     var current: AppSettingsSnapshot { get }
     func setPaused(_ isPaused: Bool)
     func setUpdateInterval(_ interval: TimeInterval)
+    func setIncludesBetaUpdates(_ includesBetaUpdates: Bool)
     func makeSettingsStream() -> AsyncStream<AppSettingsSnapshot>
 }
 
@@ -59,7 +65,8 @@ final class SwiftDataSettingsRepository: ObservableObject, SettingsRepository {
 
         self.current = AppSettingsSnapshot(
             updateInterval: appSettings.updateInterval,
-            isPaused: appSettings.isPaused
+            isPaused: appSettings.isPaused,
+            includesBetaUpdates: appSettings.includesBetaUpdates
         )
     }
 
@@ -72,6 +79,12 @@ final class SwiftDataSettingsRepository: ObservableObject, SettingsRepository {
     func setUpdateInterval(_ interval: TimeInterval) {
         guard appSettings.updateInterval != interval else { return }
         appSettings.updateInterval = interval
+        publishAndPersist()
+    }
+
+    func setIncludesBetaUpdates(_ includesBetaUpdates: Bool) {
+        guard appSettings.includesBetaUpdates != includesBetaUpdates else { return }
+        appSettings.includesBetaUpdates = includesBetaUpdates
         publishAndPersist()
     }
 
@@ -96,7 +109,8 @@ final class SwiftDataSettingsRepository: ObservableObject, SettingsRepository {
     private func publishAndPersist() {
         let snapshot = AppSettingsSnapshot(
             updateInterval: appSettings.updateInterval,
-            isPaused: appSettings.isPaused
+            isPaused: appSettings.isPaused,
+            includesBetaUpdates: appSettings.includesBetaUpdates
         )
         current = snapshot
         saveChanges()

@@ -137,6 +137,23 @@
         }
       }
     },
+    "Include Beta Updates" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Include Beta Updates"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "베타 업데이트 포함"
+          }
+        }
+      }
+    },
     "Homebrew command copied" : {
       "extractionState" : "manual",
       "localizations" : {
