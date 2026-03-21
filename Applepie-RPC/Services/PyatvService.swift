@@ -90,6 +90,29 @@ actor PyatvService {
         let album: String?
     }
 
+    private struct TimedPushResult {
+        let result: ATVFetchResult
+        let receivedAt: Date
+    }
+
+    private struct PushSession {
+        var continuations: [UUID: AsyncStream<ATVFetchResult>.Continuation] = [:]
+        var supervisorTask: Task<Void, Never>?
+        var generation: UInt64 = 0
+        var atv: Pyatv.Interface.AppletvInstance?
+        var updater: Pyatv.Interface.PushupdaterInstance?
+        var listener: Pyatv.Interface.PushlistenerInstance?
+        var deviceListener: Pyatv.Interface.DevicelistenerInstance?
+        var proto: Pyatv.Const.PyatvProtocol_?
+        var latestResult: TimedPushResult?
+    }
+
+    private enum PushUpdatePayload {
+        case active(ATVProps)
+        case inactive
+        case ignore
+    }
+
     private let executor: PythonExecutor
     private let pyatv: Pyatv.PyatvService
     private let loop: AsyncioLoop
@@ -103,8 +126,11 @@ actor PyatvService {
     private var lastEmittedTrackByHost: [String: TrackMarker] = [:]
     private var lastPlaybackSnapshotByHost: [String: PlaybackTimelineSnapshot] = [:]
     private var nilStateStagnationCountByHost: [String: Int] = [:]
+    private var pushSessions: [String: PushSession] = [:]
     private let configTTL: TimeInterval = 300
     private let connectionTTL: TimeInterval = 120
+    private let pushReconnectDelay: TimeInterval = 2
+    private let pushResultTTL: TimeInterval = 2
 
     /// Factory to create and set up PyatvService.
     static func create(executor: PythonExecutor) async -> PyatvService {
@@ -256,6 +282,62 @@ actor PyatvService {
         }
     }
 
+    private func availableProtocols(
+        for config: Pyatv.Interface.BaseconfigInstance
+    ) async -> [Pyatv.Const.PyatvProtocol_] {
+        guard let services = try? await config.services(), !services.isEmpty else { return [] }
+        var collected: [Pyatv.Const.PyatvProtocol_] = []
+        for service in services {
+            if let proto = try? await service.protocol() {
+                collected.append(proto)
+            }
+        }
+        if !collected.isEmpty {
+            let protos = collected.map { String(describing: $0) }
+            debugLog("[PyatvService] Available protocols:", protos.joined(separator: ", "))
+        }
+        return collected
+    }
+
+    private func deduplicatedProtocolOrder(
+        _ candidates: [Pyatv.Const.PyatvProtocol_],
+        available: [Pyatv.Const.PyatvProtocol_]
+    ) -> [Pyatv.Const.PyatvProtocol_] {
+        var seen = Set<String>()
+        let ordered = candidates.filter { proto in
+            let key = proto.rawValue
+            if seen.contains(key) { return false }
+            seen.insert(key)
+            return true
+        }
+        let filtered = ordered.filter { available.contains($0) }
+        return filtered.isEmpty ? ordered : filtered
+    }
+
+    private func fetchProtocolOrder(
+        host: String,
+        available: [Pyatv.Const.PyatvProtocol_]
+    ) -> [Pyatv.Const.PyatvProtocol_] {
+        var desiredOrder: [Pyatv.Const.PyatvProtocol_] = []
+        if let lastProto = lastSuccessfulProtocol[host] {
+            desiredOrder.append(lastProto)
+        }
+        desiredOrder.append(contentsOf: [.mRP, .companion, .airPlay])
+        return deduplicatedProtocolOrder(desiredOrder, available: available)
+    }
+
+    private func pushProtocolOrder(
+        host: String,
+        available: [Pyatv.Const.PyatvProtocol_]
+    ) -> [Pyatv.Const.PyatvProtocol_] {
+        var desiredOrder: [Pyatv.Const.PyatvProtocol_] = [.mRP]
+        if let lastProto = lastSuccessfulProtocol[host] {
+            desiredOrder.append(lastProto)
+        }
+        desiredOrder.append(contentsOf: [.companion, .airPlay])
+        return deduplicatedProtocolOrder(desiredOrder, available: available)
+    }
+
     private func normalizeMetadataField(_ value: String?) -> String? {
         guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
               !trimmed.isEmpty else {
@@ -374,6 +456,473 @@ actor PyatvService {
         resetNilStateStagnation(host: host)
     }
 
+    private func recentPushResult(host: String) -> ATVFetchResult? {
+        guard let latest = pushSessions[host]?.latestResult else { return nil }
+        guard Date().timeIntervalSince(latest.receivedAt) <= pushResultTTL else { return nil }
+        return latest.result
+    }
+
+    private func hasPushSubscribers(host: String) -> Bool {
+        !(pushSessions[host]?.continuations.isEmpty ?? true)
+    }
+
+    private func hasActivePushConnection(host: String) -> Bool {
+        guard let session = pushSessions[host] else { return false }
+        return session.atv != nil && session.updater != nil
+    }
+
+    private func nextPushGeneration(host: String) -> UInt64 {
+        var session = pushSessions[host] ?? PushSession()
+        session.generation &+= 1
+        let generation = session.generation
+        pushSessions[host] = session
+        return generation
+    }
+
+    private func isCurrentPushGeneration(host: String, generation: UInt64) -> Bool {
+        pushSessions[host]?.generation == generation
+    }
+
+    private func broadcastPushResult(host: String, result: ATVFetchResult) {
+        guard var session = pushSessions[host] else { return }
+        session.latestResult = TimedPushResult(result: result, receivedAt: Date())
+        let continuations = Array(session.continuations.values)
+        pushSessions[host] = session
+        for continuation in continuations {
+            continuation.yield(result)
+        }
+    }
+
+    private func storePushConnection(
+        host: String,
+        generation: UInt64,
+        proto: Pyatv.Const.PyatvProtocol_,
+        atv: Pyatv.Interface.AppletvInstance,
+        updater: Pyatv.Interface.PushupdaterInstance,
+        listener: Pyatv.Interface.PushlistenerInstance,
+        deviceListener: Pyatv.Interface.DevicelistenerInstance
+    ) {
+        guard var session = pushSessions[host], session.generation == generation else { return }
+        session.proto = proto
+        session.atv = atv
+        session.updater = updater
+        session.listener = listener
+        session.deviceListener = deviceListener
+        pushSessions[host] = session
+    }
+
+    private func clearPushConnection(host: String) async {
+        guard var session = pushSessions[host] else { return }
+        let updater = session.updater
+        let atv = session.atv
+        session.proto = nil
+        session.updater = nil
+        session.atv = nil
+        session.listener = nil
+        session.deviceListener = nil
+        pushSessions[host] = session
+        try? await updater?.stop()
+        _ = try? await atv?.close()
+    }
+
+    private func stopPushSession(host: String) async {
+        guard let session = pushSessions.removeValue(forKey: host) else { return }
+        session.supervisorTask?.cancel()
+        try? await session.updater?.stop()
+        _ = try? await session.atv?.close()
+    }
+
+    private func finalizePushSupervisor(host: String) {
+        guard var session = pushSessions[host] else { return }
+        session.supervisorTask = nil
+        if session.continuations.isEmpty {
+            pushSessions.removeValue(forKey: host)
+        } else {
+            pushSessions[host] = session
+        }
+    }
+
+    private func ensurePushSupervisor(host: String) {
+        var session = pushSessions[host] ?? PushSession()
+        guard session.supervisorTask == nil else {
+            pushSessions[host] = session
+            return
+        }
+        session.supervisorTask = Task { [host] in
+            await self.runPushSupervisor(host: host)
+        }
+        pushSessions[host] = session
+    }
+
+    private func runPushSupervisor(host: String) async {
+        defer { finalizePushSupervisor(host: host) }
+
+        while hasPushSubscribers(host: host) && !Task.isCancelled {
+            if hasActivePushConnection(host: host) {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                continue
+            }
+
+            await establishPushSession(host: host)
+
+            if hasActivePushConnection(host: host) {
+                continue
+            }
+
+            try? await Task.sleep(
+                nanoseconds: UInt64(pushReconnectDelay * 1_000_000_000)
+            )
+        }
+
+        if pushSessions[host] != nil {
+            await clearPushConnection(host: host)
+        }
+    }
+
+    private func addPushSubscriber(
+        host: String,
+        id: UUID,
+        continuation: AsyncStream<ATVFetchResult>.Continuation
+    ) {
+        var session = pushSessions[host] ?? PushSession()
+        session.continuations[id] = continuation
+        let latest = session.latestResult
+        pushSessions[host] = session
+        if let latest {
+            continuation.yield(latest.result)
+        }
+        ensurePushSupervisor(host: host)
+    }
+
+    private func removePushSubscriber(host: String, id: UUID) async {
+        guard var session = pushSessions[host] else { return }
+        session.continuations.removeValue(forKey: id)
+        pushSessions[host] = session
+        if session.continuations.isEmpty {
+            await stopPushSession(host: host)
+        }
+    }
+
+    private func establishPushSession(host: String) async {
+        do {
+            let config = try await withTimeout(seconds: 8, operation: "push_scan") {
+                try await self.scanConfig(host: host)
+            }
+            guard let config else {
+                debugLog("[PyatvService] push scan returned no config (host=\(host))")
+                return
+            }
+
+            let available = await availableProtocols(for: config)
+            for proto in pushProtocolOrder(host: host, available: available) {
+                guard hasPushSubscribers(host: host), !Task.isCancelled else { return }
+
+                do {
+                    debugLog("[PyatvService] starting push updater (host=\(host), proto=\(proto))")
+                    let connected = try await withTimeout(seconds: 8, operation: "push_connect") {
+                        try await self.pyatv.connect(
+                            config: config,
+                            loop: self.loop,
+                            protocol_: proto,
+                            storage: self.storage
+                        )
+                    }
+                    guard let atv = connected else {
+                        debugLog("[PyatvService] push connect returned nil (host=\(host), proto=\(proto))")
+                        continue
+                    }
+
+                    if await isBlocking(atv, host: host, proto: proto, context: "push_preflight") {
+                        _ = try? await atv.close()
+                        continue
+                    }
+
+                    guard let updater = try await withTimeout(seconds: 3, operation: "push_updater", {
+                        try await atv.push_updater()
+                    }) else {
+                        debugLog("[PyatvService] push updater unavailable (host=\(host), proto=\(proto))")
+                        _ = try? await atv.close()
+                        continue
+                    }
+
+                    let generation = nextPushGeneration(host: host)
+                    let listener = try await Pyatv.Interface.PushlistenerInstance.create(executor: executor)
+                    let deviceListener = try await Pyatv.Interface.DevicelistenerInstance.create(executor: executor)
+
+                    guard
+                        let listenerRef = await listener.objectRef(),
+                        let deviceListenerRef = await deviceListener.objectRef()
+                    else {
+                        _ = try? await updater.stop()
+                        _ = try? await atv.close()
+                        debugLog("[PyatvService] push listener ref unavailable (host=\(host), proto=\(proto))")
+                        continue
+                    }
+
+                    let onUpdate = await executor.buildCallable(
+                        names: ["updater", "playstatus"],
+                        callableName: "push_playstatus_update"
+                    ) { [host, generation, proto] (_: Any, playstatus: Pyatv.Interface.PlayingInstance) -> Bool in
+                        Task {
+                            await self.handlePushUpdate(
+                                host: host,
+                                generation: generation,
+                                proto: proto,
+                                playstatus: playstatus
+                            )
+                        }
+                        return true
+                    }
+                    let onError = await executor.buildCallable(
+                        names: ["updater", "exception"],
+                        callableName: "push_playstatus_error"
+                    ) { [host, generation, proto] (_: Any, exception: Any) -> Bool in
+                        Task {
+                            await self.handlePushError(
+                                host: host,
+                                generation: generation,
+                                proto: proto,
+                                exception: exception
+                            )
+                        }
+                        return true
+                    }
+                    let onConnectionLost = await executor.buildCallable(
+                        names: ["exception"],
+                        callableName: "push_connection_lost"
+                    ) { [host, generation, proto] (exception: Any) -> Bool in
+                        Task {
+                            await self.handlePushDisconnect(
+                                host: host,
+                                generation: generation,
+                                proto: proto,
+                                reason: "connection_lost",
+                                details: String(describing: exception)
+                            )
+                        }
+                        return true
+                    }
+                    let onConnectionClosed = await executor.buildCallable(
+                        callableName: "push_connection_closed"
+                    ) { [host, generation, proto] () -> Bool in
+                        Task {
+                            await self.handlePushDisconnect(
+                                host: host,
+                                generation: generation,
+                                proto: proto,
+                                reason: "connection_closed",
+                                details: nil
+                            )
+                        }
+                        return true
+                    }
+
+                    try await listenerRef.playstatus_update.setValue(onUpdate)
+                    try await listenerRef.playstatus_error.setValue(onError)
+                    try await deviceListenerRef.connection_lost.setValue(onConnectionLost)
+                    try await deviceListenerRef.connection_closed.setValue(onConnectionClosed)
+                    try await updater.set_listener(target: listenerRef)
+                    try await atv.set_listener(target: deviceListenerRef)
+
+                    storePushConnection(
+                        host: host,
+                        generation: generation,
+                        proto: proto,
+                        atv: atv,
+                        updater: updater,
+                        listener: listener,
+                        deviceListener: deviceListener
+                    )
+
+                    try await withTimeout(seconds: 3, operation: "push_start") {
+                        try await updater.start(initial_delay: 0)
+                    }
+                    debugLog("[PyatvService] push updater started (host=\(host), proto=\(proto))")
+                    return
+                } catch let timeout as TimeoutError {
+                    debugLog("[PyatvService] \(timeout.operation) timed out after \(timeout.seconds)s (host=\(host), proto=\(proto))")
+                    await clearPushConnection(host: host)
+                } catch {
+                    debugLog("[PyatvService] push setup failed (host=\(host), proto=\(proto)): \(error)")
+                    await clearPushConnection(host: host)
+                }
+            }
+        } catch let timeout as TimeoutError {
+            debugLog("[PyatvService] \(timeout.operation) timed out after \(timeout.seconds)s (host=\(host))")
+        } catch {
+            debugLog("[PyatvService] push setup failed (host=\(host)): \(error)")
+        }
+    }
+
+    private func decodePushUpdate(
+        host: String,
+        proto: Pyatv.Const.PyatvProtocol_,
+        playing: Pyatv.Interface.PlayingInstance
+    ) async -> PushUpdatePayload {
+        func timed<T>(
+            _ operation: String,
+            seconds: Double = 2.0,
+            _ work: @escaping () async throws -> T
+        ) async throws -> T {
+            try await self.withTimeout(seconds: seconds, operation: operation, work)
+        }
+
+        do {
+            let title = (try await timed("push_title") { try await playing.title() }) ?? ""
+            let artist = try await timed("push_artist") { try await playing.artist() }
+            let album = try await timed("push_album") { try await playing.album() }
+            let deviceState = try? await timed("push_device_state") {
+                try await playing.device_state()
+            }
+
+            if let deviceState,
+               deviceState != .playing && deviceState != .seeking {
+                debugLog("[PyatvService] push reported inactive state=\(deviceState) (host=\(host), proto=\(proto))")
+                return .inactive
+            }
+
+            let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedTitle.isEmpty else {
+                return .inactive
+            }
+
+            let itunesId = try await timed("push_itunes_store_identifier") {
+                try await playing.itunes_store_identifier()
+            }
+            let contentIdentifier = try await timed("push_content_identifier") {
+                try await playing.content_identifier()
+            }
+            let playbackHash = try await timed("push_playback_hash") {
+                try await playing.hash()
+            }
+            let trackID = itunesId.flatMap { $0 > 0 ? String($0) : nil }
+                ?? normalizeMetadataField(contentIdentifier)
+                ?? normalizeMetadataField(playbackHash)
+
+            var duration = Double((try await timed("push_total_time") {
+                try await playing.total_time()
+            }) ?? 0)
+            var position = Double((try await timed("push_position") {
+                try await playing.position()
+            }) ?? 0)
+            if duration == 0 || position == 0 {
+                if let ref = try await timed(
+                    "push_playing_object_ref",
+                    seconds: 2.0,
+                    { await playing.objectRef() }
+                ) {
+                    if duration == 0 {
+                        let rawTotal = try? await timed("push_ref_total_time") {
+                            try await ref.total_time.double()
+                        }
+                        if let rawTotal {
+                            duration = rawTotal
+                        }
+                    }
+                    if position == 0 {
+                        let rawPosition = try? await timed("push_ref_position") {
+                            try await ref.position.double()
+                        }
+                        if let rawPosition {
+                            position = rawPosition
+                        }
+                    }
+                }
+            }
+
+            duration = max(duration, 0)
+            position = max(position, 0)
+
+            let marker = makeTrackMarker(
+                trackID: trackID,
+                title: trimmedTitle,
+                artist: artist,
+                album: album
+            )
+            if let marker {
+                rememberTrack(host: host, marker: marker)
+            }
+            rememberPlaybackSnapshot(host: host, marker: marker, position: position, duration: duration)
+            lastSuccessfulProtocol[host] = proto
+
+            return .active(
+                ATVProps(
+                    trackID: trackID,
+                    title: trimmedTitle,
+                    artist: artist,
+                    album: album,
+                    position: position,
+                    duration: duration
+                )
+            )
+        } catch let timeout as TimeoutError {
+            debugLog("[PyatvService] \(timeout.operation) timed out after \(timeout.seconds)s in push update (host=\(host), proto=\(proto))")
+            return .ignore
+        } catch {
+            debugLog("[PyatvService] failed to decode push update (host=\(host), proto=\(proto)): \(error)")
+            return .ignore
+        }
+    }
+
+    private func handlePushUpdate(
+        host: String,
+        generation: UInt64,
+        proto: Pyatv.Const.PyatvProtocol_,
+        playstatus: Pyatv.Interface.PlayingInstance
+    ) async {
+        guard isCurrentPushGeneration(host: host, generation: generation) else { return }
+
+        switch await decodePushUpdate(host: host, proto: proto, playing: playstatus) {
+        case .active(let props):
+            broadcastPushResult(
+                host: host,
+                result: ATVFetchResult(connection: .connected, data: props)
+            )
+        case .inactive:
+            broadcastPushResult(
+                host: host,
+                result: ATVFetchResult(connection: .connected, data: nil)
+            )
+        case .ignore:
+            break
+        }
+    }
+
+    private func handlePushError(
+        host: String,
+        generation: UInt64,
+        proto: Pyatv.Const.PyatvProtocol_,
+        exception: Any
+    ) async {
+        guard isCurrentPushGeneration(host: host, generation: generation) else { return }
+        debugLog("[PyatvService] push updater error (host=\(host), proto=\(proto)): \(exception)")
+        await clearPushConnection(host: host)
+        broadcastPushResult(
+            host: host,
+            result: ATVFetchResult(connection: .disconnected, data: nil)
+        )
+    }
+
+    private func handlePushDisconnect(
+        host: String,
+        generation: UInt64,
+        proto: Pyatv.Const.PyatvProtocol_,
+        reason: String,
+        details: String?
+    ) async {
+        guard isCurrentPushGeneration(host: host, generation: generation) else { return }
+        if let details {
+            debugLog("[PyatvService] push connection ended (host=\(host), proto=\(proto), reason=\(reason)): \(details)")
+        } else {
+            debugLog("[PyatvService] push connection ended (host=\(host), proto=\(proto), reason=\(reason))")
+        }
+        await clearPushConnection(host: host)
+        broadcastPushResult(
+            host: host,
+            result: ATVFetchResult(connection: .disconnected, data: nil)
+        )
+    }
+
     private func scanConfig(
         host: String,
         protocolType proto: Pyatv.Const.PyatvProtocol_? = nil
@@ -486,21 +1035,6 @@ actor PyatvService {
             case failed
         }
 
-        func availableProtocols(config: Pyatv.Interface.BaseconfigInstance) async -> [Pyatv.Const.PyatvProtocol_] {
-            guard let services = try? await config.services(), !services.isEmpty else { return [] }
-            var collected: [Pyatv.Const.PyatvProtocol_] = []
-            for service in services {
-                if let proto = try? await service.protocol() {
-                    collected.append(proto)
-                }
-            }
-            if !collected.isEmpty {
-                let protos = collected.map { String(describing: $0) }
-                debugLog("[PyatvService] Available protocols:", protos.joined(separator: ", "))
-            }
-            return collected
-        }
-
         func fetchWithProtocol(
             _ proto: Pyatv.Const.PyatvProtocol_,
             config: Pyatv.Interface.BaseconfigInstance
@@ -533,7 +1067,7 @@ actor PyatvService {
                     }
                     guard let connected else {
                         debugLog("[PyatvService] connect returned nil (host=\(host), proto=\(proto))")
-                        _ = await availableProtocols(config: config)
+                        _ = await availableProtocols(for: config)
                         return .failed
                     }
                     atv = connected
@@ -690,6 +1224,13 @@ actor PyatvService {
         }
 
         do {
+            if hasPushSubscribers(host: host) {
+                ensurePushSupervisor(host: host)
+                if let pushed = recentPushResult(host: host) {
+                    return pushed
+                }
+            }
+
             let config = try await withTimeout(seconds: 8, operation: "scan") {
                 try await self.scanConfig(host: host)
             }
@@ -701,21 +1242,8 @@ actor PyatvService {
             let name = (try? await config.name()) ?? "unknown"
             let identifier = (try? await config.identifier()) ?? "unknown"
             debugLog("[PyatvService] scan result host=\(host) name=\(name) id=\(identifier)")
-            let available = await availableProtocols(config: config)
-            var desiredOrder: [Pyatv.Const.PyatvProtocol_] = []
-            if let lastProto = lastSuccessfulProtocol[host] {
-                desiredOrder.append(lastProto)
-            }
-            desiredOrder.append(contentsOf: [.mRP, .companion, .airPlay])
-            var seen = Set<String>()
-            let ordered = desiredOrder.filter { proto in
-                let key = proto.rawValue
-                if seen.contains(key) { return false }
-                seen.insert(key)
-                return true
-            }
-            let protocolsToTry = ordered.filter { available.contains($0) }
-            let fallbackProtocols = protocolsToTry.isEmpty ? ordered : protocolsToTry
+            let available = await availableProtocols(for: config)
+            let fallbackProtocols = fetchProtocolOrder(host: host, available: available)
             var connected = false
             for proto in fallbackProtocols {
                 let outcome = await fetchWithProtocol(proto, config: config)
@@ -739,6 +1267,29 @@ actor PyatvService {
         } catch {
             debugLog("[PyatvService] Failed to fetch ATV props: \(error)")
             return ATVFetchResult(connection: .disconnected, data: nil)
+        }
+    }
+
+    func makePushStream(host: String) async -> AsyncStream<ATVFetchResult> {
+        AsyncStream(
+            ATVFetchResult.self,
+            bufferingPolicy: .bufferingNewest(1)
+        ) { continuation in
+            let id = UUID()
+
+            Task {
+                self.addPushSubscriber(
+                    host: host,
+                    id: id,
+                    continuation: continuation
+                )
+            }
+
+            continuation.onTermination = { _ in
+                Task {
+                    await self.removePushSubscriber(host: host, id: id)
+                }
+            }
         }
     }
 
@@ -874,6 +1425,10 @@ actor PyatvService {
         lastEmittedTrackByHost.removeAll()
         lastPlaybackSnapshotByHost.removeAll()
         nilStateStagnationCountByHost.removeAll()
+        for host in Array(pushSessions.keys) {
+            await stopPushSession(host: host)
+        }
+        pushSessions.removeAll()
 
         var ok = false
         if let storage {

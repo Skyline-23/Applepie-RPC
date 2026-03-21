@@ -65,6 +65,7 @@ class NowPlayingService: ObservableObject {
     private let fetchAdapter: PlaybackFetchAdapter
     private let streamHub = PlaybackStateStreamHub()
     private var pollingTask: Task<Void, Never>?
+    private var pushTask: Task<Void, Never>?
     @Published private(set) var updateInterval: TimeInterval = 5.0
     private var currentFetchHost: String?
     private var currentFetchInterval: TimeInterval?
@@ -112,6 +113,16 @@ class NowPlayingService: ObservableObject {
         }
     }
 
+    @MainActor
+    private func applyFetchResult(_ result: PlaybackFetchResult) {
+        deviceConnection = result.connection
+        let newData = makePlayingData(from: result)
+        if playingData != newData {
+            playingData = newData
+        }
+        publishSnapshot()
+    }
+
     func makePlaybackStateStream() -> AsyncStream<PlaybackStateSnapshot> {
         let id = UUID()
         let initialSnapshot = snapshot()
@@ -149,6 +160,7 @@ class NowPlayingService: ObservableObject {
         debugLog("[NowPlayingService] start interval=\(interval)s host=\(host)")
 
         pollingTask?.cancel()
+        pushTask?.cancel()
         pollingTask = Task { [weak self] in
             guard let self else { return }
             let stream = await self.pollingUseCase.makeStream(
@@ -160,12 +172,39 @@ class NowPlayingService: ObservableObject {
             for await result in stream {
                 if Task.isCancelled { break }
                 await MainActor.run {
-                    self.deviceConnection = result.connection
-                    let newData = self.makePlayingData(from: result)
-                    if self.playingData != newData {
-                        self.playingData = newData
-                    }
-                    self.publishSnapshot()
+                    self.applyFetchResult(result)
+                }
+            }
+        }
+
+        guard host != "localhost", let atvService else {
+            pushTask = nil
+            return
+        }
+
+        pushTask = Task { [weak self] in
+            guard let self else { return }
+            let stream = await atvService.makePushStream(host: host)
+
+            for await result in stream {
+                if Task.isCancelled { break }
+                await MainActor.run {
+                    guard self.currentFetchHost == host else { return }
+                    self.applyFetchResult(
+                        PlaybackFetchResult(
+                            connection: result.connection,
+                            metadata: result.data.map {
+                                PlaybackMetadata(
+                                    trackID: $0.trackID,
+                                    title: $0.title,
+                                    artist: $0.artist,
+                                    album: $0.album,
+                                    position: $0.position,
+                                    duration: $0.duration
+                                )
+                            }
+                        )
+                    )
                 }
             }
         }
@@ -174,6 +213,8 @@ class NowPlayingService: ObservableObject {
     func stop() {
         pollingTask?.cancel()
         pollingTask = nil
+        pushTask?.cancel()
+        pushTask = nil
         currentFetchHost = nil
         currentFetchInterval = nil
         deviceConnection = .disconnected
@@ -195,6 +236,8 @@ class NowPlayingService: ObservableObject {
         playingData = nil
         pollingTask?.cancel()
         pollingTask = nil
+        pushTask?.cancel()
+        pushTask = nil
         currentFetchHost = nil
         currentFetchInterval = nil
         publishSnapshot()
