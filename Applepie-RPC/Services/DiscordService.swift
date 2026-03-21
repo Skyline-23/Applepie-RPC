@@ -9,6 +9,20 @@ import Foundation
 import PylibKit_Mac
 import MusicKit
 
+struct DiscordActivityPayload: Equatable {
+    let statusDisplayType: Pypresence.Types.PypresenceStatusdisplaytype
+    let state: String
+    let details: String
+    let name: String
+    let start: Int?
+    let end: Int?
+    let largeImage: String
+    let largeText: String?
+    let smallImage: String?
+    let smallText: String?
+    let buttonsPayload: [[String: String]]
+}
+
 class DiscordService {
     private var rpc: Pypresence.Client.ClientInstance?
     private let clientID: String
@@ -126,41 +140,20 @@ class DiscordService {
         let artworkUrl = extras["artworkUrl"]
         let iTunesUrl = extras["iTunesUrl"]
 
-        let details = String(title.prefix(128))
-        let stateSource = (artist?.isEmpty == false) ? artist : "Music.app"
-        let state = String((stateSource ?? "Music.app").prefix(128))
-
-        let largeText: String?
-        if let album, !album.isEmpty {
-            largeText = String(album.prefix(128))
-        } else {
-            largeText = nil
-        }
-
-        var buttonsPayload: [[String: String]] = []
-        if let iTunesUrl, !iTunesUrl.isEmpty {
-            buttonsPayload.append([
-                "label": "Play on Apple Music",
-                "url": iTunesUrl
-            ])
-        } else {
-            let query = "\(title) \(album ?? "")".trimmingCharacters(in: .whitespacesAndNewlines)
-            if !query.isEmpty {
-                let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-                let countryCode = Locale.current.region?.identifier.lowercased() ?? "us"
-                let searchUrl = "https://music.apple.com/\(countryCode)/search?term=\(encoded)"
-                buttonsPayload.append([
-                    "label": "Search on Apple Music",
-                    "url": searchUrl
-                ])
-            }
-        }
-
         let now = Int(Date().timeIntervalSince1970)
         let timing = normalizedPlayback(position: position, duration: duration)
         let start = timing.map { now - $0.pos }
         let end = timing.map { (now - $0.pos) + $0.dur }
-        let activityName = "Apple Music"
+        let activity = Self.makeActivityPayload(
+            title: title,
+            artist: artist,
+            album: album,
+            artworkUrl: artworkUrl,
+            iTunesUrl: iTunesUrl,
+            start: start,
+            end: end,
+            countryCode: Locale.current.region?.identifier.lowercased() ?? "us"
+        )
         let timingLogKey = "\(title)|\(artist ?? "")|\(album ?? "")"
         if now - lastTimingLogAt >= 5 || timingLogKey != lastTimingLogKey {
             debugLog("[DiscordService] timing raw pos=\(position) dur=\(duration) normalized=\(String(describing: timing)) now=\(now) start=\(String(describing: start)) end=\(String(describing: end))")
@@ -173,33 +166,8 @@ class DiscordService {
             guard await activityGate.isCurrent(activityToken) else {
                 return
             }
-            try await withButtonsRef(buttonsPayload) { buttonsRef in
-                if let buttonsRef {
-                    _ = try await rpc.set_activity(
-                        activity_type: .lISTENING,
-                        state: state,
-                        details: details,
-                        name: activityName,
-                        start: start,
-                        end: end,
-                        large_image: artworkUrl ?? "appicon",
-                        large_text: largeText,
-                        buttons: buttonsRef,
-                        instance: false
-                    )
-                } else {
-                    _ = try await rpc.set_activity(
-                        activity_type: .lISTENING,
-                        state: state,
-                        details: details,
-                        name: activityName,
-                        start: start,
-                        end: end,
-                        large_image: artworkUrl ?? "appicon",
-                        large_text: largeText,
-                        instance: false
-                    )
-                }
+            try await withButtonsRef(activity.buttonsPayload) { buttonsRef in
+                try await sendActivity(rpc: rpc, activity: activity, buttonsRef: buttonsRef)
             }
             didSend = true
         } catch {
@@ -210,17 +178,7 @@ class DiscordService {
                     guard await activityGate.isCurrent(activityToken) else {
                         return
                     }
-                    _ = try await rpc.set_activity(
-                        activity_type: .lISTENING,
-                        state: state,
-                        details: details,
-                        name: activityName,
-                        start: start,
-                        end: end,
-                        large_image: artworkUrl ?? "appicon",
-                        large_text: largeText,
-                        instance: false
-                    )
+                    try await sendActivity(rpc: rpc, activity: activity, buttonsRef: nil)
                     didSend = true
                 } catch {
                     debugLog("[DiscordService] Failed to set activity: \(error)")
@@ -234,6 +192,57 @@ class DiscordService {
             lastActivityKey = activityKey
             lastActivitySentAt = nowDate
         }
+    }
+
+    static func makeActivityPayload(
+        title: String,
+        artist: String?,
+        album: String?,
+        artworkUrl: String?,
+        iTunesUrl: String?,
+        start: Int?,
+        end: Int?,
+        countryCode: String
+    ) -> DiscordActivityPayload {
+        let details = String(title.prefix(128))
+        let stateSource = (artist?.isEmpty == false) ? artist : "Music.app"
+        let state = String((stateSource ?? "Music.app").prefix(128))
+        let largeText = album.flatMap { value in
+            value.isEmpty ? nil : String(value.prefix(128))
+        }
+
+        var buttonsPayload: [[String: String]] = []
+        if let iTunesUrl, !iTunesUrl.isEmpty {
+            buttonsPayload.append([
+                "label": "Play on Apple Music",
+                "url": iTunesUrl
+            ])
+        } else {
+            let query = "\(title) \(album ?? "")".trimmingCharacters(in: .whitespacesAndNewlines)
+            if !query.isEmpty {
+                let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+                let searchUrl = "https://music.apple.com/\(countryCode)/search?term=\(encoded)"
+                buttonsPayload.append([
+                    "label": "Search on Apple Music",
+                    "url": searchUrl
+                ])
+            }
+        }
+
+        let hasArtwork = (artworkUrl?.isEmpty == false)
+        return DiscordActivityPayload(
+            statusDisplayType: .dETAILS,
+            state: state,
+            details: details,
+            name: "Apple Music",
+            start: start,
+            end: end,
+            largeImage: hasArtwork ? (artworkUrl ?? "appicon") : "appicon",
+            largeText: largeText,
+            smallImage: hasArtwork ? "appicon" : nil,
+            smallText: hasArtwork ? "Apple Music" : nil,
+            buttonsPayload: buttonsPayload
+        )
     }
 
     private func normalizedPlayback(
@@ -416,6 +425,28 @@ class DiscordService {
             debugLog("[DiscordService] Failed to build buttons payload:", error)
             return try await body(nil)
         }
+    }
+
+    private func sendActivity(
+        rpc: Pypresence.Client.ClientInstance,
+        activity: DiscordActivityPayload,
+        buttonsRef: ObjectRef?
+    ) async throws {
+        _ = try await rpc.set_activity(
+            activity_type: .lISTENING,
+            status_display_type: activity.statusDisplayType,
+            state: activity.state,
+            details: activity.details,
+            name: activity.name,
+            start: activity.start,
+            end: activity.end,
+            large_image: activity.largeImage,
+            large_text: activity.largeText,
+            small_image: activity.smallImage,
+            small_text: activity.smallText,
+            buttons: buttonsRef,
+            instance: false
+        )
     }
 }
 
