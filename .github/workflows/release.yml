@@ -191,7 +191,6 @@ jobs:
           tar -xf "$GITHUB_WORKSPACE/sparkle/Sparkle-2.8.1.tar.xz" -C "$GITHUB_WORKSPACE/sparkle"
 
       - name: Generate Sparkle appcast
-        if: ${{ steps.release_meta.outputs.is_prerelease != 'true' }}
         env:
           SPARKLE_ED25519_PRIVATE_KEY: ${{ secrets.SPARKLE_ED25519_PRIVATE_KEY }}
         run: |
@@ -214,6 +213,44 @@ jobs:
               "$APPCAST_DIR"
 
           mv "$APPCAST_DIR/appcast.xml" "$DIST_DIR/appcast.xml"
+
+      - name: Publish beta appcast feed
+        if: ${{ steps.release_meta.outputs.is_prerelease == 'true' }}
+        env:
+          FEED_BRANCH: update-feed
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          FEED_DIR="${RUNNER_TEMP}/update-feed"
+          REMOTE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          rm -rf "$FEED_DIR"
+          if git clone --depth 1 --branch "$FEED_BRANCH" "$REMOTE_URL" "$FEED_DIR"; then
+            echo "ℹ️ Reusing existing ${FEED_BRANCH} branch."
+          else
+            git init "$FEED_DIR"
+            cd "$FEED_DIR"
+            git checkout --orphan "$FEED_BRANCH"
+            git remote add origin "$REMOTE_URL"
+          fi
+
+          cd "$FEED_DIR"
+          mkdir -p beta
+          cp "${GITHUB_WORKSPACE}/dist/appcast.xml" "beta/appcast.xml"
+
+          git add beta/appcast.xml
+          if git diff --cached --quiet; then
+            echo "ℹ️ Beta feed is already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit \
+            -m "feed: publish beta appcast for ${GITHUB_REF_NAME}" \
+            -m "- Update beta/appcast.xml with the latest prerelease Sparkle feed"
+          git push origin HEAD:"${FEED_BRANCH}"
 
       - name: Generate release notes
         run: |
@@ -243,13 +280,15 @@ jobs:
           prerelease: true
           files: |
             ${{ github.workspace }}/dist/${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg
+            ${{ github.workspace }}/dist/appcast.xml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Homebrew tap cask
-        if: ${{ success() && steps.release_meta.outputs.is_prerelease != 'true' }}
+        if: ${{ success() }}
         env:
           TAG: ${{ github.ref_name }}
+          IS_PRERELEASE: ${{ steps.release_meta.outputs.is_prerelease }}
           TAP_REPO: Skyline-23/homebrew-applepie-rpc
           TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_PAT }}
         run: |
@@ -266,6 +305,17 @@ jobs:
           echo "🔖 Tap cask version: $VERSION"
           echo "🔐 DMG sha256: $DMG_SHA"
 
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            CASK_NAME="applepie-rpc-beta"
+            LIVECHECK_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/update-feed/beta/appcast.xml"
+            CASK_DESC="Beta macOS menu bar app that publishes now-playing info to Discord Rich Presence"
+          else
+            CASK_NAME="applepie-rpc"
+            LIVECHECK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/appcast.xml"
+            CASK_DESC="macOS menu bar app that publishes now-playing info to Discord Rich Presence"
+          fi
+          CASK_PATH="Casks/${CASK_NAME}.rb"
+
           if [ -z "${TAP_TOKEN:-}" ]; then
             echo "❌ HOMEBREW_TAP_PAT is not set."
             echo "   Add a fine-grained token with Contents: Read/Write on ${TAP_REPO}."
@@ -277,42 +327,45 @@ jobs:
           git clone "https://x-access-token:${TAP_TOKEN}@github.com/${TAP_REPO}.git" "$TAP_DIR"
           cd "$TAP_DIR"
 
-          if [ ! -f "Casks/applepie-rpc.rb" ]; then
-            echo "❌ Casks/applepie-rpc.rb not found in ${TAP_REPO}"
-            exit 1
-          fi
-
-          VERSION="$VERSION" DMG_SHA="$DMG_SHA" python - <<'PY'
+          VERSION="$VERSION" DMG_SHA="$DMG_SHA" CASK_NAME="$CASK_NAME" CASK_PATH="$CASK_PATH" LIVECHECK_URL="$LIVECHECK_URL" CASK_DESC="$CASK_DESC" python - <<'PY'
           import os
-          import re
           from pathlib import Path
 
-          path = Path("Casks/applepie-rpc.rb")
-          content = path.read_text()
+          path = Path(os.environ["CASK_PATH"])
           version = os.environ["VERSION"]
           sha = os.environ["DMG_SHA"]
+          cask_name = os.environ["CASK_NAME"]
+          livecheck_url = os.environ["LIVECHECK_URL"]
+          desc = os.environ["CASK_DESC"]
 
-          version_pattern = re.compile(r'^(\s*version\s+")[^"]+("\s*)$', flags=re.M)
-          sha_pattern = re.compile(r'^(\s*sha256\s+")[0-9a-fA-F]+("\s*)$', flags=re.M)
+          content = f'''cask "{cask_name}" do
+            version "{version}"
+            sha256 "{sha}"
 
-          if not version_pattern.search(content):
-              raise SystemExit("❌ Could not locate version line in Casks/applepie-rpc.rb")
-          if not sha_pattern.search(content):
-              raise SystemExit("❌ Could not locate sha256 line in Casks/applepie-rpc.rb")
+            url "https://github.com/Skyline-23/Applepie-RPC/releases/download/v#{{version}}/Applepie-RPC-v#{{version}}.dmg",
+                verified: "github.com/Skyline-23/Applepie-RPC/"
+            name "Applepie-RPC"
+            desc "{desc}"
+            homepage "https://github.com/Skyline-23/Applepie-RPC"
 
-          updated = version_pattern.sub(
-              lambda m: f"{m.group(1)}{version}{m.group(2)}",
-              content,
-          )
-          updated = sha_pattern.sub(
-              lambda m: f"{m.group(1)}{sha}{m.group(2)}",
-              updated,
-          )
+            livecheck do
+              url "{livecheck_url}"
+              strategy :sparkle
+            end
 
-          path.write_text(updated)
+            app "Applepie-RPC.app"
+
+            zap trash: [
+              "~/Library/Application Support/Applepie-RPC",
+              "~/Library/Preferences/com.skyline23.Applepie-RPC.plist",
+            ]
+          end
+          '''
+
+          path.write_text(content)
           PY
 
-          git add Casks/applepie-rpc.rb
+          git add "$CASK_PATH"
           if git diff --cached --quiet; then
             echo "ℹ️ No tap cask changes to commit."
             exit 0
@@ -322,8 +375,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git commit \
-            -m "cask: bump applepie-rpc to v${VERSION}" \
-            -m "- Update Casks/applepie-rpc.rb version and sha256 to match ${TAG}" \
+            -m "cask: bump ${CASK_NAME} to v${VERSION}" \
+            -m "- Update ${CASK_PATH} to match ${TAG}" \
             -m "- Source release: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
 
           git push origin main
