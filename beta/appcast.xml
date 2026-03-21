@@ -1,0 +1,14 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Applepie-RPC</title>
+        <item>
+            <title>0.1.30</title>
+            <pubDate>Sat, 21 Mar 2026 08:43:18 +0000</pubDate>
+            <sparkle:version>0.1.30</sparkle:version>
+            <sparkle:shortVersionString>0.1.30</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/Skyline-23/Applepie-RPC/releases/download/v0.1.30-beta.2/Applepie-RPC-v0.1.30-beta.2.dmg" length="110114018" type="application/octet-stream" sparkle:edSignature="2jEBJzcILSN8qQwhzDOKordLuAe/+Y/cI5pNeJI/XuUgJ5pEpVz9CMRH8gJqgwDGTREh+UmrV8LxRK4uG2CqDA=="/>
+        </item>
+    </channel>
+</rss>
