@@ -177,7 +177,13 @@ class NowPlayingService: ObservableObject {
             }
         }
 
-        guard host != "localhost", let atvService else {
+        guard host != "localhost" else {
+            pushTask = nil
+            return
+        }
+
+        guard let atvService else {
+            debugLog("[NowPlayingService] ATV service not ready; polling only host=\(host)")
             pushTask = nil
             return
         }
@@ -190,6 +196,10 @@ class NowPlayingService: ObservableObject {
                 if Task.isCancelled { break }
                 await MainActor.run {
                     guard self.currentFetchHost == host else { return }
+                    if result.connection == .disconnected {
+                        debugLog("[NowPlayingService] Ignoring transient push disconnect host=\(host)")
+                        return
+                    }
                     self.applyFetchResult(
                         PlaybackFetchResult(
                             connection: result.connection,
@@ -258,19 +268,28 @@ class NowPlayingService: ObservableObject {
     
     /// Begin pairing: shows PIN on Apple TV.
     func pairDeviceBegin(host: String) async -> Bool {
-        guard let service = atvService else { return false }
+        guard let service = atvService else {
+            debugLog("[NowPlayingService] Pair begin requested before ATV service ready host=\(host)")
+            return false
+        }
         return await service.pairDeviceBeginSync(host: host)
     }
 
     /// Finish pairing with entered PIN.
     func pairDeviceFinish(host: String, pin: Int) async -> String? {
-        guard let service = atvService else { return nil }
+        guard let service = atvService else {
+            debugLog("[NowPlayingService] Pair finish requested before ATV service ready host=\(host)")
+            return nil
+        }
         return await service.pairDeviceFinishSync(host: host, pin: pin)
     }
     
     /// Cancel pairing
     func pairDeviceCancel(host: String) async -> Bool {
-        guard let service = atvService else { return false }
+        guard let service = atvService else {
+            debugLog("[NowPlayingService] Pair cancel requested before ATV service ready host=\(host)")
+            return false
+        }
         return await service.cancelPairing(host: host)
     }
     
@@ -279,7 +298,10 @@ class NowPlayingService: ObservableObject {
         if host == "localhost" {
             return false
         }
-        guard let service = atvService else { return false }
+        guard let service = atvService else {
+            debugLog("[NowPlayingService] Pairing check requested before ATV service ready host=\(host)")
+            return false
+        }
         return await service.isPairingNeeded(host: host)
     }
     

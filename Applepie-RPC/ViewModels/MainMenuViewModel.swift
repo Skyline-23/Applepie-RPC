@@ -131,6 +131,10 @@ final class MainMenuViewModel: ObservableObject {
         return lastUpdateSucceeded == true
     }
 
+    var selectedHostIPAddress: String {
+        currentHostIPAddress()
+    }
+
     func setEnabled(_ isEnabled: Bool) {
         let isPaused = !isEnabled
         settingsRepository.setPaused(isPaused)

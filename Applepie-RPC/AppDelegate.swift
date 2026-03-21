@@ -43,8 +43,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             alert.informativeText = .localizable(.permissionRequiredDesc)
             alert.alertStyle = .warning
             alert.runModal()
-            errorLog("[AppDelegate] Accessibility permission not granted; leaving app running.")
-            return
+            errorLog("[AppDelegate] Accessibility permission not granted; continuing startup with limited local integration.")
         }
 
         let interval = settingsRepository.current.updateInterval
@@ -94,8 +93,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             nowPlayingService.setDiscordConnection(discordService.connectionState)
 
-            // Start periodic fetching in NowPlayingService
-            nowPlayingService.start(interval: interval, host: "localhost")
+            let initialHost = mainMenuViewModel.selectedHostIPAddress
+            let initialDeviceName = mainMenuViewModel.selectedHost
+            debugLog("[AppDelegate] Starting playback service for \(initialDeviceName) (host=\(initialHost))")
+            nowPlayingService.start(
+                interval: interval,
+                host: initialHost.isEmpty ? "localhost" : initialHost
+            )
 
             syncPresenceUseCase.start(
                 discordService: discordService,

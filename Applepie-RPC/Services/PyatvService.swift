@@ -95,6 +95,11 @@ actor PyatvService {
         let receivedAt: Date
     }
 
+    private struct PersistedCredentialStore: Codable {
+        var version: Int = 1
+        var credentialsByKey: [String: [String: String]] = [:]
+    }
+
     private struct PushSession {
         var continuations: [UUID: AsyncStream<ATVFetchResult>.Continuation] = [:]
         var supervisorTask: Task<Void, Never>?
@@ -117,8 +122,10 @@ actor PyatvService {
     private let pyatv: Pyatv.PyatvService
     private let loop: AsyncioLoop
     private let storage: Pyatv.Interface.StorageInstance?
-    private let storageURL: URL
+    private let legacyStorageURL: URL
+    private let credentialsURL: URL
     private let shield: Pyatv.Support.Shield.ShieldService
+    private var persistedCredentialStore: PersistedCredentialStore
     private var pairings: [String: PairingSession] = [:]
     private var configCache: [String: CachedConfig] = [:]
     private var connectionCache: [String: CachedConnection] = [:]
@@ -143,15 +150,17 @@ actor PyatvService {
         let appDir = (baseDir ?? URL(fileURLWithPath: NSTemporaryDirectory()))
             .appendingPathComponent("Applepie-RPC", isDirectory: true)
         try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
-        let storageURL = appDir.appendingPathComponent("pyatv_storage.json")
+        let legacyStorageURL = appDir.appendingPathComponent("pyatv_storage.json")
+        let credentialsURL = appDir.appendingPathComponent("pyatv_credentials.json")
+        let persistedCredentialStore = Self.loadPersistedCredentialStore(
+            from: credentialsURL,
+            legacyStorageURL: legacyStorageURL
+        )
         do {
-            let fileStorage = try await Pyatv.Storage.FileStorage.FilestorageInstance.create(
-                executor: executor,
-                filename: storageURL.path,
-                loop: loop
+            let memoryStorage = try await Pyatv.Storage.MemoryStorage.MemorystorageInstance.create(
+                executor: executor
             )
-            try await fileStorage.load()
-            if let ref = await fileStorage.objectRef() {
+            if let ref = await memoryStorage.objectRef() {
                 storage = await Pyatv.Interface.StorageInstance.attach(executor: executor, ref: ref)
             }
         } catch {
@@ -163,8 +172,10 @@ actor PyatvService {
             pyatv: pyatv,
             loop: loop,
             storage: storage,
-            storageURL: storageURL,
-            shield: shield
+            legacyStorageURL: legacyStorageURL,
+            credentialsURL: credentialsURL,
+            shield: shield,
+            persistedCredentialStore: persistedCredentialStore
         )
     }
 
@@ -173,15 +184,92 @@ actor PyatvService {
         pyatv: Pyatv.PyatvService,
         loop: AsyncioLoop,
         storage: Pyatv.Interface.StorageInstance?,
-        storageURL: URL,
-        shield: Pyatv.Support.Shield.ShieldService
+        legacyStorageURL: URL,
+        credentialsURL: URL,
+        shield: Pyatv.Support.Shield.ShieldService,
+        persistedCredentialStore: PersistedCredentialStore
     ) {
         self.executor = executor
         self.pyatv = pyatv
         self.loop = loop
         self.storage = storage
-        self.storageURL = storageURL
+        self.legacyStorageURL = legacyStorageURL
+        self.credentialsURL = credentialsURL
         self.shield = shield
+        self.persistedCredentialStore = persistedCredentialStore
+    }
+
+    private static func normalizeStoreKey(_ rawValue: String?) -> String? {
+        guard let trimmed = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed.lowercased()
+    }
+
+    private static func protocolKey(_ proto: Pyatv.Const.PyatvProtocol_) -> String {
+        proto.rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private static func protocolKey(_ rawValue: String) -> String {
+        rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private static func loadPersistedCredentialStore(
+        from credentialsURL: URL,
+        legacyStorageURL: URL
+    ) -> PersistedCredentialStore {
+        let decoder = JSONDecoder()
+        if let data = try? Data(contentsOf: credentialsURL),
+           let decoded = try? decoder.decode(PersistedCredentialStore.self, from: data) {
+            return decoded
+        }
+
+        let migrated = migrateLegacyCredentialStore(from: legacyStorageURL)
+        if !migrated.credentialsByKey.isEmpty {
+            savePersistedCredentialStore(migrated, to: credentialsURL)
+        }
+        return migrated
+    }
+
+    private static func migrateLegacyCredentialStore(from legacyStorageURL: URL) -> PersistedCredentialStore {
+        guard let data = try? Data(contentsOf: legacyStorageURL),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let devices = root["devices"] as? [[String: Any]] else {
+            return PersistedCredentialStore()
+        }
+
+        var migrated = PersistedCredentialStore()
+        for device in devices {
+            guard let protocols = device["protocols"] as? [String: Any] else { continue }
+            for (rawProtocol, rawEntry) in protocols {
+                guard let entry = rawEntry as? [String: Any],
+                      let credentials = entry["credentials"] as? String,
+                      !credentials.isEmpty else {
+                    continue
+                }
+                guard let key = normalizeStoreKey(entry["identifier"] as? String) else {
+                    continue
+                }
+                migrated.credentialsByKey[key, default: [:]][protocolKey(rawProtocol)] = credentials
+            }
+        }
+        return migrated
+    }
+
+    private static func savePersistedCredentialStore(_ store: PersistedCredentialStore, to url: URL) {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(store)
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try data.write(to: url, options: .atomic)
+        } catch {
+            debugLog("[PyatvService] Failed to save credential store: \(error)")
+        }
     }
 
     private func ensureStorageLoaded() async {
@@ -190,6 +278,95 @@ actor PyatvService {
             try await storage.load()
         } catch {
             debugLog("[PyatvService] Storage load failed: \(error)")
+        }
+    }
+
+    private func credentialLookupKeys(
+        for config: Pyatv.Interface.BaseconfigInstance,
+        host: String
+    ) async -> [String] {
+        var keys: [String] = []
+
+        if let identifier = try? await config.identifier(),
+           let normalized = Self.normalizeStoreKey(identifier) {
+            keys.append(normalized)
+        }
+
+        if let services = try? await config.services() {
+            for service in services {
+                if let identifier = try? await service.identifier(),
+                   let normalized = Self.normalizeStoreKey(identifier) {
+                    keys.append(normalized)
+                }
+            }
+        }
+
+        if let normalizedHost = Self.normalizeStoreKey(host) {
+            keys.append(normalizedHost)
+        }
+
+        var seen = Set<String>()
+        return keys.filter { seen.insert($0).inserted }
+    }
+
+    private func persistedCredentials(
+        for config: Pyatv.Interface.BaseconfigInstance,
+        host: String,
+        proto: Pyatv.Const.PyatvProtocol_
+    ) async -> String? {
+        let keys = await credentialLookupKeys(for: config, host: host)
+        let protoKey = Self.protocolKey(proto)
+
+        for key in keys {
+            if let credentials = persistedCredentialStore.credentialsByKey[key]?[protoKey],
+               !credentials.isEmpty {
+                return credentials
+            }
+        }
+
+        return nil
+    }
+
+    private func applyPersistedCredentials(
+        to config: Pyatv.Interface.BaseconfigInstance,
+        host: String
+    ) async {
+        guard let services = try? await config.services() else { return }
+
+        for service in services {
+            guard let proto = try? await service.protocol() else { continue }
+            guard let credentials = await persistedCredentials(for: config, host: host, proto: proto) else {
+                continue
+            }
+            let applied = (try? await config.set_credentials(protocol_: proto, credentials: credentials)) ?? false
+            if applied {
+                debugLog("[PyatvService] restored persisted credentials (host=\(host), proto=\(proto))")
+            }
+        }
+    }
+
+    private func persistCredentials(
+        _ credentials: String,
+        for config: Pyatv.Interface.BaseconfigInstance,
+        host: String,
+        proto: Pyatv.Const.PyatvProtocol_
+    ) async {
+        let keys = await credentialLookupKeys(for: config, host: host)
+        guard !keys.isEmpty else { return }
+
+        let protoKey = Self.protocolKey(proto)
+        for key in keys {
+            persistedCredentialStore.credentialsByKey[key, default: [:]][protoKey] = credentials
+        }
+        Self.savePersistedCredentialStore(persistedCredentialStore, to: credentialsURL)
+    }
+
+    private func clearPersistedCredentials() {
+        persistedCredentialStore = PersistedCredentialStore()
+        Self.savePersistedCredentialStore(persistedCredentialStore, to: credentialsURL)
+
+        if FileManager.default.fileExists(atPath: legacyStorageURL.path) {
+            try? FileManager.default.removeItem(at: legacyStorageURL)
         }
     }
 
@@ -459,6 +636,7 @@ actor PyatvService {
     private func recentPushResult(host: String) -> ATVFetchResult? {
         guard let latest = pushSessions[host]?.latestResult else { return nil }
         guard Date().timeIntervalSince(latest.receivedAt) <= pushResultTTL else { return nil }
+        guard latest.result.connection == .connected else { return nil }
         return latest.result
     }
 
@@ -929,6 +1107,7 @@ actor PyatvService {
     ) async throws -> Pyatv.Interface.BaseconfigInstance? {
         await ensureStorageLoaded()
         if let cached = cachedConfig(for: host) {
+            await applyPersistedCredentials(to: cached, host: host)
             return cached
         }
         let configs = try await pyatv.scan(
@@ -939,6 +1118,7 @@ actor PyatvService {
             storage: storage
         )
         if let config = configs?.first {
+            await applyPersistedCredentials(to: config, host: host)
             storeConfig(config, host: host)
             return config
         }
@@ -958,33 +1138,36 @@ actor PyatvService {
 
     private func credentialsFromSettings(
         config: Pyatv.Interface.BaseconfigInstance,
+        host: String,
         proto: Pyatv.Const.PyatvProtocol_
     ) async -> String? {
-        guard let storage else { return nil }
-        do {
-            let settings = try await storage.get_settings(config: config)
-            guard let settings else { return nil }
-            guard let jsonRef = try await settings.model_dump_json() else { return nil }
-            let namespace = await executor.makeNamespace(callables: [:])
-            try await namespace.payload.setValue(jsonRef)
-            let jsonString = try await namespace.payload.string()
-            guard let data = jsonString.data(using: .utf8) else { return nil }
-            guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-            guard let protocols = obj["protocols"] as? [String: Any] else { return nil }
-
-            let rawKey = proto.rawValue
-            let candidates = [rawKey, rawKey.lowercased()]
-            for key in candidates {
-                if let entry = protocols[key] as? [String: Any],
-                   let credentials = entry["credentials"] as? String,
-                   !credentials.isEmpty {
-                    return credentials
+        if let storage {
+            do {
+                let settings = try await storage.get_settings(config: config)
+                if let settings,
+                   let jsonRef = try await settings.model_dump_json() {
+                    let namespace = await executor.makeNamespace(callables: [:])
+                    try await namespace.payload.setValue(jsonRef)
+                    let jsonString = try await namespace.payload.string()
+                    if let data = jsonString.data(using: .utf8),
+                       let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let protocols = obj["protocols"] as? [String: Any] {
+                        let rawKey = proto.rawValue
+                        let candidates = [rawKey, rawKey.lowercased()]
+                        for key in candidates {
+                            if let entry = protocols[key] as? [String: Any],
+                               let credentials = entry["credentials"] as? String,
+                               !credentials.isEmpty {
+                                return credentials
+                            }
+                        }
+                    }
                 }
+            } catch {
+                debugLog("[PyatvService] Failed to read credentials: \(error)")
             }
-        } catch {
-            debugLog("[PyatvService] Failed to read credentials: \(error)")
         }
-        return nil
+        return await persistedCredentials(for: config, host: host, proto: proto)
     }
 
     private func canFetchMetadata(
@@ -1355,7 +1538,21 @@ actor PyatvService {
                 try? await storage.save()
             }
 
-            return await credentialsFromSettings(config: session.config, proto: session.proto)
+            guard let credentials = await credentialsFromSettings(
+                config: session.config,
+                host: host,
+                proto: session.proto
+            ) else {
+                return nil
+            }
+            _ = try? await session.config.set_credentials(protocol_: session.proto, credentials: credentials)
+            await persistCredentials(
+                credentials,
+                for: session.config,
+                host: host,
+                proto: session.proto
+            )
+            return credentials
         } catch {
             debugLog("[PyatvService] Pairing finish failed: \(error)")
             return nil
@@ -1368,7 +1565,9 @@ actor PyatvService {
             guard let config = try await scanConfig(host: host) else { return false }
             let proto = await preferredProtocol(for: config)
 
-            if let credentials = await credentialsFromSettings(config: config, proto: proto), !credentials.isEmpty {
+            if let credentials = await credentialsFromSettings(config: config, host: host, proto: proto),
+               !credentials.isEmpty {
+                _ = try? await config.set_credentials(protocol_: proto, credentials: credentials)
                 return false
             }
 
@@ -1388,21 +1587,25 @@ actor PyatvService {
 
     /// Remove cached pairing.
     func removePairing() async -> Bool {
-        guard let storage else { return false }
+        let hadPersistedCredentials = !persistedCredentialStore.credentialsByKey.isEmpty
+        let hadLegacyStorage = FileManager.default.fileExists(atPath: legacyStorageURL.path)
+        var clearedInMemory = false
         do {
-            try await storage.load()
-            let settings = (try await storage.settings()) ?? []
-            var removedAny = false
-            for item in settings {
-                let removed = (try await storage.remove_settings(settings: item)) ?? false
-                removedAny = removedAny || removed
+            if let storage {
+                try await storage.load()
+                let settings = (try await storage.settings()) ?? []
+                for item in settings {
+                    _ = (try await storage.remove_settings(settings: item)) ?? false
+                }
+                try await storage.save()
             }
-            try await storage.save()
-            return true
+            clearedInMemory = true
         } catch {
             debugLog("[PyatvService] Failed to remove pairing: \(error)")
-            return false
         }
+
+        clearPersistedCredentials()
+        return clearedInMemory || hadPersistedCredentials || hadLegacyStorage
     }
 
     /// Clears pairing credentials and drops all in-memory caches/connections.
@@ -1445,22 +1648,13 @@ actor PyatvService {
             }
         }
 
-        // Belt-and-suspenders: reset the storage file to an empty structure so "Clear Cache"
-        // behaves deterministically even if pyatv's storage API fails.
-        do {
-            let payload = "{\"version\": 1, \"devices\": []}\n"
-            try FileManager.default.createDirectory(
-                at: storageURL.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            try payload.write(to: storageURL, atomically: true, encoding: .utf8)
-            ok = true
-            if let storage {
-                try? await storage.load()
-            }
-        } catch {
-            debugLog("[PyatvService] Failed to reset storage file: \(error)")
+        let hadPersistedCredentials = !persistedCredentialStore.credentialsByKey.isEmpty
+        let hadLegacyStorage = FileManager.default.fileExists(atPath: legacyStorageURL.path)
+        clearPersistedCredentials()
+        if let storage {
+            try? await storage.load()
         }
+        ok = ok || hadPersistedCredentials || hadLegacyStorage
 
         return ok
     }

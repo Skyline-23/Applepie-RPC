@@ -110,4 +110,49 @@ struct NowPlayingServicePushTests {
 
         nowPlayingService.stop()
     }
+
+    @Test
+    func ignoresPushDisconnectWhilePollingOwnsRecovery() async {
+        let nowPlayingService = NowPlayingService()
+        let atvService = StubPushATVService(
+            fetchResult: PyatvService.ATVFetchResult(
+                connection: .connected,
+                data: PyatvService.ATVProps(
+                    trackID: "poll-track",
+                    title: "Track From Poll",
+                    artist: "Artist",
+                    album: "Album",
+                    position: 15,
+                    duration: 180
+                )
+            )
+        )
+        await nowPlayingService.setATVService(atvService)
+
+        nowPlayingService.start(interval: 0.5, host: "192.168.0.133")
+
+        let pushSubscriberReady = await waitUntil {
+            await atvService.hasSubscriber()
+        }
+        #expect(pushSubscriberReady)
+
+        let receivedPollingData = await waitUntil(timeout: 1.5) {
+            await MainActor.run {
+                nowPlayingService.deviceConnection == .connected &&
+                nowPlayingService.playingData?.title == "Track From Poll"
+            }
+        }
+        #expect(receivedPollingData)
+
+        await atvService.emit(
+            PyatvService.ATVFetchResult(connection: .disconnected, data: nil)
+        )
+
+        try? await Task.sleep(nanoseconds: 150_000_000)
+
+        #expect(nowPlayingService.deviceConnection == .connected)
+        #expect(nowPlayingService.playingData?.title == "Track From Poll")
+
+        nowPlayingService.stop()
+    }
 }
