@@ -8,6 +8,49 @@
 import Foundation
 import PylibKit_Mac
 
+struct PlaybackTimelineSnapshot: Equatable {
+    let trackID: String?
+    let title: String
+    let artist: String?
+    let album: String?
+    let position: Double
+    let duration: Double
+}
+
+enum PlaybackTransitionHeuristics {
+    static func hasSameMarker(
+        _ lhs: PlaybackTimelineSnapshot,
+        _ rhs: PlaybackTimelineSnapshot
+    ) -> Bool {
+        lhs.trackID == rhs.trackID &&
+        lhs.title == rhs.title &&
+        lhs.artist == rhs.artist &&
+        lhs.album == rhs.album
+    }
+
+    static func shouldDiscardLikelyStaleRemoteSnapshot(
+        previous: PlaybackTimelineSnapshot?,
+        current: PlaybackTimelineSnapshot?
+    ) -> Bool {
+        guard let previous, let current else { return false }
+        guard hasSameMarker(previous, current) else { return false }
+
+        // HomePod sometimes keeps the previous track marker around for one poll
+        // after a remote skip, but the timeline snaps back near the start.
+        let rewoundNearStart =
+            previous.position >= 8 &&
+            current.position <= 3 &&
+            (previous.position - current.position) >= 5
+
+        let durationChanged =
+            previous.duration > 0 &&
+            current.duration > 0 &&
+            abs(previous.duration - current.duration) >= 2
+
+        return rewoundNearStart || durationChanged
+    }
+}
+
 /// Service to fetch Apple TV now-playing info using PylibKit's pyatv bindings.
 actor PyatvService {
     struct ATVProps {
@@ -47,12 +90,6 @@ actor PyatvService {
         let album: String?
     }
 
-    private struct PlaybackSnapshot {
-        let marker: TrackMarker
-        let position: Double
-        let duration: Double
-    }
-
     private let executor: PythonExecutor
     private let pyatv: Pyatv.PyatvService
     private let loop: AsyncioLoop
@@ -64,7 +101,7 @@ actor PyatvService {
     private var connectionCache: [String: CachedConnection] = [:]
     private var lastSuccessfulProtocol: [String: Pyatv.Const.PyatvProtocol_] = [:]
     private var lastEmittedTrackByHost: [String: TrackMarker] = [:]
-    private var lastPlaybackSnapshotByHost: [String: PlaybackSnapshot] = [:]
+    private var lastPlaybackSnapshotByHost: [String: PlaybackTimelineSnapshot] = [:]
     private var nilStateStagnationCountByHost: [String: Int] = [:]
     private let configTTL: TimeInterval = 300
     private let connectionTTL: TimeInterval = 120
@@ -266,11 +303,14 @@ actor PyatvService {
             resetNilStateStagnation(host: host)
             return false
         }
-        guard let previous = lastPlaybackSnapshotByHost[host] else {
+        guard
+            let current = makePlaybackSnapshot(marker: marker, position: position, duration: duration),
+            let previous = lastPlaybackSnapshotByHost[host]
+        else {
             resetNilStateStagnation(host: host)
             return false
         }
-        guard previous.marker == marker else {
+        guard PlaybackTransitionHeuristics.hasSameMarker(previous, current) else {
             resetNilStateStagnation(host: host)
             return false
         }
@@ -292,21 +332,45 @@ actor PyatvService {
         return false
     }
 
+    private func shouldDiscardLikelyStaleRemoteSnapshot(
+        host: String,
+        marker: TrackMarker?,
+        position: Double,
+        duration: Double
+    ) -> Bool {
+        PlaybackTransitionHeuristics.shouldDiscardLikelyStaleRemoteSnapshot(
+            previous: lastPlaybackSnapshotByHost[host],
+            current: makePlaybackSnapshot(marker: marker, position: position, duration: duration)
+        )
+    }
+
+    private func makePlaybackSnapshot(
+        marker: TrackMarker?,
+        position: Double,
+        duration: Double
+    ) -> PlaybackTimelineSnapshot? {
+        guard let marker else { return nil }
+        return PlaybackTimelineSnapshot(
+            trackID: marker.trackID,
+            title: marker.title,
+            artist: marker.artist,
+            album: marker.album,
+            position: position,
+            duration: duration
+        )
+    }
+
     private func rememberPlaybackSnapshot(
         host: String,
         marker: TrackMarker?,
         position: Double,
         duration: Double
     ) {
-        guard let marker else {
+        guard let snapshot = makePlaybackSnapshot(marker: marker, position: position, duration: duration) else {
             resetNilStateStagnation(host: host)
             return
         }
-        lastPlaybackSnapshotByHost[host] = PlaybackSnapshot(
-            marker: marker,
-            position: position,
-            duration: duration
-        )
+        lastPlaybackSnapshotByHost[host] = snapshot
         resetNilStateStagnation(host: host)
     }
 
@@ -579,6 +643,16 @@ actor PyatvService {
                 }
                 duration = max(duration, 0)
                 position = max(position, 0)
+                if shouldDiscardLikelyStaleRemoteSnapshot(
+                    host: host,
+                    marker: marker,
+                    position: position,
+                    duration: duration
+                ) {
+                    debugLog("[PyatvService] discarding likely stale same-track snapshot after remote transition (host=\(host), proto=\(proto))")
+                    await closeConnection(forKey: connKey)
+                    return .connected(nil)
+                }
                 if deviceState == nil,
                    shouldTreatNilStateAsInactive(
                     host: host,
