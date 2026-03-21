@@ -16,7 +16,7 @@ struct DiscordActivityPayload: Equatable {
     let name: String
     let start: Int?
     let end: Int?
-    let largeImage: String
+    let largeImage: String?
     let largeText: String?
     let smallImage: String?
     let smallText: String?
@@ -229,7 +229,6 @@ class DiscordService {
             }
         }
 
-        let hasArtwork = (artworkUrl?.isEmpty == false)
         return DiscordActivityPayload(
             statusDisplayType: .dETAILS,
             state: state,
@@ -237,10 +236,10 @@ class DiscordService {
             name: "Apple Music",
             start: start,
             end: end,
-            largeImage: hasArtwork ? (artworkUrl ?? "appicon") : "appicon",
+            largeImage: artworkUrl,
             largeText: largeText,
-            smallImage: hasArtwork ? "appicon" : nil,
-            smallText: hasArtwork ? "Apple Music" : nil,
+            smallImage: nil,
+            smallText: nil,
             buttonsPayload: buttonsPayload
         )
     }

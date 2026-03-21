@@ -22,8 +22,8 @@ struct DiscordServiceTests {
         #expect(payload.state == "Rick Astley")
         #expect(payload.largeImage == "https://example.com/artwork.jpg")
         #expect(payload.largeText == "Whenever You Need Somebody")
-        #expect(payload.smallImage == "appicon")
-        #expect(payload.smallText == "Apple Music")
+        #expect(payload.smallImage == nil)
+        #expect(payload.smallText == nil)
         #expect(
             payload.buttonsPayload == [[
                 "label": "Play on Apple Music",
@@ -47,7 +47,7 @@ struct DiscordServiceTests {
 
         #expect(payload.statusDisplayType == .dETAILS)
         #expect(payload.state == "Music.app")
-        #expect(payload.largeImage == "appicon")
+        #expect(payload.largeImage == nil)
         #expect(payload.largeText == "Album Name")
         #expect(payload.smallImage == nil)
         #expect(payload.smallText == nil)
