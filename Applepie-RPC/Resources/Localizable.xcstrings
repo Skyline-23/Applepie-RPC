@@ -52,6 +52,9 @@
         }
       }
     },
+    "Applepie-RPC" : {
+
+    },
     "AppName" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -103,23 +106,6 @@
         }
       }
     },
-    "Clear Cache" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear Cache"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "캐시 제거"
-          }
-        }
-      }
-    },
     "Check for Updates" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -137,39 +123,25 @@
         }
       }
     },
-    "Include Beta Updates" : {
+    "Clear Cache" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Include Beta Updates"
+            "value" : "Clear Cache"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "베타 업데이트 포함"
+            "value" : "캐시 제거"
           }
         }
       }
     },
-    "Homebrew command copied" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Homebrew command copied"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Homebrew 명령어 복사됨"
-          }
-        }
-      }
+    "Close" : {
+
     },
     "Confirm" : {
       "extractionState" : "manual",
@@ -184,23 +156,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "확인"
-          }
-        }
-      }
-    },
-    "Update via Homebrew" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Update via Homebrew"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Homebrew로 업데이트"
           }
         }
       }
@@ -221,6 +176,9 @@
           }
         }
       }
+    },
+    "Copy Homebrew Command" : {
+
     },
     "Deny" : {
       "extractionState" : "manual",
@@ -307,23 +265,6 @@
         }
       }
     },
-    "Status" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Status"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "상태"
-          }
-        }
-      }
-    },
     "Enter the 4 PIN numbers on the screen" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -341,6 +282,43 @@
         }
       }
     },
+    "Homebrew command copied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Homebrew command copied"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Homebrew 명령어 복사됨"
+          }
+        }
+      }
+    },
+    "Include Beta Updates" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Include Beta Updates"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "베타 업데이트 포함"
+          }
+        }
+      }
+    },
+    "Info" : {
+
+    },
     "LocalhostName" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -357,6 +335,9 @@
           }
         }
       }
+    },
+    "More Info..." : {
+
     },
     "No Information" : {
       "extractionState" : "manual",
@@ -460,6 +441,26 @@
         }
       }
     },
+    "Relaunch" : {
+
+    },
+    "Status" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "상태"
+          }
+        }
+      }
+    },
     "Update Interval" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -473,6 +474,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "업데이트 주기"
+          }
+        }
+      }
+    },
+    "Update via Homebrew" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update via Homebrew"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Homebrew로 업데이트"
+          }
+        }
+      }
+    },
+    "Updating Applepie" : {
+
+    },
+    "Version %@ (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Version %1$@ (%2$@)"
           }
         }
       }
