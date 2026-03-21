@@ -21,6 +21,24 @@ jobs:
           lfs: true
           fetch-depth: 0
 
+      - name: Derive release metadata
+        id: release_meta
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          BASE_VERSION="${VERSION%%-*}"
+          IS_PRERELEASE=false
+          if [ "$VERSION" != "$BASE_VERSION" ]; then
+            IS_PRERELEASE=true
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "base_version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "BASE_VERSION=$BASE_VERSION" >> "$GITHUB_ENV"
+          echo "IS_PRERELEASE=$IS_PRERELEASE" >> "$GITHUB_ENV"
+
       - name: Set up Python 3.12
         uses: actions/setup-python@v4
         with:
@@ -74,7 +92,6 @@ jobs:
       - name: Build & Archive .app
         run: |
           echo "🔍 CODE_SIGN_IDENTITY is: [$CODE_SIGN_IDENTITY]"
-          VERSION="${GITHUB_REF_NAME#v}"
           xcodebuild archive \
             -scheme "${{ env.APP_SCHEME }}" \
             -skipPackagePluginValidation \
@@ -85,8 +102,8 @@ jobs:
             CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
             PROVISIONING_PROFILE_SPECIFIER="" \
             DEVELOPMENT_TEAM="Q23JLSJCCV" \
-            MARKETING_VERSION="$VERSION" \
-            CURRENT_PROJECT_VERSION="$VERSION" \
+            MARKETING_VERSION="$BASE_VERSION" \
+            CURRENT_PROJECT_VERSION="$BASE_VERSION" \
             SENTRY_DSN="${{ secrets.SENTRY_DSN }}" \
             SENTRY_ENVIRONMENT="production" \
             SWIFT_UPCOMING_FEATURES="AsyncExecutionBehaviorAttributes NonescapableTypes" \
@@ -174,6 +191,7 @@ jobs:
           tar -xf "$GITHUB_WORKSPACE/sparkle/Sparkle-2.8.1.tar.xz" -C "$GITHUB_WORKSPACE/sparkle"
 
       - name: Generate Sparkle appcast
+        if: ${{ steps.release_meta.outputs.is_prerelease != 'true' }}
         env:
           SPARKLE_ED25519_PRIVATE_KEY: ${{ secrets.SPARKLE_ED25519_PRIVATE_KEY }}
         run: |
@@ -203,6 +221,7 @@ jobs:
             > "${{ github.workspace }}/release_notes.md"
 
       - name: Create GitHub Release
+        if: ${{ steps.release_meta.outputs.is_prerelease != 'true' }}
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
@@ -214,8 +233,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create GitHub Pre-release
+        if: ${{ steps.release_meta.outputs.is_prerelease == 'true' }}
+        id: create_prerelease
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          body_path: ${{ github.workspace }}/release_notes.md
+          prerelease: true
+          files: |
+            ${{ github.workspace }}/dist/${{ env.APP_SCHEME }}-${{ github.ref_name }}.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Update Homebrew tap cask
-        if: ${{ success() }}
+        if: ${{ success() && steps.release_meta.outputs.is_prerelease != 'true' }}
         env:
           TAG: ${{ github.ref_name }}
           TAP_REPO: Skyline-23/homebrew-applepie-rpc
