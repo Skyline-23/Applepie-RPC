@@ -51,6 +51,26 @@ enum PlaybackTransitionHeuristics {
     }
 }
 
+enum PushPollingBridge {
+    static func resultForPolling(
+        latestResult: PyatvService.ATVFetchResult?,
+        receivedAt: Date?,
+        hasActiveConnection: Bool,
+        ttl: TimeInterval,
+        now: Date = Date()
+    ) -> PyatvService.ATVFetchResult? {
+        guard let latestResult, let receivedAt else { return nil }
+        guard latestResult.connection == .connected else { return nil }
+
+        if now.timeIntervalSince(receivedAt) <= ttl {
+            return latestResult
+        }
+
+        guard hasActiveConnection else { return nil }
+        return latestResult
+    }
+}
+
 /// Service to fetch Apple TV now-playing info using PylibKit's pyatv bindings.
 actor PyatvService {
     struct ATVProps {
@@ -633,11 +653,24 @@ actor PyatvService {
         resetNilStateStagnation(host: host)
     }
 
-    private func recentPushResult(host: String) -> ATVFetchResult? {
-        guard let latest = pushSessions[host]?.latestResult else { return nil }
-        guard Date().timeIntervalSince(latest.receivedAt) <= pushResultTTL else { return nil }
-        guard latest.result.connection == .connected else { return nil }
-        return latest.result
+    private func bridgedPushResultForPolling(host: String) -> ATVFetchResult? {
+        guard let session = pushSessions[host] else { return nil }
+        guard let latest = session.latestResult else { return nil }
+
+        let bridged = PushPollingBridge.resultForPolling(
+            latestResult: latest.result,
+            receivedAt: latest.receivedAt,
+            hasActiveConnection: hasActivePushConnection(host: host),
+            ttl: pushResultTTL
+        )
+
+        guard let bridged else { return nil }
+
+        if Date().timeIntervalSince(latest.receivedAt) > pushResultTTL {
+            debugLog("[PyatvService] reusing active push snapshot to avoid polling reconnect (host=\(host))")
+        }
+
+        return bridged
     }
 
     private func hasPushSubscribers(host: String) -> Bool {
@@ -1409,7 +1442,7 @@ actor PyatvService {
         do {
             if hasPushSubscribers(host: host) {
                 ensurePushSupervisor(host: host)
-                if let pushed = recentPushResult(host: host) {
+                if let pushed = bridgedPushResultForPolling(host: host) {
                     return pushed
                 }
             }
