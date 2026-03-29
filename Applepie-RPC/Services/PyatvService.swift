@@ -71,6 +71,38 @@ enum PushPollingBridge {
     }
 }
 
+enum MetadataProtocolPolicy {
+    static func shouldAvoidAirPlayMetadata(
+        deviceModel: Pyatv.Const.PyatvDevicemodel?
+    ) -> Bool {
+        switch deviceModel {
+        case .homePod, .homePodMini, .homePodGen2:
+            return true
+        default:
+            return false
+        }
+    }
+
+    static func metadataAvailableProtocols(
+        available: [Pyatv.Const.PyatvProtocol_],
+        deviceModel: Pyatv.Const.PyatvDevicemodel?
+    ) -> [Pyatv.Const.PyatvProtocol_] {
+        guard shouldAvoidAirPlayMetadata(deviceModel: deviceModel) else {
+            return available
+        }
+
+        let nonAirPlay = available.filter { $0 != .airPlay }
+        return nonAirPlay.isEmpty ? available : nonAirPlay
+    }
+
+    static func shouldPreserveConnectionOnSoftFailure(
+        deviceModel: Pyatv.Const.PyatvDevicemodel?,
+        proto: Pyatv.Const.PyatvProtocol_
+    ) -> Bool {
+        shouldAvoidAirPlayMetadata(deviceModel: deviceModel) && proto != .airPlay
+    }
+}
+
 /// Service to fetch Apple TV now-playing info using PylibKit's pyatv bindings.
 actor PyatvService {
     struct ATVProps {
@@ -513,26 +545,43 @@ actor PyatvService {
 
     private func fetchProtocolOrder(
         host: String,
-        available: [Pyatv.Const.PyatvProtocol_]
+        available: [Pyatv.Const.PyatvProtocol_],
+        deviceModel: Pyatv.Const.PyatvDevicemodel?
     ) -> [Pyatv.Const.PyatvProtocol_] {
+        let metadataAvailable = MetadataProtocolPolicy.metadataAvailableProtocols(
+            available: available,
+            deviceModel: deviceModel
+        )
         var desiredOrder: [Pyatv.Const.PyatvProtocol_] = []
         if let lastProto = lastSuccessfulProtocol[host] {
             desiredOrder.append(lastProto)
         }
         desiredOrder.append(contentsOf: [.mRP, .companion, .airPlay])
-        return deduplicatedProtocolOrder(desiredOrder, available: available)
+        return deduplicatedProtocolOrder(desiredOrder, available: metadataAvailable)
     }
 
     private func pushProtocolOrder(
         host: String,
-        available: [Pyatv.Const.PyatvProtocol_]
+        available: [Pyatv.Const.PyatvProtocol_],
+        deviceModel: Pyatv.Const.PyatvDevicemodel?
     ) -> [Pyatv.Const.PyatvProtocol_] {
+        let metadataAvailable = MetadataProtocolPolicy.metadataAvailableProtocols(
+            available: available,
+            deviceModel: deviceModel
+        )
         var desiredOrder: [Pyatv.Const.PyatvProtocol_] = [.mRP]
         if let lastProto = lastSuccessfulProtocol[host] {
             desiredOrder.append(lastProto)
         }
         desiredOrder.append(contentsOf: [.companion, .airPlay])
-        return deduplicatedProtocolOrder(desiredOrder, available: available)
+        return deduplicatedProtocolOrder(desiredOrder, available: metadataAvailable)
+    }
+
+    private func deviceModel(
+        for config: Pyatv.Interface.BaseconfigInstance
+    ) async -> Pyatv.Const.PyatvDevicemodel? {
+        guard let deviceInfo = try? await config.device_info() else { return nil }
+        return try? await deviceInfo.model()
     }
 
     private func normalizeMetadataField(_ value: String?) -> String? {
@@ -825,7 +874,19 @@ actor PyatvService {
             }
 
             let available = await availableProtocols(for: config)
-            for proto in pushProtocolOrder(host: host, available: available) {
+            let deviceModel = await deviceModel(for: config)
+            let metadataAvailable = MetadataProtocolPolicy.metadataAvailableProtocols(
+                available: available,
+                deviceModel: deviceModel
+            )
+            if metadataAvailable != available {
+                debugLog("[PyatvService] avoiding AirPlay metadata sessions for audio accessory (host=\(host), model=\(String(describing: deviceModel)))")
+            }
+            for proto in pushProtocolOrder(
+                host: host,
+                available: available,
+                deviceModel: deviceModel
+            ) {
                 guard hasPushSubscribers(host: host), !Task.isCancelled else { return }
 
                 do {
@@ -1253,7 +1314,8 @@ actor PyatvService {
 
         func fetchWithProtocol(
             _ proto: Pyatv.Const.PyatvProtocol_,
-            config: Pyatv.Interface.BaseconfigInstance
+            config: Pyatv.Interface.BaseconfigInstance,
+            deviceModel: Pyatv.Const.PyatvDevicemodel?
         ) async -> FetchOutcome {
             func timed<T>(
                 _ operation: String,
@@ -1261,6 +1323,18 @@ actor PyatvService {
                 _ work: @escaping () async throws -> T
             ) async throws -> T {
                 try await self.withTimeout(seconds: seconds, operation: operation, work)
+            }
+
+            func handleSoftFailure(_ reason: String) async -> FetchOutcome {
+                if MetadataProtocolPolicy.shouldPreserveConnectionOnSoftFailure(
+                    deviceModel: deviceModel,
+                    proto: proto
+                ) {
+                    debugLog("[PyatvService] preserving connection after soft failure (host=\(host), proto=\(proto), reason=\(reason))")
+                    return .connected(nil)
+                }
+                await closeConnection(forKey: connKey)
+                return .connected(nil)
             }
 
             var didConnect = false
@@ -1306,8 +1380,7 @@ actor PyatvService {
                 }
                 guard let metadata else {
                     debugLog("[PyatvService] metadata is nil (host=\(host), proto=\(proto))")
-                    await closeConnection(forKey: connKey)
-                    return .connected(nil)
+                    return await handleSoftFailure("metadata_nil")
                 }
                 if await isBlocking(atv, host: host, proto: proto, context: "playing") {
                     await closeConnection(forKey: connKey)
@@ -1318,8 +1391,7 @@ actor PyatvService {
                 }
                 guard let playing else {
                     debugLog("[PyatvService] playing is nil (host=\(host), proto=\(proto))")
-                    await closeConnection(forKey: connKey)
-                    return .connected(nil)
+                    return await handleSoftFailure("playing_nil")
                 }
 
                 let title = (try await timed("title") { try await playing.title() }) ?? ""
@@ -1350,8 +1422,7 @@ actor PyatvService {
                         if trackChanged {
                             debugLog("[PyatvService] allowing metadata in non-playing state due to track change (host=\(host), proto=\(proto))")
                         } else {
-                            await closeConnection(forKey: connKey)
-                            return .connected(nil)
+                            return await handleSoftFailure("inactive_device_state")
                         }
                     }
                 }
@@ -1359,8 +1430,7 @@ actor PyatvService {
                 let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
                 if trimmedTitle.isEmpty {
                     debugLog("[PyatvService] title is empty (host=\(host), proto=\(proto))")
-                    await closeConnection(forKey: connKey)
-                    return .connected(nil)
+                    return await handleSoftFailure("empty_title")
                 }
 
                 var duration = Double((try await timed("total_time", seconds: 2.0) {
@@ -1400,8 +1470,7 @@ actor PyatvService {
                     duration: duration
                 ) {
                     debugLog("[PyatvService] discarding likely stale same-track snapshot after remote transition (host=\(host), proto=\(proto))")
-                    await closeConnection(forKey: connKey)
-                    return .connected(nil)
+                    return await handleSoftFailure("likely_stale_snapshot")
                 }
                 if deviceState == nil,
                    shouldTreatNilStateAsInactive(
@@ -1411,8 +1480,7 @@ actor PyatvService {
                     duration: duration
                    ) {
                     debugLog("[PyatvService] treating nil-state stagnant playback as inactive (host=\(host), proto=\(proto))")
-                    await closeConnection(forKey: connKey)
-                    return .connected(nil)
+                    return await handleSoftFailure("nil_state_stagnation")
                 }
                 if let marker {
                     rememberTrack(host: host, marker: marker)
@@ -1430,12 +1498,18 @@ actor PyatvService {
                 ))
             } catch let timeout as TimeoutError {
                 debugLog("[PyatvService] \(timeout.operation) timed out after \(timeout.seconds)s (host=\(host), proto=\(proto))")
+                if didConnect {
+                    return await handleSoftFailure("timeout_\(timeout.operation)")
+                }
                 await closeConnection(forKey: connKey)
-                return didConnect ? .connected(nil) : .failed
+                return .failed
             } catch {
                 debugLog("[PyatvService] fetch failed (host=\(host), proto=\(proto)): \(error)")
+                if didConnect {
+                    return await handleSoftFailure("fetch_error")
+                }
                 await closeConnection(forKey: connKey)
-                return didConnect ? .connected(nil) : .failed
+                return .failed
             }
         }
 
@@ -1459,10 +1533,26 @@ actor PyatvService {
             let identifier = (try? await config.identifier()) ?? "unknown"
             debugLog("[PyatvService] scan result host=\(host) name=\(name) id=\(identifier)")
             let available = await availableProtocols(for: config)
-            let fallbackProtocols = fetchProtocolOrder(host: host, available: available)
+            let deviceModel = await deviceModel(for: config)
+            let metadataAvailable = MetadataProtocolPolicy.metadataAvailableProtocols(
+                available: available,
+                deviceModel: deviceModel
+            )
+            if metadataAvailable != available {
+                debugLog("[PyatvService] avoiding AirPlay metadata sessions for audio accessory (host=\(host), model=\(String(describing: deviceModel)))")
+            }
+            let fallbackProtocols = fetchProtocolOrder(
+                host: host,
+                available: available,
+                deviceModel: deviceModel
+            )
             var connected = false
             for proto in fallbackProtocols {
-                let outcome = await fetchWithProtocol(proto, config: config)
+                let outcome = await fetchWithProtocol(
+                    proto,
+                    config: config,
+                    deviceModel: deviceModel
+                )
                 switch outcome {
                 case .connected(let data):
                     connected = true
