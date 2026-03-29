@@ -45,6 +45,12 @@ brew tap skyline-23/applepie-rpc
 brew install --cask applepie-rpc
 ```
 
+For beta builds:
+
+```bash
+brew install --cask applepie-rpc@beta
+```
+
 To upgrade:
 
 ```bash

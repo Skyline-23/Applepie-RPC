@@ -177,8 +177,8 @@ final class UpdaterService: ObservableObject {
     /// Sparkle self-updates are great for direct installs, but fight with cask-managed upgrades.
     private static func resolveHomebrewCaskName() -> String? {
         let resolvedBundlePath = Bundle.main.bundleURL.resolvingSymlinksInPath().path
-        if resolvedBundlePath.contains("/Caskroom/applepie-rpc-beta/") {
-            return "applepie-rpc-beta"
+        if resolvedBundlePath.contains("/Caskroom/\(HomebrewUpdateProvider.betaCaskName)/") {
+            return HomebrewUpdateProvider.betaCaskName
         }
         if resolvedBundlePath.contains("/Caskroom/applepie-rpc/") {
             return "applepie-rpc"
@@ -188,7 +188,7 @@ final class UpdaterService: ObservableObject {
         // This is intentionally conservative; users can still update via Homebrew even if the app
         // was moved to /Applications.
         let candidateCaskrooms = [
-            "applepie-rpc-beta",
+            HomebrewUpdateProvider.betaCaskName,
             "applepie-rpc"
         ]
         for caskName in candidateCaskrooms {

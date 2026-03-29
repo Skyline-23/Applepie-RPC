@@ -90,6 +90,8 @@ final class SparkleUpdateProvider: NSObject, UpdateProvider, SPUUpdaterDelegate 
 
 @MainActor
 final class HomebrewUpdateProvider: UpdateProvider {
+    static let betaCaskName = "applepie-rpc@beta"
+
     let channel: AppUpdateChannel = .homebrew
     let supportsBetaUpdates = false
     let homebrewUpgradeCommand: String
@@ -99,8 +101,8 @@ final class HomebrewUpdateProvider: UpdateProvider {
 
     init(caskName: String = "applepie-rpc") {
         self.caskName = caskName
-        self.homebrewUpgradeCommand = "brew upgrade --cask \(caskName)"
-        self.updateTrack = caskName == "applepie-rpc-beta" ? .beta : .stable
+        self.homebrewUpgradeCommand = Self.makeUpgradeCommand(caskName: caskName)
+        self.updateTrack = caskName == Self.betaCaskName ? .beta : .stable
     }
 
     func setIncludesBetaUpdates(_ enabled: Bool) {}
@@ -115,12 +117,35 @@ final class HomebrewUpdateProvider: UpdateProvider {
             return .homebrewBinaryMissing
         }
 
-        let command = "\(brewPath) update && \(brewPath) upgrade --cask \(caskName)"
-        setStatus("Updating via Homebrew...")
-        appendLog("Using Homebrew: \(brewPath)")
-        appendLog("$ \(command)")
+        let refreshArguments = ["update-if-needed"]
+        let upgradeArguments = ["upgrade", "--cask", caskName]
+        let upgradeEnvironment = ["HOMEBREW_NO_AUTO_UPDATE": "1"]
 
-        let status = await runShellCommand(command, appendLog: appendLog)
+        appendLog("Using Homebrew: \(brewPath)")
+        setStatus("Checking Homebrew metadata...")
+        appendLog("$ \(brewPath) \(refreshArguments.joined(separator: " "))")
+
+        let refreshStatus = await runCommand(
+            executablePath: brewPath,
+            arguments: refreshArguments,
+            environment: nil,
+            appendLog: appendLog
+        )
+        guard refreshStatus == 0 else {
+            setStatus("Homebrew metadata refresh failed (exit \(refreshStatus)).")
+            appendLog("Metadata refresh failed with exit code \(refreshStatus).")
+            return .homebrewFailed(refreshStatus)
+        }
+
+        setStatus("Upgrading via Homebrew...")
+        appendLog("$ HOMEBREW_NO_AUTO_UPDATE=1 \(brewPath) \(upgradeArguments.joined(separator: " "))")
+
+        let status = await runCommand(
+            executablePath: brewPath,
+            arguments: upgradeArguments,
+            environment: upgradeEnvironment,
+            appendLog: appendLog
+        )
         if status == 0 {
             setStatus("Homebrew update completed successfully.")
             appendLog("Update completed.")
@@ -141,14 +166,25 @@ final class HomebrewUpdateProvider: UpdateProvider {
         return allCandidates.first { FileManager.default.isExecutableFile(atPath: $0) }
     }
 
-    private func runShellCommand(
-        _ command: String,
+    private static func makeUpgradeCommand(caskName: String) -> String {
+        "brew update-if-needed && HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --cask \(caskName)"
+    }
+
+    private func runCommand(
+        executablePath: String,
+        arguments: [String],
+        environment: [String: String]?,
         appendLog: @MainActor @escaping (String) -> Void
     ) async -> Int32 {
         await withCheckedContinuation { continuation in
             let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-            process.arguments = ["-lc", command]
+            process.executableURL = URL(fileURLWithPath: executablePath)
+            process.arguments = arguments
+            if let environment {
+                process.environment = ProcessInfo.processInfo.environment.merging(environment) { _, new in
+                    new
+                }
+            }
 
             let stdoutPipe = Pipe()
             let stderrPipe = Pipe()

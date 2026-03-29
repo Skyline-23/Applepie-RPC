@@ -306,7 +306,7 @@ jobs:
           echo "🔐 DMG sha256: $DMG_SHA"
 
           if [ "$IS_PRERELEASE" = "true" ]; then
-            CASK_NAME="applepie-rpc-beta"
+            CASK_NAME="applepie-rpc@beta"
             LIVECHECK_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/update-feed/beta/appcast.xml"
             CASK_DESC="Beta macOS menu bar app that publishes now-playing info to Discord Rich Presence"
           else

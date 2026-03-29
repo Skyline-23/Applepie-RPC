@@ -62,4 +62,28 @@ struct UpdaterServiceTests {
         #expect(updaterService.currentState.updateTrack == .beta)
         #expect(updaterService.currentState.supportsBetaUpdates)
     }
+
+    @Test
+    func homebrewProviderUsesUpdateIfNeededCommand() {
+        let provider = HomebrewUpdateProvider(caskName: "applepie-rpc")
+
+        #expect(
+            provider.homebrewUpgradeCommand ==
+            "brew update-if-needed && HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --cask applepie-rpc"
+        )
+        #expect(provider.updateTrack == .stable)
+        #expect(!provider.supportsBetaUpdates)
+    }
+
+    @Test
+    func homebrewBetaProviderUsesBetaCaskCommand() {
+        let provider = HomebrewUpdateProvider(caskName: "applepie-rpc@beta")
+
+        #expect(
+            provider.homebrewUpgradeCommand ==
+            "brew update-if-needed && HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --cask applepie-rpc@beta"
+        )
+        #expect(provider.updateTrack == .beta)
+        #expect(!provider.supportsBetaUpdates)
+    }
 }
